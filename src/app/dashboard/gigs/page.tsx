@@ -17,34 +17,45 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { tasks, users } from '@/lib/data';
 import { useUserRole } from '@/context/user-role-context';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { collection, query, where, doc } from 'firebase/firestore';
+import type { Task, Customer } from '@/lib/data';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function MyGigsPage() {
   const { role } = useUserRole();
+  const { user: authUser, isUserLoading } = useUser();
+  const firestore = useFirestore();
 
-  // In a real app, you'd fetch the current user's ID
-  const helperId = 'user-2'; 
-  
-  const myGigs = tasks.filter(
-    (task) => task.assignedHelperId === helperId && (task.status === 'assigned' || task.status === 'in_progress' || task.status === 'completed')
-  );
+  const gigsQuery = useMemoFirebase(() => {
+    if (!authUser || !firestore) return null;
+    return query(
+      collection(firestore, 'tasks'),
+      where('assignedHelperId', '==', authUser.uid),
+      where('status', 'in', ['ASSIGNED', 'IN_PROGRESS', 'COMPLETED'])
+    );
+  }, [authUser, firestore]);
+
+  const { data: myGigs, isLoading: areGigsLoading } = useCollection<Task>(gigsQuery);
 
   if (role === 'customer') {
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Access Denied</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p>This page is only available to helpers. Please switch to your helper profile to view your gigs.</p>
-            </CardContent>
-        </Card>
-    )
+      <Card>
+        <CardHeader>
+          <CardTitle>Access Denied</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>This page is only available to helpers. Please switch to your helper profile to view your gigs.</p>
+        </CardContent>
+      </Card>
+    );
   }
+
+  const isLoading = isUserLoading || areGigsLoading;
 
   return (
     <div>
@@ -65,65 +76,105 @@ export default function MyGigsPage() {
                 <TableHead className="hidden sm:table-cell">Status</TableHead>
                 <TableHead className="hidden md:table-cell">Due Date</TableHead>
                 <TableHead className="text-right">Earnings (TZS)</TableHead>
-                 <TableHead>
+                <TableHead>
                   <span className="sr-only">Actions</span>
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {myGigs.length > 0 ? (
-                myGigs.map((gig) => {
-                  const customer = users.find((u) => u.id === gig.customerId);
-                  // Find the offer that was accepted for this task to get the price
-                  const price = gig.budget.max; // Fallback to max budget if offer not found
-                  return (
-                    <TableRow key={gig.id}>
-                      <TableCell>
-                        <div className="font-medium">{gig.title}</div>
-                        <div className="hidden text-sm text-muted-foreground md:inline">
-                          {gig.location}
-                        </div>
-                      </TableCell>
-                       <TableCell className="hidden sm:table-cell">{customer?.name}</TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <Badge
-                          className="capitalize"
-                          variant={
-                            gig.status === 'completed'
-                              ? 'default'
-                              : 'secondary'
-                          }
-                        >
-                          {gig.status.replace('_', ' ')}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {format(gig.createdAt, 'dd MMM yyyy')}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {price.toLocaleString()}
-                      </TableCell>
-                       <TableCell className="text-right">
-                        <Button variant="outline" size="sm" asChild>
-                            <Link href={`/dashboard/tasks/${gig.id}`}>
-                                View Details <ArrowRight className="ml-2 h-4 w-4" />
-                            </Link>
-                        </Button>
-                        </TableCell>
-                    </TableRow>
-                  );
-                })
+              {isLoading && Array.from({ length: 3 }).map((_, i) => <GigRowSkeleton key={i} />)}
+              {!isLoading && myGigs && myGigs.length > 0 ? (
+                myGigs.map((gig) => (
+                  <GigRow key={gig.id} gig={gig} />
+                ))
               ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center">
-                    You have no assigned gigs yet.
-                  </TableCell>
-                </TableRow>
+                !isLoading && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center h-24">
+                      You have no assigned gigs yet.
+                    </TableCell>
+                  </TableRow>
+                )
               )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function GigRow({ gig }: { gig: Task }) {
+  const firestore = useFirestore();
+  const customerRef = useMemoFirebase(() => firestore ? doc(firestore, 'customers', gig.customerId) : null, [firestore, gig.customerId]);
+  const { data: customer, isLoading: isCustomerLoading } = useDoc<Customer>(customerRef);
+  
+  // NOTE: In a real app, the agreed-upon price would be stored on the task object
+  // after an offer is accepted. For now, we use the max budget as an estimate.
+  const price = gig.budget.max;
+
+  return (
+    <TableRow>
+      <TableCell>
+        <div className="font-medium">{gig.title}</div>
+        <div className="hidden text-sm text-muted-foreground md:inline">
+          {gig.area}
+        </div>
+      </TableCell>
+      <TableCell className="hidden sm:table-cell">
+        {isCustomerLoading ? <Skeleton className="h-5 w-24" /> : customer?.fullName}
+      </TableCell>
+      <TableCell className="hidden sm:table-cell">
+        <Badge
+          className="capitalize"
+          variant={
+            gig.status === 'COMPLETED'
+              ? 'default'
+              : 'secondary'
+          }
+        >
+          {gig.status.replace('_', ' ')}
+        </Badge>
+      </TableCell>
+      <TableCell className="hidden md:table-cell">
+        {format(gig.createdAt.toDate(), 'dd MMM yyyy')}
+      </TableCell>
+      <TableCell className="text-right">
+        {price.toLocaleString()}
+      </TableCell>
+      <TableCell className="text-right">
+        <Button variant="outline" size="sm" asChild>
+          <Link href={`/dashboard/tasks/${gig.id}`}>
+            View Details <ArrowRight className="ml-2 h-4 w-4" />
+          </Link>
+        </Button>
+      </TableCell>
+    </TableRow>
+  );
+}
+
+function GigRowSkeleton() {
+  return (
+    <TableRow>
+      <TableCell>
+        <Skeleton className="h-5 w-32" />
+        <Skeleton className="h-4 w-24 mt-1" />
+      </TableCell>
+      <TableCell className="hidden sm:table-cell">
+        <Skeleton className="h-5 w-20" />
+      </TableCell>
+      <TableCell className="hidden sm:table-cell">
+        <Skeleton className="h-6 w-24" />
+      </TableCell>
+      <TableCell className="hidden md:table-cell">
+        <Skeleton className="h-5 w-24" />
+      </TableCell>
+      <TableCell className="text-right">
+        <Skeleton className="h-5 w-20 ml-auto" />
+      </TableCell>
+      <TableCell className="text-right">
+        <Skeleton className="h-9 w-[125px] ml-auto" />
+      </TableCell>
+    </TableRow>
   );
 }
