@@ -5,9 +5,8 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 import { useUserRole } from '@/context/user-role-context';
-import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, signOut } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { useUser, useDoc, useFirestore, useMemoFirebase, signOut, useAuth } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import type { Helper, Customer } from '@/lib/data';
 
 import {
@@ -36,6 +35,7 @@ export default function AppHeader() {
   const { role, toggleRole } = useUserRole();
   const { user: authUser, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const auth = useAuth();
   const router = useRouter();
 
   const userRef = useMemoFirebase(() => {
@@ -47,7 +47,6 @@ export default function AppHeader() {
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<Helper | Customer>(userRef);
 
   const handleLogout = async () => {
-    const auth = getAuth();
     await signOut(auth);
     router.push('/login');
   };
