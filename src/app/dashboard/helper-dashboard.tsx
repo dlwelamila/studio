@@ -40,20 +40,22 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function HelperDashboard() {
-  const { user: authUser } = useUser();
+  const { user: authUser, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
 
   const helperRef = useMemoFirebase(() => authUser && firestore ? doc(firestore, 'helpers', authUser.uid) : null, [authUser, firestore]);
   const { data: helper, isLoading: isHelperLoading } = useDoc<Helper>(helperRef);
 
-  const tasksQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'tasks'), where('status', '==', 'OPEN')) : null, [firestore]);
+  const tasksQuery = useMemoFirebase(() => firestore && authUser ? query(collection(firestore, 'tasks'), where('status', '==', 'OPEN')) : null, [firestore, authUser]);
   const { data: openTasks, isLoading: areTasksLoading } = useCollection<Task>(tasksQuery);
   
+  const isLoading = isAuthLoading || areTasksLoading;
+
   return (
     <div className="grid gap-4 md:grid-cols-[250px_1fr] lg:grid-cols-[300px_1fr] lg:gap-8">
       <div className="grid auto-rows-max items-start gap-4 lg:gap-6">
         <Card>
-          {isHelperLoading ? (
+          {isAuthLoading || isHelperLoading ? (
             <CardHeader>
               <Skeleton className="h-6 w-3/4" />
               <Skeleton className="h-4 w-1/2" />
@@ -97,7 +99,12 @@ export default function HelperDashboard() {
             </>
           ) : (
             <CardContent>
-              <p>Could not load helper profile.</p>
+              {authUser ? (
+                 <p>Could not load helper profile. You may need to create one.</p>
+              ) : (
+                <p>Please log in to see your profile.</p>
+              )}
+             
             </CardContent>
           )}
           <CardFooter>
@@ -142,7 +149,7 @@ export default function HelperDashboard() {
           </div>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {areTasksLoading && Array.from({length: 3}).map((_, i) => <TaskCardSkeleton key={i} />)}
+            {isLoading && Array.from({length: 3}).map((_, i) => <TaskCardSkeleton key={i} />)}
             {openTasks && openTasks.map(task => {
                 return (
                     <Card key={task.id}>
@@ -173,13 +180,20 @@ export default function HelperDashboard() {
                 )
             })}
         </div>
-         {openTasks?.length === 0 && !areTasksLoading && (
+         {openTasks?.length === 0 && !isLoading && (
             <Card className="md:col-span-2 lg:col-span-3">
                 <CardContent className="p-12 text-center">
-                    <p className="text-muted-foreground">No open tasks in your area right now. Check back soon!</p>
+                    <p className="text-muted-foreground">No open tasks right now. Check back soon!</p>
                 </CardContent>
             </Card>
          )}
+          {!authUser && !isLoading && (
+             <Card className="md:col-span-2 lg:col-span-3">
+                <CardContent className="p-12 text-center">
+                    <p className="text-muted-foreground">Please log in to browse available tasks.</p>
+                </CardContent>
+            </Card>
+          )}
       </div>
     </div>
   );

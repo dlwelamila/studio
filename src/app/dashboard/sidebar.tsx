@@ -24,11 +24,10 @@ import {
 const CustomerNav = [
   { href: '/dashboard', label: 'My Tasks', icon: Home },
   { href: '/dashboard/tasks/new', label: 'New Task', icon: PlusCircle },
-  { href: '/dashboard/browse', label: 'Browse Helpers', icon: Users },
 ];
 
 const HelperNav = [
-  { href: '/dashboard/browse', label: 'Browse Tasks', icon: Home },
+  { href: '/dashboard', label: 'Browse Tasks', icon: Home },
   { href: '/dashboard/gigs', label: 'My Gigs', icon: Briefcase },
 ];
 

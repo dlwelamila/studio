@@ -5,7 +5,7 @@ import { PlusCircle, ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
 
 import { useCollection, useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, doc } from 'firebase/firestore';
 import type { Task, Offer, Helper } from '@/lib/data';
 
 import { Button } from '@/components/ui/button';
@@ -28,12 +28,14 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function CustomerDashboard() {
-  const { user: authUser } = useUser();
+  const { user: authUser, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
 
   const tasksQuery = useMemoFirebase(() => authUser && firestore ? query(collection(firestore, 'tasks'), where('customerId', '==', authUser.uid)) : null, [authUser, firestore]);
   const { data: customerTasks, isLoading: areTasksLoading } = useCollection<Task>(tasksQuery);
   
+  const isLoading = isAuthLoading || areTasksLoading;
+
   return (
     <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
       <div className="flex items-center">
@@ -70,16 +72,16 @@ export default function CustomerDashboard() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {areTasksLoading && Array.from({length: 3}).map((_, i) => <TaskRowSkeleton key={i} />)}
+              {isLoading && Array.from({length: 3}).map((_, i) => <TaskRowSkeleton key={i} />)}
               {customerTasks && customerTasks.length > 0 ? (
                 customerTasks.map((task) => (
                   <TaskRow key={task.id} task={task} />
                 ))
               ) : (
-                !areTasksLoading && (
+                !isLoading && (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center h-24">
-                      You haven&apos;t posted any tasks yet.
+                      { authUser ? "You haven't posted any tasks yet." : "Please log in to see your tasks."}
                     </TableCell>
                   </TableRow>
                 )
