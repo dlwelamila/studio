@@ -1,6 +1,12 @@
 'use client';
 import Link from 'next/link';
 import { Home, PanelLeft, Settings, Package, Package2, Users2, Briefcase } from 'lucide-react';
+import Image from 'next/image';
+
+import { useUserRole } from '@/context/user-role-context';
+import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import type { Helper, Customer } from '@/lib/data';
 
 import {
   Breadcrumb,
@@ -20,15 +26,24 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { useUserRole } from '@/context/user-role-context';
-import { users } from '@/lib/data';
-import Image from 'next/image';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AppHeader() {
   const { role, toggleRole } = useUserRole();
-  const currentUser = role === 'customer' ? users[0] : users[1];
+  const { user: authUser, isUserLoading } = useUser();
+  const firestore = useFirestore();
+
+  const userRef = useMemoFirebase(() => {
+    if (!firestore || !authUser) return null;
+    const collectionName = role === 'customer' ? 'customers' : 'helpers';
+    return doc(firestore, collectionName, authUser.uid);
+  }, [firestore, authUser, role]);
+
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<Helper | Customer>(userRef);
+
+  const breadcrumbText = role === 'customer' ? 'My Tasks' : 'Browse Tasks';
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
@@ -67,7 +82,7 @@ export default function AppHeader() {
                 </Link>
             )}
             <Link
-              href="#"
+              href="/dashboard/profile"
               className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
             >
               <Users2 className="h-5 w-5" />
@@ -92,7 +107,7 @@ export default function AppHeader() {
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>{role === 'customer' ? 'My Tasks' : 'Browse Tasks'}</BreadcrumbPage>
+            <BreadcrumbPage>{breadcrumbText}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
@@ -109,17 +124,21 @@ export default function AppHeader() {
               size="icon"
               className="overflow-hidden rounded-full"
             >
-              <Image
-                src={currentUser.avatarUrl}
-                width={36}
-                height={36}
-                alt="Avatar"
-                className="overflow-hidden rounded-full"
-              />
+              {isUserLoading || isProfileLoading || !userProfile ? (
+                 <Skeleton className="h-9 w-9 rounded-full" />
+              ) : (
+                <Image
+                    src={userProfile.profilePhotoUrl}
+                    width={36}
+                    height={36}
+                    alt="Avatar"
+                    className="overflow-hidden rounded-full"
+                />
+              )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>{currentUser.name}</DropdownMenuLabel>
+            <DropdownMenuLabel>{userProfile?.fullName || 'My Account'}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem>Settings</DropdownMenuItem>
             <DropdownMenuItem>Support</DropdownMenuItem>

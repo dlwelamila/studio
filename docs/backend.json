@@ -8,7 +8,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Helper entity."
+          "description": "Unique identifier for the Helper entity, matches Firebase Auth UID."
         },
         "phoneNumber": {
           "type": "string",
@@ -56,15 +56,29 @@
         },
         "verificationStatus": {
           "type": "string",
-          "description": "The verification status of the helper (Pending Verification, Verified Helper)."
+          "description": "The verification status of the helper.",
+          "enum": [
+            "Pending Verification",
+            "Verified"
+          ]
         },
-        "availability": {
+        "isAvailable": {
           "type": "boolean",
           "description": "Indicates if the helper is currently available for tasks."
         },
         "reliabilityIndicator": {
           "type": "string",
-          "description": "Indicator of the helper's reliability (🟢🟡🔴)."
+          "description": "Indicator of the helper's reliability (e.g., 🟢, 🟡, 🔴)."
+        },
+        "memberSince": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completedTasks": {
+            "type": "number"
+        },
+        "rating": {
+            "type": "number"
         }
       },
       "required": [
@@ -76,8 +90,8 @@
         "serviceAreas",
         "aboutMe",
         "verificationStatus",
-        "availability",
-        "reliabilityIndicator"
+        "isAvailable",
+        "memberSince"
       ]
     },
     "Customer": {
@@ -88,7 +102,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Customer entity."
+          "description": "Unique identifier for the Customer entity, matches Firebase Auth UID."
         },
         "fullName": {
           "type": "string",
@@ -106,12 +120,18 @@
         "rating": {
           "type": "number",
           "description": "Average rating given by helpers to this customer."
+        },
+        "profilePhotoUrl": {
+          "type": "string",
+          "description": "URL of the customer's profile photo.",
+          "format": "uri"
         }
       },
       "required": [
         "id",
         "fullName",
-        "phoneNumber"
+        "phoneNumber",
+        "profilePhotoUrl"
       ]
     },
     "Task": {
@@ -120,60 +140,76 @@
       "type": "object",
       "description": "Represents a task posted by a customer on the tasKey platform.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Task entity."
-        },
         "customerId": {
           "type": "string",
-          "description": "Reference to Customer. (Relationship: Customer 1:N Task)"
+          "description": "Reference to the Customer who posted the task."
         },
-        "taskType": {
+        "title": {
           "type": "string",
-          "description": "The type of task (e.g., Laundry, Cleaning)."
+          "description": "The title of the task."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the task (e.g., Laundry, Cleaning)."
         },
         "description": {
           "type": "string",
-          "description": "A description of the task."
+          "description": "A detailed description of the task."
         },
         "area": {
           "type": "string",
           "description": "The approximate area where the task needs to be performed."
         },
-        "landmark": {
-          "type": "string",
-          "description": "A landmark near the task location."
+        "location": {
+            "type": "object",
+            "description": "Exact location, only revealed after assignment."
         },
-        "budgetRange": {
-          "type": "string",
+        "budget": {
+          "type": "object",
+          "properties": {
+            "min": { "type": "number" },
+            "max": { "type": "number" }
+          },
           "description": "The budget range for the task."
         },
-        "expectedEffort": {
+        "effort": {
           "type": "string",
-          "description": "The expected effort level (light / medium / heavy)."
+          "description": "The expected effort level.",
+          "enum": ["light", "medium", "heavy"]
         },
-        "preferredTimeWindow": {
+        "timeWindow": {
           "type": "string",
           "description": "The preferred time window for the task to be completed."
         },
         "status": {
           "type": "string",
-          "description": "The current status of the task (OPEN, ASSIGNED, COMPLETED)."
+          "description": "The current status of the task.",
+           "enum": ["OPEN", "ASSIGNED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]
         },
         "assignedHelperId": {
           "type": "string",
-          "description": "Reference to Helper assigned to this task. (Relationship: Helper 1:N Task)"
+          "description": "Reference to Helper assigned to this task."
+        },
+        "createdAt": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "completedAt": {
+            "type": "string",
+            "format": "date-time"
         }
       },
       "required": [
-        "id",
         "customerId",
-        "taskType",
+        "title",
+        "category",
         "description",
         "area",
-        "expectedEffort",
-        "preferredTimeWindow",
-        "status"
+        "effort",
+        "timeWindow",
+        "status",
+        "createdAt",
+        "budget"
       ]
     },
     "Offer": {
@@ -182,25 +218,21 @@
       "type": "object",
       "description": "Represents an offer submitted by a helper for a specific task.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Offer entity."
-        },
         "helperId": {
           "type": "string",
-          "description": "Reference to Helper. (Relationship: Helper 1:N Offer)"
+          "description": "Reference to the Helper who made the offer."
         },
         "taskId": {
           "type": "string",
-          "description": "Reference to Task. (Relationship: Task 1:N Offer)"
+          "description": "Reference to the Task the offer is for."
         },
         "price": {
           "type": "number",
           "description": "The price offered by the helper for the task."
         },
-        "availabilityEta": {
+        "eta": {
           "type": "string",
-          "description": "The helper's availability and estimated time of arrival (ETA)."
+          "description": "The helper's estimated time of arrival (ETA) or availability."
         },
         "message": {
           "type": "string",
@@ -208,17 +240,22 @@
         },
         "status": {
           "type": "string",
-          "description": "The status of the offer (ACTIVE, WITHDRAWN, ACCEPTED, REJECTED)."
+          "description": "The status of the offer.",
+          "enum": ["ACTIVE", "WITHDRAWN", "ACCEPTED", "REJECTED"]
+        },
+        "createdAt": {
+            "type": "string",
+            "format": "date-time"
         }
       },
       "required": [
-        "id",
         "helperId",
         "taskId",
         "price",
-        "availabilityEta",
+        "eta",
         "message",
-        "status"
+        "status",
+        "createdAt"
       ]
     },
     "Review": {
@@ -227,21 +264,17 @@
       "type": "object",
       "description": "Represents a review given by a customer for a completed task.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Review entity."
-        },
         "taskId": {
           "type": "string",
-          "description": "Reference to Task. (Relationship: Task 1:N Review)"
+          "description": "Reference to the completed Task."
         },
         "customerId": {
           "type": "string",
-          "description": "Reference to Customer. (Relationship: Customer 1:N Review)"
+          "description": "Reference to the Customer who gave the review."
         },
         "helperId": {
           "type": "string",
-          "description": "Reference to Helper. (Relationship: Helper 1:N Review)"
+          "description": "Reference to the Helper who received the review."
         },
         "rating": {
           "type": "number",
@@ -253,7 +286,6 @@
         }
       },
       "required": [
-        "id",
         "taskId",
         "customerId",
         "helperId",
@@ -264,24 +296,38 @@
   },
   "auth": {
     "providers": [
-      "password",
-      "anonymous"
+      "phone",
+      "email"
     ]
   },
   "firestore": {
     "structure": [
       {
-        "path": "/workers/{workerId}",
+        "path": "/helpers/{helperId}",
         "definition": {
-          "entityName": "Helper",
           "schema": {
-            "$ref": "#/backend/entities/Helper"
+            "$ref": "#/entities/Helper"
           },
-          "description": "Stores helper profiles.  Only the authenticated user (helper) can access and modify their own profile. Includes the 'id' field which corresponds to the Firebase Auth UID.",
+          "description": "Stores helper profiles. Only the authenticated helper can access and modify their own profile. The document ID corresponds to the Firebase Auth UID.",
           "params": [
             {
-              "name": "workerId",
+              "name": "helperId",
               "description": "The Firebase Auth UID of the helper."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/customers/{customerId}",
+        "definition": {
+          "schema": {
+            "$ref": "#/entities/Customer"
+          },
+          "description": "Stores customer profiles. The document ID corresponds to the Firebase Auth UID.",
+          "params": [
+            {
+              "name": "customerId",
+              "description": "The Firebase Auth UID of the customer."
             }
           ]
         }
@@ -289,11 +335,10 @@
       {
         "path": "/tasks/{taskId}",
         "definition": {
-          "entityName": "Task",
           "schema": {
-            "$ref": "#/backend/entities/Task"
+            "$ref": "#/entities/Task"
           },
-          "description": "Stores task details. Accessible for listing to all authenticated users (helpers). Write access restricted to authorized customers.",
+          "description": "Stores task details. Accessible for listing to all authenticated helpers. Write access is restricted.",
           "params": [
             {
               "name": "taskId",
@@ -305,9 +350,8 @@
       {
         "path": "/tasks/{taskId}/offers/{offerId}",
         "definition": {
-          "entityName": "Offer",
           "schema": {
-            "$ref": "#/backend/entities/Offer"
+            "$ref": "#/entities/Offer"
           },
           "description": "Stores offers made by helpers for specific tasks. Includes denormalized 'helperId' and 'taskId' for authorization independence.",
           "params": [
@@ -325,11 +369,10 @@
       {
         "path": "/reviews/{reviewId}",
         "definition": {
-          "entityName": "Review",
           "schema": {
-            "$ref": "#/backend/entities/Review"
+            "$ref": "#/entities/Review"
           },
-          "description": "Stores reviews given by customers for completed tasks. Includes denormalized 'taskId', 'customerId', and 'helperId' for authorization independence.",
+          "description": "Stores reviews for completed tasks. Readable by all authenticated users.",
           "params": [
             {
               "name": "reviewId",
@@ -337,24 +380,7 @@
             }
           ]
         }
-      },
-      {
-        "path": "/customers/{customerId}",
-        "definition": {
-          "entityName": "Customer",
-          "schema": {
-            "$ref": "#/backend/entities/Customer"
-          },
-          "description": "Stores customer profiles. Only accessible to administrators.",
-          "params": [
-            {
-              "name": "customerId",
-              "description": "Unique identifier for the customer."
-            }
-          ]
-        }
       }
-    ],
-    "reasoning": "The Firestore structure is designed to provide a clear separation of concerns, optimize for security and scalability, and support the core features of the tasKey application. It leverages path-based ownership and denormalization to ensure authorization independence and efficient data access. The structure facilitates simple, robust, and easily debuggable security rules.\n\n*   **Authorization Independence:** Authorization is enforced without relying on hierarchical `get()` calls. For instance, access to `offers` related to a `task` does not require fetching the `task` document. This is achieved by storing the `helperId` and `taskId` directly within the `offers` document.\n*   **Structural Segregation:** Each collection is designed with a homogeneous security posture. For example, `/workers/{workerId}` stores only worker-related data, ensuring consistent access control rules. Similarly, `/tasks` are open and discoverable, while specific details and offers are managed under the task document itself.\n*   **Access Modeling:** Path-based ownership is used for the `workers` collection, ensuring that only the authenticated user (helper) can access and modify their profile data. The `tasks` collection are globally accessible for reading but have restricted write access. Offers are stored as subcollections, enabling granular control over who can create, modify, or view them.\n\n**QAPs (Rules are not Filters):**\n*   The structure allows for secure `list` operations. For example, a helper can `list` tasks in their area without requiring complex filtering on the client-side. Security rules can efficiently restrict access based on the `area` field in the `tasks` collection.\n\n**Denormalization Strategy:** The `offers` subcollection denormalizes data by including `helperId` and `taskId`. This eliminates the need for security rules to perform `get()` operations on the `workers` or `tasks` collections to validate authorization. Similarly, the `reviews` document denormalizes `taskId`, `customerId`, and `helperId` to make it independent.\n\n**Additional Notes:**\n*   The structure supports the integrity of ownership by associating `tasks` with `customerId` and `offers` with `helperId`.\n*   The use of status fields in `Task` and `Offer` entities enables explicit state modeling, simplifying both application logic and security rules.\n*   The structure is designed to be extensible to support future features such as team-based work and recurring assistance."
+    ]
   }
 }

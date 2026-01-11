@@ -1,18 +1,47 @@
+'use client';
 import Image from 'next/image';
 import { Star } from 'lucide-react';
+import { doc } from 'firebase/firestore';
 
-import type { Offer } from '@/lib/data';
-import { users } from '@/lib/data';
+import type { Offer, Helper } from '@/lib/data';
+import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type OfferCardProps = {
   offer: Offer;
 };
 
 export function OfferCard({ offer }: OfferCardProps) {
-  const helper = users.find((u) => u.id === offer.helperId);
+  const firestore = useFirestore();
+  
+  const helperRef = useMemoFirebase(() => firestore && doc(firestore, 'helpers', offer.helperId), [firestore, offer.helperId]);
+  const { data: helper, isLoading } = useDoc<Helper>(helperRef);
+
+  if (isLoading) {
+    return (
+        <Card>
+            <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                        <Skeleton className="h-12 w-12 rounded-full" />
+                        <div className="grid gap-1">
+                            <Skeleton className="h-5 w-24" />
+                            <Skeleton className="h-4 w-40" />
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <Skeleton className="h-6 w-28" />
+                        <Skeleton className="h-3 w-16 mt-1" />
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    )
+  }
 
   if (!helper) return null;
 
@@ -25,19 +54,19 @@ export function OfferCard({ offer }: OfferCardProps) {
               alt="Helper avatar"
               className="rounded-full"
               height={48}
-              src={helper.avatarUrl}
+              src={helper.profilePhotoUrl}
               style={{ aspectRatio: '48/48', objectFit: 'cover' }}
               width={48}
             />
             <div className="grid gap-1">
-              <div className="font-semibold">{helper.name}</div>
+              <div className="font-semibold">{helper.fullName}</div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <div className="flex items-center gap-0.5">
                   <Star className="h-4 w-4 fill-primary text-primary" />
-                  <span>{helper.rating}</span>
+                  <span>{helper.rating || 'New'}</span>
                 </div>
                 <span>&middot;</span>
-                <div>{helper.completedTasks} tasks completed</div>
+                <div>{helper.completedTasks || 0} tasks completed</div>
               </div>
             </div>
           </div>

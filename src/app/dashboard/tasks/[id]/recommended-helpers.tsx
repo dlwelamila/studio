@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Sparkles, Star } from 'lucide-react';
-import type { Task, User } from '@/lib/data';
-import { users } from '@/lib/data';
+import type { Task, Helper } from '@/lib/data';
 import {
   Card,
   CardContent,
@@ -21,7 +20,7 @@ type RecommendedHelpersProps = {
 };
 
 export function RecommendedHelpers({ task }: RecommendedHelpersProps) {
-  const [recommended, setRecommended] = useState<User[]>([]);
+  const [recommended, setRecommended] = useState<Helper[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,27 +29,31 @@ export function RecommendedHelpers({ task }: RecommendedHelpersProps) {
       try {
         const result = await recommendHelpersForTask({
           taskDescription: task.description,
-          taskLocation: task.location,
+          taskLocation: task.area,
           customerRating: 4.5, // Mock customer rating
         });
         
-        // In a real app, you would fetch helper details from a database
-        // For now, we simulate this with a timeout and mock data
+        // In a real app, you would fetch helper details from a database using the IDs from the result.
+        // For now, we are mocking this part. This will be connected to Firestore in a future step.
         setTimeout(() => {
-          const helperIds = ['user-2', 'user-4', 'user-5']; // Mocked response
-          const helpers = users.filter(u => helperIds.includes(u.id));
-          setRecommended(helpers);
+          // const helpers = users.filter(u => result.recommendedHelpers.includes(u.id));
+          // setRecommended(helpers);
           setLoading(false);
         }, 1500);
 
-      } catch (error) {
+      } catch (error) => {
         console.error('Failed to get recommendations:', error);
         setLoading(false);
       }
     };
 
-    getRecommendations();
+    if (task) {
+        // getRecommendations();
+        setLoading(false); // Temporarily disable AI recommendations
+    }
   }, [task]);
+
+  if (!task) return null;
 
   return (
     <Card>
@@ -74,7 +77,7 @@ export function RecommendedHelpers({ task }: RecommendedHelpersProps) {
                     </div>
                 </div>
             ))
-        ) : (
+        ) : recommended.length > 0 ? (
             recommended.map(helper => (
                 <div key={helper.id} className="flex items-center justify-between gap-4 rounded-lg border p-3">
                      <div className="flex items-center gap-4">
@@ -82,25 +85,27 @@ export function RecommendedHelpers({ task }: RecommendedHelpersProps) {
                             alt="Helper avatar"
                             className="rounded-full"
                             height={48}
-                            src={helper.avatarUrl}
+                            src={helper.profilePhotoUrl}
                             style={{ aspectRatio: '48/48', objectFit: 'cover' }}
                             width={48}
                         />
                         <div className="grid gap-1">
-                        <div className="font-semibold">{helper.name}</div>
+                        <div className="font-semibold">{helper.fullName}</div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <div className="flex items-center gap-0.5">
                             <Star className="h-4 w-4 fill-primary text-primary" />
                             <span>{helper.rating}</span>
                             </div>
                             <span>&middot;</span>
-                            <div>{helper.location}</div>
+                            <div>{helper.serviceAreas[0]}</div>
                         </div>
                         </div>
                     </div>
                     <Button size="sm" variant="outline">Invite to Offer</Button>
                 </div>
             ))
+        ) : (
+            <p className="text-center text-sm text-muted-foreground py-4">AI recommendations will appear here.</p>
         )}
       </CardContent>
     </Card>
