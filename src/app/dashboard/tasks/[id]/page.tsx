@@ -38,6 +38,7 @@ import { format } from 'date-fns';
 import { OfferCard } from './offer-card';
 import { RecommendedHelpers } from './recommended-helpers';
 import { useUserRole } from '@/context/user-role-context';
+import { use } from 'react';
 
 export default function TaskDetailPage({ params }: { params: { id: string } }) {
   // In a real app, this would be a server component fetching from a DB.
