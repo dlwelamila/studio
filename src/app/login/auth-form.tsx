@@ -37,6 +37,7 @@ export default function AuthForm() {
              if (authAction === 'signUp') {
                 router.push('/onboarding/create-profile');
             } else {
+                // If a signed-in user has no profile, send them to create one.
                 router.push('/onboarding/create-profile');
             }
         }
