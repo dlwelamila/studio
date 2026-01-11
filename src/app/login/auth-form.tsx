@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { User, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
@@ -15,7 +16,7 @@ export default function AuthForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [authAction, setAuthAction] = useState<'signIn' | 'signUp' | null>(null);
+  const [authAction, setAuthAction] = useState<'signIn' | 'signUp'>('signIn');
   const router = useRouter();
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
@@ -24,7 +25,6 @@ export default function AuthForm() {
   useEffect(() => {
     const checkUserProfile = async (currentUser: User) => {
         const db = getFirestore();
-        // Check both collections. In a more complex app, you might have a 'users' collection with a role field.
         const helperDocRef = doc(db, 'helpers', currentUser.uid);
         const customerDocRef = doc(db, 'customers', currentUser.uid);
         
@@ -37,7 +37,6 @@ export default function AuthForm() {
              if (authAction === 'signUp') {
                 router.push('/onboarding/create-profile');
             } else {
-                // If a signed-in user has no profile, send them to create one.
                 router.push('/onboarding/create-profile');
             }
         }
@@ -48,7 +47,7 @@ export default function AuthForm() {
     }
   }, [user, isUserLoading, router, authAction]);
 
-  const handleAuth = async (action: 'signIn' | 'signUp') => {
+  const handleAuth = async () => {
     if (!auth) {
         toast({
             variant: 'destructive',
@@ -66,15 +65,13 @@ export default function AuthForm() {
     }
 
     setIsSubmitting(true);
-    setAuthAction(action);
 
     try {
-      if (action === 'signIn') {
+      if (authAction === 'signIn') {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
       }
-      // The useEffect will handle redirection on successful auth.
     } catch (error: any) {
         toast({
             variant: "destructive",
@@ -82,7 +79,6 @@ export default function AuthForm() {
             description: error.message || "An unexpected error occurred.",
         });
         setIsSubmitting(false);
-        setAuthAction(null);
     }
   };
 
@@ -95,53 +91,97 @@ export default function AuthForm() {
   }
 
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle className="text-2xl">Login or Sign Up</CardTitle>
-        <CardDescription>
-          Enter your email below to login to your account or create a new one.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="email">Email</Label>
-          <Input 
-            id="email" 
-            type="email" 
-            placeholder="m@example.com" 
-            required 
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={isSubmitting}
-            />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="password">Password</Label>
-          <Input 
-            id="password" 
-            type="password" 
-            required 
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={isSubmitting}
-            />
-        </div>
-      </CardContent>
-      <CardFooter className="flex flex-col gap-4">
-        <Button 
-            className="w-full" 
-            onClick={() => handleAuth('signIn')}
-            disabled={isSubmitting}>
-                {isSubmitting && authAction === 'signIn' ? 'Signing In...' : 'Sign In'}
-        </Button>
-        <Button 
-            variant="outline" 
-            className="w-full" 
-            onClick={() => handleAuth('signUp')}
-            disabled={isSubmitting}>
-                {isSubmitting && authAction === 'signUp' ? 'Registering...' : 'Register'}
-        </Button>
-      </CardFooter>
-    </Card>
+    <Tabs defaultValue="signIn" className="w-full max-w-sm" onValueChange={(value) => setAuthAction(value as 'signIn' | 'signUp')}>
+        <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="signIn">Sign In</TabsTrigger>
+            <TabsTrigger value="signUp">Register</TabsTrigger>
+        </TabsList>
+        <TabsContent value="signIn">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-2xl">Login</CardTitle>
+                    <CardDescription>
+                    Enter your email and password to access your account.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                    <Label htmlFor="email-signin">Email</Label>
+                    <Input 
+                        id="email-signin" 
+                        type="email" 
+                        placeholder="m@example.com" 
+                        required 
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        disabled={isSubmitting}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                    <Label htmlFor="password-signin">Password</Label>
+                    <Input 
+                        id="password-signin" 
+                        type="password" 
+                        required 
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        disabled={isSubmitting}
+                        />
+                    </div>
+                </CardContent>
+                <CardFooter>
+                    <Button 
+                        className="w-full" 
+                        onClick={handleAuth}
+                        disabled={isSubmitting}>
+                            {isSubmitting ? 'Signing In...' : 'Sign In'}
+                    </Button>
+                </CardFooter>
+            </Card>
+        </TabsContent>
+        <TabsContent value="signUp">
+             <Card>
+                <CardHeader>
+                    <CardTitle className="text-2xl">Register</CardTitle>
+                    <CardDescription>
+                    Create a new account to get started with tasKey.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                    <Label htmlFor="email-signup">Email</Label>
+                    <Input 
+                        id="email-signup" 
+                        type="email" 
+                        placeholder="m@example.com" 
+                        required 
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        disabled={isSubmitting}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                    <Label htmlFor="password-signup">Password</Label>
+                    <Input 
+                        id="password-signup" 
+                        type="password" 
+                        required 
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        disabled={isSubmitting}
+                        />
+                    </div>
+                </CardContent>
+                <CardFooter>
+                    <Button 
+                        className="w-full" 
+                        onClick={handleAuth}
+                        disabled={isSubmitting}>
+                            {isSubmitting ? 'Registering...' : 'Create Account'}
+                    </Button>
+                </CardFooter>
+            </Card>
+        </TabsContent>
+    </Tabs>
   );
 }
