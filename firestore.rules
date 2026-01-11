@@ -1,0 +1,170 @@
+/**
+ * tasKey Firestore Security Rules (Helper/Worker Side)
+ *
+ * Core Philosophy:
+ * This ruleset enforces a security model for the "helper" or "worker" side of the tasKey marketplace.
+ * The primary goals are to protect a worker's personal data, allow them to discover and bid on tasks,
+ * and manage tasks that have been assigned to them. The model relies on strict user ownership for
+ * sensitive data and allows broader read access for public-facing data like open tasks.
+ *
+ * Data Structure:
+ * - /workers/{workerId}: A worker's private profile. Only the worker can read or write their own document.
+ * - /tasks/{taskId}: Publicly discoverable tasks. Any authenticated worker can list and view them.
+ * - /tasks/{taskId}/offers/{offerId}: Offers made by workers on tasks. These are private to the worker who made them.
+ * - /reviews/{reviewId}: Reviews are readable by authenticated workers but cannot be created or modified by them.
+ * - /customers/{customerId}: This collection is locked down entirely, as it's not meant to be accessed by workers.
+ *
+ * Key Security Decisions:
+ * - Strict Ownership: A worker's profile in `/workers/{workerId}` is strictly controlled by the matching authenticated user.
+ * - Public Task Discovery: The `/tasks` collection is readable by any signed-in worker to allow them to browse for opportunities.
+ * - Controlled Task Updates: A worker can only update a task document *after* it has been assigned to them. They cannot create or delete tasks.
+ * - Private Offers: Workers can create and manage their own offers, but they cannot see offers made by other workers on the same task.
+ * - Denormalization for Authorization: Rules leverage denormalized fields like `helperId` on offers and `assignedHelperId` on tasks. This avoids slow and costly `get()` calls to parent documents for authorization, leading to more performant and secure rules.
+ * - Locked Down Collections: Any collection not directly relevant to the worker's workflow, like `/customers`, is explicitly denied all access.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --------------------------------------------------------------------------------
+    // Helper Functions
+    // --------------------------------------------------------------------------------
+
+    /**
+     * Returns true if the user is signed in.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Returns true if the request UID matches the provided userId.
+     * Used to verify document ownership.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Returns true if the document already exists and the requestor is the owner.
+     * Used for safe update and delete operations.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * Validates that the data being created for a worker profile contains an `id` field
+     * that matches the user's auth UID, ensuring relational integrity.
+     */
+    function hasValidWorkerDataOnCreate(workerId) {
+      return request.resource.data.id == workerId;
+    }
+
+    /**
+     * Enforces immutability of the worker's ID field on updates.
+     */
+    function hasValidWorkerDataOnUpdate() {
+      return request.resource.data.id == resource.data.id;
+    }
+    
+    /**
+     * Returns true if the worker is assigned to the task being updated.
+     * This allows a worker to modify a task's state (e.g., mark as 'started' or 'completed').
+     */
+    function isAssignedHelper() {
+      return resource != null && isOwner(resource.data.assignedHelperId);
+    }
+    
+    /**
+     * Validates that an offer being created has the correct ownership (helperId) and
+     * path relationship (taskId) set in its data.
+     */
+    function hasValidOfferDataOnCreate(taskId) {
+      let data = request.resource.data;
+      return isOwner(data.helperId) && data.taskId == taskId;
+    }
+    
+    /**
+     * Enforces immutability of core relationship fields on an offer document during an update.
+     */
+    function hasValidOfferDataOnUpdate() {
+      let data = request.resource.data;
+      return data.helperId == resource.data.helperId && data.taskId == resource.data.taskId;
+    }
+
+    // --------------------------------------------------------------------------------
+    // Collection Rules
+    // --------------------------------------------------------------------------------
+
+    /**
+     * @description Workers can create, read, and update their own profile document.
+     * @path /workers/{workerId}
+     * @allow (create) A new worker with auth.uid `user_abc` creating their own profile at `/workers/user_abc`.
+     * @deny (get) A worker with auth.uid `user_xyz` trying to read the profile at `/workers/user_abc`.
+     * @principle Restricts access to a user's own private data tree.
+     */
+    match /workers/{workerId} {
+      allow get, list: if isOwner(workerId);
+      allow create: if isOwner(workerId) && hasValidWorkerDataOnCreate(workerId);
+      allow update: if isExistingOwner(workerId) && hasValidWorkerDataOnUpdate();
+      allow delete: if isExistingOwner(workerId);
+    }
+
+    /**
+     * @description Any authenticated worker can browse and view tasks. Workers can only update tasks assigned to them.
+     * @path /tasks/{taskId}
+     * @allow (list) An authenticated worker listing all documents in the `/tasks` collection.
+     * @deny (create) Any worker trying to create a new task document.
+     * @principle Allows public discovery of work while enforcing strict, role-based write access.
+     */
+    match /tasks/{taskId} {
+      allow get, list: if isSignedIn();
+      allow create: if false; // Task creation is handled by customers.
+      allow update: if isAssignedHelper();
+      allow delete: if false; // Task deletion is an admin/customer action.
+    }
+
+    /**
+     * @description A worker can create, read, update, or withdraw their own offers for a task. They cannot see others' offers.
+     * @path /tasks/{taskId}/offers/{offerId}
+     * @allow (create) A worker (`user_abc`) creating an offer where `request.resource.data.helperId` is `user_abc`.
+     * @deny (list) Any worker trying to list all offers for a given task to see competitor prices.
+     * @principle Enforces document ownership for all operations and prevents information leakage between competitors.
+     */
+    match /tasks/{taskId}/offers/{offerId} {
+      allow get: if isExistingOwner(resource.data.helperId);
+      allow list: if false;
+      allow create: if hasValidOfferDataOnCreate(taskId);
+      allow update: if isExistingOwner(resource.data.helperId) && hasValidOfferDataOnUpdate();
+      allow delete: if isExistingOwner(resource.data.helperId);
+    }
+
+    /**
+     * @description Workers can read individual reviews but cannot list all of them, nor can they write or delete them.
+     * @path /reviews/{reviewId}
+     * @allow (get) An authenticated worker fetching a single review document.
+     * @deny (create) A worker trying to create a review for themselves or a customer.
+     * @principle Provides necessary read access for context but prevents data scraping and unauthorized modification.
+     */
+    match /reviews/{reviewId} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Customer profiles are completely inaccessible to workers.
+     * @path /customers/{customerId}
+     * @allow (none) No operations are permitted.
+     * @deny (get) A worker attempting to read any customer's profile data.
+     * @principle Enforces strict data segregation between user roles.
+     */
+    match /customers/{customerId} {
+      allow read: if false;
+      allow write: if false;
+    }
+  }
+}
