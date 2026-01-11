@@ -12,7 +12,7 @@ import { users } from '@/lib/data';
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Star, Briefcase, MapPin, Calendar, CheckBadgeIcon } from 'lucide-react';
+import { Star, Briefcase, MapPin, Calendar, BadgeCheckIcon } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function ProfilePage() {
@@ -58,7 +58,7 @@ export default function ProfilePage() {
              {currentUser.role === 'helper' && (
                 <>
                      <div className="flex items-center gap-3">
-                        <CheckBadgeIcon className="h-5 w-5 text-muted-foreground" />
+                        <BadgeCheckIcon className="h-5 w-5 text-muted-foreground" />
                         <div>
                             <p className="text-muted-foreground">Verification</p>
                             <p className="font-semibold">
