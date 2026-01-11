@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth, useUser, initiateEmailSignIn, initiateEmailSignUp } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
 import { doc, getDoc, getFirestore } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { User } from 'firebase/auth';
+import { User, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
 export default function AuthForm() {
   const [email, setEmail] = useState('');
@@ -34,24 +34,27 @@ export default function AuthForm() {
         if (helperDoc.exists() || customerDoc.exists()) {
             router.push('/dashboard');
         } else {
-            // This is a new user who just signed up, and they don't have a profile.
              if (authAction === 'signUp') {
                 router.push('/onboarding/create-profile');
             } else {
-                // This is a user who signed in but has no profile, maybe an edge case.
-                // For now, we'll send them to create one.
                 router.push('/onboarding/create-profile');
             }
         }
     };
     
-    // If the user is logged in and loading is complete, check their profile status.
     if (!isUserLoading && user) {
         checkUserProfile(user);
     }
   }, [user, isUserLoading, router, authAction]);
 
   const handleAuth = async (action: 'signIn' | 'signUp') => {
+    if (!auth) {
+        toast({
+            variant: 'destructive',
+            title: 'Auth service not available',
+        });
+        return;
+    }
     if (!email || !password) {
       toast({
         variant: 'destructive',
@@ -62,15 +65,15 @@ export default function AuthForm() {
     }
 
     setIsSubmitting(true);
-    setAuthAction(action); // Set the action to guide the useEffect hook
+    setAuthAction(action);
 
     try {
       if (action === 'signIn') {
-        await initiateEmailSignIn(auth, email, password);
+        await signInWithEmailAndPassword(auth, email, password);
       } else {
-        await initiateEmailSignUp(auth, email, password);
+        await createUserWithEmailAndPassword(auth, email, password);
       }
-      // The onAuthStateChanged listener and the useEffect hook above will handle redirection.
+      // The useEffect will handle redirection on successful auth.
     } catch (error: any) {
         toast({
             variant: "destructive",
@@ -80,11 +83,9 @@ export default function AuthForm() {
         setIsSubmitting(false);
         setAuthAction(null);
     }
-    // Don't set isSubmitting to false here; redirection or error will handle it.
   };
 
   if (isUserLoading || user) {
-    // Display a loading state or nothing while checking auth and redirecting
     return (
         <div className="flex justify-center items-center h-screen">
             <p>Loading...</p>
