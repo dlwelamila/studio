@@ -61,13 +61,13 @@ export default function ProfilePage() {
                         <BadgeCheckIcon className="h-5 w-5 text-muted-foreground" />
                         <div>
                             <p className="text-muted-foreground">Verification</p>
-                            <p className="font-semibold">
+                            <div className="font-semibold">
                                 {currentUser.verified ? (
                                     <Badge variant="secondary">Verified</Badge>
                                 ) : (
                                     <Badge variant="destructive">Not Verified</Badge>
                                 )}
-                            </p>
+                            </div>
                         </div>
                     </div>
                      <div className="flex items-center gap-3">
