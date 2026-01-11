@@ -40,10 +40,11 @@ import { RecommendedHelpers } from './recommended-helpers';
 import { useUserRole } from '@/context/user-role-context';
 import { use } from 'react';
 
-export default function TaskDetailPage({ params }: { params: { id: string } }) {
+export default function TaskDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   // In a real app, this would be a server component fetching from a DB.
   // For this demo, we'll simulate role-based rendering on the client.
-  const task = tasks.find((t) => t.id === params.id);
+  const task = tasks.find((t) => t.id === id);
   const { role } = useUserRole();
 
   if (!task) {
