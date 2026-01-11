@@ -3,27 +3,53 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, useUser, initiateEmailSignIn, initiateEmailSignUp } from '@/firebase';
+import { doc, getDoc, getFirestore } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { User } from 'firebase/auth';
 
 export default function AuthForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [authAction, setAuthAction] = useState<'signIn' | 'signUp' | null>(null);
   const router = useRouter();
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
 
   useEffect(() => {
-    // If the user is logged in and loading is complete, redirect to dashboard.
+    const checkUserProfile = async (currentUser: User) => {
+        const db = getFirestore();
+        // Check both collections. In a more complex app, you might have a 'users' collection with a role field.
+        const helperDocRef = doc(db, 'helpers', currentUser.uid);
+        const customerDocRef = doc(db, 'customers', currentUser.uid);
+        
+        const helperDoc = await getDoc(helperDocRef);
+        const customerDoc = await getDoc(customerDocRef);
+
+        if (helperDoc.exists() || customerDoc.exists()) {
+            router.push('/dashboard');
+        } else {
+            // This is a new user who just signed up, and they don't have a profile.
+             if (authAction === 'signUp') {
+                router.push('/onboarding/create-profile');
+            } else {
+                // This is a user who signed in but has no profile, maybe an edge case.
+                // For now, we'll send them to create one.
+                router.push('/onboarding/create-profile');
+            }
+        }
+    };
+    
+    // If the user is logged in and loading is complete, check their profile status.
     if (!isUserLoading && user) {
-      router.push('/dashboard');
+        checkUserProfile(user);
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, router, authAction]);
 
   const handleAuth = async (action: 'signIn' | 'signUp') => {
     if (!email || !password) {
@@ -36,15 +62,15 @@ export default function AuthForm() {
     }
 
     setIsSubmitting(true);
+    setAuthAction(action); // Set the action to guide the useEffect hook
 
     try {
       if (action === 'signIn') {
-        initiateEmailSignIn(auth, email, password);
+        await initiateEmailSignIn(auth, email, password);
       } else {
-        initiateEmailSignUp(auth, email, password);
+        await initiateEmailSignUp(auth, email, password);
       }
-      // The onAuthStateChanged listener in FirebaseProvider will handle redirection.
-      // We don't need to await here because we want a non-blocking UI.
+      // The onAuthStateChanged listener and the useEffect hook above will handle redirection.
     } catch (error: any) {
         toast({
             variant: "destructive",
@@ -52,9 +78,9 @@ export default function AuthForm() {
             description: error.message || "An unexpected error occurred.",
         });
         setIsSubmitting(false);
+        setAuthAction(null);
     }
-    // We don't set isSubmitting to false here because we expect a page redirect.
-    // If the redirect fails, the user is still on the page and can try again.
+    // Don't set isSubmitting to false here; redirection or error will handle it.
   };
 
   if (isUserLoading || user) {
@@ -104,14 +130,14 @@ export default function AuthForm() {
             className="w-full" 
             onClick={() => handleAuth('signIn')}
             disabled={isSubmitting}>
-                Sign In
+                {isSubmitting && authAction === 'signIn' ? 'Signing In...' : 'Sign In'}
         </Button>
         <Button 
             variant="outline" 
             className="w-full" 
             onClick={() => handleAuth('signUp')}
             disabled={isSubmitting}>
-                Register
+                {isSubmitting && authAction === 'signUp' ? 'Registering...' : 'Register'}
         </Button>
       </CardFooter>
     </Card>
