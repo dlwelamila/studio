@@ -2,10 +2,12 @@
 import Link from 'next/link';
 import { Home, PanelLeft, Settings, Package, Package2, Users2, Briefcase } from 'lucide-react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 import { useUserRole } from '@/context/user-role-context';
 import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc, signOut } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import type { Helper, Customer } from '@/lib/data';
 
 import {
@@ -34,6 +36,7 @@ export default function AppHeader() {
   const { role, toggleRole } = useUserRole();
   const { user: authUser, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const router = useRouter();
 
   const userRef = useMemoFirebase(() => {
     if (!firestore || !authUser) return null;
@@ -42,6 +45,12 @@ export default function AppHeader() {
   }, [firestore, authUser, role]);
 
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<Helper | Customer>(userRef);
+
+  const handleLogout = async () => {
+    const auth = getAuth();
+    await signOut(auth);
+    router.push('/login');
+  };
 
   const breadcrumbText = role === 'customer' ? 'My Tasks' : 'Browse Tasks';
 
@@ -143,7 +152,7 @@ export default function AppHeader() {
             <DropdownMenuItem>Settings</DropdownMenuItem>
             <DropdownMenuItem>Support</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Logout</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

@@ -59,10 +59,10 @@ export default function LandingPage() {
         </Link>
         <nav className="flex items-center gap-4">
           <Button variant="ghost" asChild>
-            <Link href="/dashboard">Log In</Link>
+            <Link href="/login">Log In</Link>
           </Button>
           <Button asChild>
-            <Link href="/dashboard">
+            <Link href="/login">
               Sign Up <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
@@ -82,12 +82,12 @@ export default function LandingPage() {
             </p>
             <div className="flex flex-col gap-4 sm:flex-row">
               <Button size="lg" asChild>
-                <Link href="/dashboard">
+                <Link href="/login">
                   Post a Task <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
               <Button size="lg" variant="secondary" asChild>
-                <Link href="/dashboard">Become a Helper</Link>
+                <Link href="/login">Become a Helper</Link>
               </Button>
             </div>
           </div>
@@ -171,12 +171,12 @@ export default function LandingPage() {
                 </p>
                 <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
                     <Button size="lg" asChild>
-                        <Link href="/dashboard">
+                        <Link href="/login">
                         Find Help Now <ArrowRight className="ml-2 h-4 w-4" />
                         </Link>
                     </Button>
                     <Button size="lg" variant="outline" asChild>
-                        <Link href="/dashboard">Start Earning</Link>
+                        <Link href="/login">Start Earning</Link>
                     </Button>
                 </div>
             </div>

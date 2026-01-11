@@ -2,7 +2,7 @@
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, signOut } from 'firebase/auth'; // Import signOut
 import { getFirestore } from 'firebase/firestore'
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
@@ -40,6 +40,8 @@ export function getSdks(firebaseApp: FirebaseApp) {
   };
 }
 
+// Re-export signOut
+export { signOut };
 export * from './provider';
 export * from './client-provider';
 export * from './firestore/use-collection';
