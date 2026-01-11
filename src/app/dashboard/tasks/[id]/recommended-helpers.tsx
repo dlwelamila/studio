@@ -41,7 +41,7 @@ export function RecommendedHelpers({ task }: RecommendedHelpersProps) {
           setLoading(false);
         }, 1500);
 
-      } catch (error) => {
+      } catch (error) {
         console.error('Failed to get recommendations:', error);
         setLoading(false);
       }
