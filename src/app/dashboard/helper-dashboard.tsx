@@ -12,7 +12,7 @@ import {
   Briefcase,
   Wrench,
 } from 'lucide-react';
-import { formatDistanceToNow, isToday, isThisWeekend } from 'date-fns';
+import { formatDistanceToNow, isToday, isWeekend } from 'date-fns';
 
 import { useCollection, useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -97,7 +97,7 @@ export default function HelperDashboard() {
         // For now, we filter based on creation date.
         const createdAt = task.createdAt instanceof Timestamp ? task.createdAt.toDate() : new Date();
         if (timeFilter === 'today') return isToday(createdAt);
-        if (timeFilter === 'weekend') return isThisWeekend(createdAt);
+        if (timeFilter === 'weekend') return isWeekend(createdAt);
         return true;
       })();
 
