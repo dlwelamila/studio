@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { CheckCircle2, MapPin, Clock, AlertCircle } from 'lucide-react';
@@ -177,12 +178,22 @@ function IndicatorCard({ title, fit, icon }: IndicatorCardProps) {
         }
     }, [fit.level]);
 
+    const isSkillMatch = title === 'Skill Match';
+
     return (
         <div className="p-4 rounded-lg border bg-background/50 flex flex-col justify-between">
             <div>
                 <div className="flex items-center gap-2 mb-2 text-sm font-semibold text-muted-foreground">
                     {icon}
-                    <span>{title}</span>
+                    {isSkillMatch ? (
+                        <div>
+                            <span>Skill</span>
+                            <br />
+                            <span>Match</span>
+                        </div>
+                    ) : (
+                        <span>{title}</span>
+                    )}
                 </div>
                 <div className="flex items-baseline gap-2">
                     <div className={cn("text-lg font-bold", textColor)}>{fit.level}</div>
