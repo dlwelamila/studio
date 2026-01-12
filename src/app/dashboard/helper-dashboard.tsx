@@ -190,7 +190,7 @@ export default function HelperDashboard() {
                                         <Wrench className="h-4 w-4 mt-0.5 text-muted-foreground"/>
                                         <div>
                                             <p className="text-muted-foreground">Tools</p>
-                                            <p className="font-semibold capitalize">{task.toolsRequired || 'None'}</p>
+                                            <p className="font-semibold capitalize">{task.toolsRequired?.join(', ') || 'None'}</p>
                                         </div>
                                      </div>
                                 </div>
@@ -254,6 +254,3 @@ function TaskCardSkeleton() {
         </Card>
     )
 }
-
-    
-    

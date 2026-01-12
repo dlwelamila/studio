@@ -192,7 +192,8 @@ service cloud.firestore {
      * @principle Enforces document ownership for destructive actions, while allowing broader read access.
      */
     match /tasks/{taskId} {
-      allow get, list: if isSignedIn() || isAdmin();
+      allow get: if isSignedIn() || isAdmin();
+      allow list: if isSignedIn() || isAdmin();
       allow create: if isCreatingOwnTask();
       allow update: if isValidAssignmentByCustomer() || isValidStatusUpdateByHelper() || isAdmin();
       allow delete: if isTaskOwner() || isAdmin();
