@@ -43,8 +43,8 @@ export type Task = {
   location?: GeoPoint; // Exact location, revealed after assignment
   budget: { min: number; max: number };
   effort: 'light' | 'medium' | 'heavy';
-  toolsRequired?: string[];
-  timeWindow: string;
+  toolsRequired: string[];
+  timeWindow: string; // e.g. "Tomorrow afternoon", "Flexible"
   status: 'OPEN' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   assignedHelperId?: string;
   createdAt: Timestamp;

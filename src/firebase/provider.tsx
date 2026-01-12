@@ -3,7 +3,7 @@
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
-import { Auth, User, onAuthStateChanged } from 'firebase/auth';
+import { Auth, User, onAuthStateChanged, getIdToken } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 
 interface FirebaseProviderProps {
@@ -52,6 +52,26 @@ export interface UserHookResult { // Renamed from UserAuthHookResult for consist
 // React Context
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
+// Interceptor for fetch to add auth token
+const originalFetch = fetch;
+let currentAuth: Auth | null = null;
+
+const fetchWithAuth = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    if (currentAuth && currentAuth.currentUser) {
+        const token = await getIdToken(currentAuth.currentUser);
+        const headers = new Headers(init?.headers);
+        headers.set('Authorization', `Bearer ${token}`);
+        init = { ...init, headers };
+    }
+    return originalFetch(input, init);
+};
+
+// Monkey-patch fetch if it hasn't been patched already
+if (typeof window !== 'undefined' && (window as any).fetch.name !== 'fetchWithAuth') {
+    (window as any).fetch = fetchWithAuth;
+}
+
+
 /**
  * FirebaseProvider manages and provides Firebase services and user authentication state.
  */
@@ -66,6 +86,11 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     isUserLoading: true, // Start loading until first auth event
     userError: null,
   });
+
+  // Keep a reference to the current auth instance for the fetch interceptor
+  useEffect(() => {
+    currentAuth = auth;
+  }, [auth]);
 
   // Effect to subscribe to Firebase auth state changes
   useEffect(() => {

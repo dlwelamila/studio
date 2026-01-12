@@ -15,7 +15,7 @@ import { useDoc, useCollection, useMemoFirebase, serverTimestamp } from '@/fireb
 import { updateDocument } from '@/firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
-import { doc, collection, query, where } from 'firebase/firestore';
+import { doc, collection, query, where, GeoPoint } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 
 import { Badge } from '@/components/ui/badge';
@@ -99,6 +99,9 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const isAssignedHelperView = currentUser?.uid === task?.assignedHelperId;
   const hasMadeOffer = !!offers?.some(o => o.helperId === currentUser?.uid);
   const hasReviewed = (feedbacks?.length ?? 0) > 0;
+  
+  const canShowFitIndicator = !isCustomerView && !isAssignedHelperView && currentHelperProfile && task?.status === 'OPEN';
+
 
   const form = useForm<OfferFormValues>({
     resolver: zodResolver(offerFormSchema),
@@ -203,9 +206,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
       <div className="grid gap-4 md:grid-cols-[1fr_250px] lg:grid-cols-3 lg:gap-8">
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
           
-          {!isCustomerView && !isAssignedHelperView && currentHelperProfile && (
-             <FitIndicator task={task} helper={currentHelperProfile} />
-          )}
+          {canShowFitIndicator && <FitIndicator task={task} />}
 
           <Card>
             <CardHeader className="flex flex-row items-start justify-between">

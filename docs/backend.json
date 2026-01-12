@@ -78,6 +78,13 @@
             "type": "string"
           }
         },
+        "serviceAreas": {
+          "type": "array",
+          "description": "List of areas the helper provides service in.",
+          "items": {
+            "type": "string"
+          }
+        },
         "verified": {
           "type": "boolean",
           "description": "Indicates whether the helper's profile is verified by an administrator."
@@ -88,7 +95,8 @@
         "firstName",
         "lastName",
         "email",
-        "phone"
+        "phone",
+        "serviceAreas"
       ]
     },
     "Task": {
@@ -114,8 +122,17 @@
           "description": "Detailed description of the task."
         },
         "location": {
-          "type": "string",
-          "description": "Location where the task needs to be performed."
+          "type": "object",
+          "properties": {
+            "geo": {
+              "type": "string",
+              "description": "GeoPoint for the task location"
+            },
+            "areaName": {
+              "type": "string",
+              "description": "Name of the area for the task"
+            }
+          }
         },
         "budgetRange": {
           "type": "string",
@@ -132,11 +149,22 @@
         "effort": {
           "type": "string",
           "description": "Estimated effort required for the task.",
-          "enum": ["light", "medium", "heavy"]
+          "enum": [
+            "light",
+            "medium",
+            "heavy"
+          ]
         },
         "toolsRequired": {
+          "type": "array",
+          "description": "A list of tools expected for the task.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "timeWindow": {
           "type": "string",
-          "description": "A comma-separated list of tools expected for the task."
+          "description": "A string representing the preferred time window for the task."
         }
       },
       "required": [
@@ -366,4 +394,3 @@
     "reasoning": "The Firestore structure is designed to support the tasKey application's core features, focusing on task management, helper services, and user roles. The structure emphasizes authorization independence and straightforward security rules.\n\n**Authorization Independence:**\n*   For tasks created by customers, the `customerId` is included directly within the `/tasks/{taskId}` document. This eliminates the need to perform a `get()` operation to authorize access based on the customer who created the task. Offers made by helpers include the `helperId` and `taskId` to ensure that the offer can be validated against the relevant task and authorized against the helper making the offer. Feedback also includes `customerId` and `taskId` so it can be validated to only allow feedback from the customer that created the task.\n\n**Structural Segregation:**\n*   Customers and Helpers are stored in separate collections (`/customers` and `/helpers`), enabling different security rules for each.\n*   Tasks are stored in a top-level `/tasks` collection, simplifying task queries and management.\n\n**Access Modeling:**\n*   Tasks include the `customerId`, enabling rules to restrict task access based on the customer's ID and the helper assigned.\n*   Offers include the `helperId` and `taskId` to ensure that only the helper that made the offer or the customer that created the task can access the offers, and only if the task exists.\n*   Admin roles are managed using the `/roles_admin/{uid}` collection. Existence of a document at this path grants admin privileges.\n\n**QAPs Support:**\n*   The structure supports QAPs by segregating data based on user type (customer/helper) and task status. Security rules can efficiently filter list operations based on these attributes without needing complex filtering logic within the rules themselves.\n\n**Invariants:**\n*   The structure supports invariants by ensuring that ownership is explicitly defined in each document (`customerId` in Tasks, `helperId` in Offers). Timestamps can be added to each document to track creation and modification times, ensuring data integrity."
   }
 }
-    
