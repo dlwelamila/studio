@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { CheckCircle2, MapPin, Clock, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,6 +18,18 @@ type FitResult = {
   reason: string;
 };
 
+// Custom debounce hook implemented directly for simplicity
+function useDebouncedValue<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export function FitIndicator({ task }: FitIndicatorProps) {
   const { user } = useUser();
   const auth = useAuth();
@@ -25,22 +37,65 @@ export function FitIndicator({ task }: FitIndicatorProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // B3: Real-time Location State
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const debouncedLocation = useDebouncedValue(location, 800); // Debounce API calls by 800ms
+
+  // B3: Watch for location changes
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation is not supported by your browser.');
+      return;
+    }
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        setLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+        setLocationError(null);
+      },
+      (err) => {
+        setLocationError(err.message);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+
+    // Cleanup watcher on component unmount
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
+
+
+  // B2: Data fetching logic, now dependent on debouncedLocation
   useEffect(() => {
     if (!task || !user || !auth) return;
+
+    // If location is required and not available yet, wait.
+    // If there's a location error, we can still proceed to show other fits.
+    if (!debouncedLocation && !locationError) {
+        setIsLoading(true); // Show loading skeleton while waiting for initial location
+        return;
+    }
 
     const fetchFitData = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        // In a future step (B3), we will add live location fetching here.
-        // For now, we simulate passing a location for Dar es Salaam.
-        const helperLat = -6.7924;
-        const helperLng = 39.2083;
-        
         const token = await auth.currentUser?.getIdToken();
+        
+        let apiUrl = `/api/tasks/${task.id}/fit-indicator`;
+        if (debouncedLocation) {
+          apiUrl += `?lat=${debouncedLocation.lat}&lng=${debouncedLocation.lng}`;
+        }
 
         const response = await fetch(
-          `/api/tasks/${task.id}/fit-indicator?lat=${helperLat}&lng=${helperLng}`,
+          apiUrl,
           {
             headers: {
               Authorization: `Bearer ${token}`
@@ -64,7 +119,7 @@ export function FitIndicator({ task }: FitIndicatorProps) {
     };
 
     fetchFitData();
-  }, [task, user, auth]);
+  }, [task, user, auth, debouncedLocation, locationError]); // Re-fetches when debounced location changes
 
   if (isLoading) {
     return <FitIndicatorSkeleton />;
@@ -92,6 +147,9 @@ export function FitIndicator({ task }: FitIndicatorProps) {
 
   const { skillMatch, distance, timeFit } = fitData;
 
+  // Manually handle distance if there was a location error on the client
+  const finalDistance = locationError ? { level: 'Unknown', reason: 'Could not get your location.' } : distance;
+
   return (
     <Card>
       <CardHeader>
@@ -102,7 +160,7 @@ export function FitIndicator({ task }: FitIndicatorProps) {
       </CardHeader>
       <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <IndicatorCard title="Skill Match" fit={skillMatch} icon={<CheckCircle2 className="h-5 w-5 text-muted-foreground" />} />
-        <IndicatorCard title="Distance" fit={distance} icon={<MapPin className="h-5 w-5 text-muted-foreground" />} />
+        <IndicatorCard title="Distance" fit={finalDistance} icon={<MapPin className="h-5 w-5 text-muted-foreground" />} />
         <IndicatorCard title="Time" fit={timeFit} icon={<Clock className="h-5 w-5 text-muted-foreground" />} />
       </CardContent>
     </Card>
