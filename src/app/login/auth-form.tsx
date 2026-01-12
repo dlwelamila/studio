@@ -16,7 +16,7 @@ import {
     createUserWithEmailAndPassword,
     RecaptchaVerifier,
     signInWithPhoneNumber,
-    ConfirmationResult,
+    type ConfirmationResult,
     sendSignInLinkToEmail,
     isSignInWithEmailLink,
     signInWithEmailLink,
@@ -104,7 +104,7 @@ export default function AuthForm() {
     if (!auth) return;
     if (!(window as any).recaptchaVerifier) {
         (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        'size': 'invisible',
+          'size': 'invisible',
         });
     }
   }, [auth]);
@@ -209,7 +209,7 @@ export default function AuthForm() {
 
   return (
     <div className="w-full max-w-sm">
-        <div id="recaptcha-container" className="hidden" />
+        <div id="recaptcha-container" />
         <Tabs defaultValue="email-password" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="email-password">Email</TabsTrigger>
@@ -303,3 +303,5 @@ export default function AuthForm() {
     </div>
   );
 }
+
+    
