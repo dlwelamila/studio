@@ -1,4 +1,3 @@
-
 'use client';
 
 import { use, useState } from 'react';
@@ -266,18 +265,18 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                   <div className="grid gap-4 text-sm sm:grid-cols-3">
                     <div className="grid gap-1">
                       <div className="font-medium text-muted-foreground">Posted</div>
-                      <div className="text-foreground">{task.createdAt ? format(task.createdAt.toDate(), 'MMM d, yyyy, p') : '-'}</div>
+                      <div className="text-foreground">{task.createdAt ? format(task.createdAt.toDate(), 'MMM d, yyyy, h:mm a') : '-'}</div>
                     </div>
                     {task.assignedAt && (
                       <div className="grid gap-1">
                         <div className="font-medium text-muted-foreground">Assigned</div>
-                        <div className="text-foreground">{format(task.assignedAt.toDate(), 'MMM d, yyyy, p')}</div>
+                        <div className="text-foreground">{format(task.assignedAt.toDate(), 'MMM d, yyyy, h:mm a')}</div>
                       </div>
                     )}
                     {task.completedAt && (
                       <div className="grid gap-1">
                         <div className="font-medium text-muted-foreground">Completed</div>
-                        <div className="text-foreground">{format(task.completedAt.toDate(), 'MMM d, yyyy, p')}</div>
+                        <div className="text-foreground">{format(task.completedAt.toDate(), 'MMM d, yyyy, h:mm a')}</div>
                       </div>
                     )}
                   </div>
