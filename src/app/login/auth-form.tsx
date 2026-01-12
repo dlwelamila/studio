@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -30,28 +31,29 @@ export default function AuthForm() {
   useEffect(() => {
     const checkUserProfile = async (currentUser: User) => {
         const db = getFirestore();
+        // Check for both customer and helper profiles
         const helperDocRef = doc(db, 'helpers', currentUser.uid);
         const customerDocRef = doc(db, 'customers', currentUser.uid);
         
-        const helperDoc = await getDoc(helperDocRef);
-        const customerDoc = await getDoc(customerDocRef);
+        const [helperDoc, customerDoc] = await Promise.all([
+          getDoc(helperDocRef),
+          getDoc(customerDocRef)
+        ]);
 
         if (helperDoc.exists() || customerDoc.exists()) {
+            // If either profile exists, go to the main dashboard
             router.push('/dashboard');
         } else {
-             if (authAction === 'signUp') {
-                router.push('/onboarding/create-profile');
-            } else {
-                // If user exists in Auth but not in Firestore, guide to create profile
-                router.push('/onboarding/create-profile');
-            }
+            // If no profile exists for this user, they must create one
+            router.push('/onboarding/create-profile');
         }
     };
     
+    // When user object is available, check for their profile
     if (!isUserLoading && user) {
         checkUserProfile(user);
     }
-  }, [user, isUserLoading, router, authAction]);
+  }, [user, isUserLoading, router]);
 
   const handleAuth = async () => {
     if (!auth) {
@@ -78,6 +80,7 @@ export default function AuthForm() {
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
       }
+      // The useEffect will handle redirection after successful auth
     } catch (error: any) {
         toast({
             variant: "destructive",
@@ -93,6 +96,7 @@ export default function AuthForm() {
     setPassword(account.password);
   }
 
+  // Show a loading state while checking for user profile or if user is already logged in
   if (isUserLoading || user) {
     return (
         <div className="flex justify-center items-center h-screen">
