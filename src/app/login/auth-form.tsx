@@ -103,6 +103,8 @@ export default function AuthForm() {
   useEffect(() => {
     if (!auth) return;
     if (!(window as any).recaptchaVerifier) {
+      // The 'recaptcha-container' must exist in the DOM before this is called.
+      // This is why we have it inside a useEffect.
       (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
         size: 'invisible',
       });
@@ -210,7 +212,6 @@ export default function AuthForm() {
 
   return (
     <div className="w-full max-w-sm">
-        <div id="recaptcha-container" />
         <Tabs defaultValue="email-password" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="email-password">Email</TabsTrigger>
@@ -301,6 +302,8 @@ export default function AuthForm() {
                 <p className="text-xs text-muted-foreground">Note: If registering for the first time, use the "Register" tab. The password for both accounts is `password123`.</p>
             </CardFooter>
         </Card>
+        {/* This div is the target for the invisible reCAPTCHA */}
+        <div id="recaptcha-container" />
     </div>
   );
 }
