@@ -50,12 +50,13 @@ const getSkillFit = (task: Task, helper: Helper) => {
 };
 
 const getDistanceFit = (task: Task, helperGeo?: { lat: number; lng: number }) => {
-  if (!helperGeo || !task.location) {
+  const taskLocation = task.location as GeoPoint; // Cast to GeoPoint
+  if (!helperGeo || !taskLocation) {
     return { level: 'Unknown' as FitLevel, reason: "Location data unavailable." };
   }
   
-  const taskGeo = task.location as GeoPoint;
-  const distanceKm = getHaversineDistance(taskGeo.latitude, taskGeo.longitude, helperGeo.lat, helperGeo.lng);
+  // CORRECT: Access latitude and longitude properties from the GeoPoint instance
+  const distanceKm = getHaversineDistance(taskLocation.latitude, taskLocation.longitude, helperGeo.lat, helperGeo.lng);
   
   const thresholds = { near: 3, moderate: 8 };
 
@@ -147,8 +148,8 @@ export async function GET(
     };
 
     return NextResponse.json(fitData);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching fit indicator data:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
 }

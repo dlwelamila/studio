@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ImagePlaceholder } from '@/lib/placeholder-images';
@@ -19,7 +20,7 @@ export type Helper = {
   additionalSkills?: string;
   verificationStatus: 'Pending Verification' | 'Verified';
   isAvailable: boolean;
-  reliabilityIndicator: '??' | '???' | '??';
+  reliabilityIndicator: 'Good' | 'Average' | 'Poor';
   memberSince: Timestamp;
   rating?: number;
   completedTasks?: number;

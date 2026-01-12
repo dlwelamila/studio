@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { CheckCircle2, MapPin, Clock, AlertCircle } from 'lucide-react';
@@ -106,12 +107,10 @@ export function FitIndicator({ task }: FitIndicatorProps) {
         if (!response.ok) {
            const errorText = await response.text();
            try {
-             // Try to parse it as JSON, as it might be a structured error from our API
              const errorJson = JSON.parse(errorText);
              throw new Error(errorJson.error || 'Failed to fetch fit data');
            } catch (e) {
-             // If parsing fails, it's likely HTML or plain text, so just throw that.
-             throw new Error('An unexpected server error occurred.');
+             throw new Error(errorText || 'An unexpected server error occurred.');
            }
         }
         const data = await response.json();
