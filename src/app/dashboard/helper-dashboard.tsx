@@ -9,6 +9,7 @@ import {
   BadgeCheck,
   ToggleLeft,
   ToggleRight,
+  Shield,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -83,6 +84,10 @@ export default function HelperDashboard() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-2">
+                 <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2"><Shield className="h-4 w-4" /> Reliability</span>
+                  <Badge variant="outline">{helper.reliabilityIndicator}</Badge>
+                </div>
                 <div className="flex items-center justify-between">
                   <span>Rating</span>
                   <div className="flex items-center gap-1">
@@ -227,3 +232,5 @@ function TaskCardSkeleton() {
         </Card>
     )
 }
+
+    

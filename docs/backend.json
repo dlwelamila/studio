@@ -68,7 +68,7 @@
         },
         "reliabilityIndicator": {
           "type": "string",
-          "description": "Indicator of the helper's reliability (e.g., 🟢, 🟡, 🔴)."
+          "description": "Indicator of the helper's reliability (e.g., 'Bronze', 'Silver', 'Gold')."
         },
         "memberSince": {
           "type": "string",
@@ -91,7 +91,8 @@
         "aboutMe",
         "verificationStatus",
         "isAvailable",
-        "memberSince"
+        "memberSince",
+        "reliabilityIndicator"
       ]
     },
     "Customer": {
@@ -384,3 +385,4 @@
     ]
   }
 }
+    

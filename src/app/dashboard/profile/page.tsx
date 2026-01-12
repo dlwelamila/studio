@@ -11,7 +11,7 @@ import { useUserRole } from '@/context/user-role-context';
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Star, Briefcase, MapPin, Calendar, BadgeCheckIcon, MessageSquare } from 'lucide-react';
+import { Star, Briefcase, MapPin, Calendar, BadgeCheckIcon, MessageSquare, Shield } from 'lucide-react';
 import { format } from 'date-fns';
 import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, query, collection, where } from 'firebase/firestore';
@@ -114,6 +114,13 @@ export default function ProfilePage() {
                                 <p className="font-semibold">{helperProfile.completedTasks || 0}</p>
                             </div>
                         </div>
+                        <div className="flex items-center gap-3">
+                            <Shield className="h-5 w-5 text-muted-foreground" />
+                            <div>
+                                <p className="text-muted-foreground">Reliability</p>
+                                <p className="font-semibold">{helperProfile.reliabilityIndicator || 'Not Yet Rated'}</p>
+                            </div>
+                        </div>
                         <div className="flex items-center gap-3 md:col-span-2">
                             <Briefcase className="h-5 w-5 text-muted-foreground" />
                             <div>
@@ -212,3 +219,5 @@ function ProfileSkeleton() {
     </div>
   )
 }
+
+    
