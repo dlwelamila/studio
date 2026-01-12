@@ -180,7 +180,7 @@ export default function HelperDashboard() {
                 )
             })}
         </div>
-         {openTasks?.length === 0 && !isLoading && (
+         {openTasks?.length === 0 && !isLoading && authUser && (
             <Card className="md:col-span-2 lg:col-span-3">
                 <CardContent className="p-12 text-center">
                     <p className="text-muted-foreground">No open tasks right now. Check back soon!</p>
