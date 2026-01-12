@@ -75,6 +75,9 @@ export function OfferCard({ offer, task, onAccept }: OfferCardProps) {
                         <Skeleton className="h-3 w-16 mt-1" />
                     </div>
                 </div>
+                 <Separator className="my-4" />
+                 <Skeleton className="h-4 w-full" />
+                 <Skeleton className="h-4 w-1/3 mt-3" />
             </CardContent>
         </Card>
     )
@@ -100,14 +103,14 @@ export function OfferCard({ offer, task, onAccept }: OfferCardProps) {
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <div className="flex items-center gap-0.5">
                   <Star className="h-4 w-4 fill-primary text-primary" />
-                  <span>{helper.rating || 'New'}</span>
+                  <span>{helper.rating?.toFixed(1) || 'New'}</span>
                 </div>
                 <span>&middot;</span>
                 <div>{helper.completedTasks || 0} tasks completed</div>
               </div>
             </div>
           </div>
-          <div className="text-right">
+          <div className="text-right flex-shrink-0">
             <div className="text-xl font-bold text-primary">{`TZS ${offer.price.toLocaleString()}`}</div>
             <div className="text-xs text-muted-foreground">Offered Price</div>
           </div>
