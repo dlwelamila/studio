@@ -1,3 +1,4 @@
+
 'use client'
 
 import {
@@ -18,6 +19,7 @@ import { doc, query, collection, where } from 'firebase/firestore';
 import type { Helper, Customer, Feedback } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ReviewCard } from './review-card';
+import { HelperJourneyBanner } from '../helper-journey-banner';
 
 export default function ProfilePage() {
   const { role, isRoleLoading } = useUserRole();
@@ -40,132 +42,137 @@ export default function ProfilePage() {
   const { data: feedbacks, isLoading: areFeedbacksLoading } = useCollection<Feedback>(feedbacksQuery);
 
   const isLoading = isAuthLoading || isRoleLoading || isProfileLoading;
+  const helperProfile = role === 'helper' ? (userProfile as Helper) : null;
 
   if (isLoading || !userProfile) {
     return <ProfileSkeleton />;
   }
-
-  const helperProfile = role === 'helper' ? (userProfile as Helper) : null;
   
   return (
-    <div className="grid gap-4 md:grid-cols-[1fr_350px]">
-      <div className="grid auto-rows-max items-start gap-4">
-        <h1 className="font-headline text-2xl font-bold">Your Profile</h1>
-        <Card>
-            <CardHeader>
-                <div className="flex items-center gap-6">
-                    <Image
-                        src={userProfile.profilePhotoUrl}
-                        width={96}
-                        height={96}
-                        alt="Avatar"
-                        className="overflow-hidden rounded-full object-cover"
-                    />
-                    <div>
-                        <CardTitle className="font-headline text-3xl">{userProfile.fullName}</CardTitle>
-                        <CardDescription className="text-base">{userProfile.email || userProfile.phoneNumber}</CardDescription>
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent>
-            <Separator className="my-4" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-                {helperProfile?.serviceAreas && (
-                <div className="flex items-center gap-3">
-                    <MapPin className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                        <p className="text-muted-foreground">Service Areas</p>
-                        <p className="font-semibold">{helperProfile.serviceAreas.join(', ')}</p>
-                    </div>
-                </div>
-                )}
-                <div className="flex items-center gap-3">
-                    <Calendar className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                        <p className="text-muted-foreground">Member Since</p>
-                        <p className="font-semibold">{userProfile?.memberSince ? format(userProfile.memberSince.toDate(), 'MMMM yyyy') : 'N/A'}</p>
-                    </div>
-                </div>
-                {helperProfile && (
-                    <>
-                        <div className="flex items-center gap-3">
-                            <BadgeCheckIcon className="h-5 w-5 text-muted-foreground" />
-                            <div>
-                                <p className="text-muted-foreground">Verification</p>
-                                <div className="font-semibold">
-                                    {helperProfile.verificationStatus === 'Verified' ? (
-                                        <Badge variant="secondary">Verified</Badge>
-                                    ) : (
-                                        <Badge variant="destructive">Pending Verification</Badge>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <Star className="h-5 w-5 text-muted-foreground" />
-                            <div>
-                                <p className="text-muted-foreground">Rating</p>
-                                <p className="font-semibold">{helperProfile.rating ? `${helperProfile.rating} / 5.0` : 'No ratings yet'}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <Briefcase className="h-5 w-5 text-muted-foreground" />
-                            <div>
-                                <p className="text-muted-foreground">Completed Gigs</p>
-                                <p className="font-semibold">{helperProfile.completedTasks || 0}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <Shield className="h-5 w-5 text-muted-foreground" />
-                            <div>
-                                <p className="text-muted-foreground">Reliability</p>
-                                <p className="font-semibold">{helperProfile.reliabilityIndicator || 'Not Yet Rated'}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3 md:col-span-2">
-                            <Briefcase className="h-5 w-5 text-muted-foreground" />
-                            <div>
-                                <p className="text-muted-foreground">Skills</p>
-                                <div className="flex flex-wrap gap-2">
-                                    {helperProfile.serviceCategories?.map(skill => <Badge key={skill} variant="outline">{skill}</Badge>)}
-                                </div>
-                            </div>
-                        </div>
-                        <div className='md:col-span-2'>
-                            <h3 className="font-semibold mb-2">About Me</h3>
-                            <p className="text-muted-foreground">{helperProfile.aboutMe}</p>
-                        </div>
-                    </>
-                )}
-            </div>
-            </CardContent>
-        </Card>
-      </div>
+    <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
+      {helperProfile && <HelperJourneyBanner helper={helperProfile} />}
+      <div className="grid gap-4 md:grid-cols-[1fr_350px]">
+        <div className="grid auto-rows-max items-start gap-4">
+          <h1 className="font-headline text-2xl font-bold">Your Profile</h1>
+          <Card>
+              <CardHeader>
+                  <div className="flex items-center gap-6">
+                      <Image
+                          src={userProfile.profilePhotoUrl}
+                          width={96}
+                          height={96}
+                          alt="Avatar"
+                          className="overflow-hidden rounded-full object-cover"
+                      />
+                      <div>
+                          <CardTitle className="font-headline text-3xl">{userProfile.fullName}</CardTitle>
+                          <CardDescription className="text-base">{userProfile.email || userProfile.phoneNumber}</CardDescription>
+                      </div>
+                  </div>
+              </CardHeader>
+              <CardContent>
+              <Separator className="my-4" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                  {helperProfile?.serviceAreas && (
+                  <div className="flex items-center gap-3">
+                      <MapPin className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                          <p className="text-muted-foreground">Service Areas</p>
+                          <p className="font-semibold">{helperProfile.serviceAreas.join(', ')}</p>
+                      </div>
+                  </div>
+                  )}
+                  <div className="flex items-center gap-3">
+                      <Calendar className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                          <p className="text-muted-foreground">Member Since</p>
+                          <p className="font-semibold">{userProfile?.memberSince ? format(userProfile.memberSince.toDate(), 'MMMM yyyy') : 'N/A'}</p>
+                      </div>
+                  </div>
+                  {helperProfile && (
+                      <>
+                          <div className="flex items-center gap-3">
+                              <BadgeCheckIcon className="h-5 w-5 text-muted-foreground" />
+                              <div>
+                                  <p className="text-muted-foreground">Verification</p>
+                                  <div className="font-semibold">
+                                      {helperProfile.verificationStatus === 'APPROVED' ? (
+                                          <Badge variant="secondary" className='gap-1 border-green-500/50 text-green-700'>
+                                            <BadgeCheckIcon className="h-3 w-3" />
+                                            Verified
+                                          </Badge>
+                                      ) : (
+                                          <Badge variant="destructive">Pending</Badge>
+                                      )}
+                                  </div>
+                              </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                              <Star className="h-5 w-5 text-muted-foreground" />
+                              <div>
+                                  <p className="text-muted-foreground">Rating</p>
+                                  <p className="font-semibold">{helperProfile.stats.ratingAvg ? `${helperProfile.stats.ratingAvg.toFixed(1)} / 5.0` : 'No ratings yet'}</p>
+                              </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                              <Briefcase className="h-5 w-5 text-muted-foreground" />
+                              <div>
+                                  <p className="text-muted-foreground">Completed Gigs</p>
+                                  <p className="font-semibold">{helperProfile.stats.jobsCompleted || 0}</p>
+                              </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                              <Shield className="h-5 w-5 text-muted-foreground" />
+                              <div>
+                                  <p className="text-muted-foreground">Reliability</p>
+                                  <p className="font-semibold">{helperProfile.stats.reliabilityLevel || 'Not Yet Rated'}</p>
+                              </div>
+                          </div>
+                          <div className="flex items-center gap-3 md:col-span-2">
+                              <Briefcase className="h-5 w-5 text-muted-foreground" />
+                              <div>
+                                  <p className="text-muted-foreground">Skills</p>
+                                  <div className="flex flex-wrap gap-2">
+                                      {helperProfile.serviceCategories?.map(skill => <Badge key={skill} variant="outline">{skill}</Badge>)}
+                                  </div>
+                              </div>
+                          </div>
+                          <div className='md:col-span-2'>
+                              <h3 className="font-semibold mb-2">About Me</h3>
+                              <p className="text-muted-foreground">{helperProfile.aboutMe}</p>
+                          </div>
+                      </>
+                  )}
+              </div>
+              </CardContent>
+          </Card>
+        </div>
 
-       <div className="grid auto-rows-max items-start gap-4">
-         {helperProfile && (
-            <Card>
-                <CardHeader>
-                    <CardTitle className="font-headline flex items-center gap-2">
-                        <MessageSquare className="h-5 w-5" />
-                        Reviews ({feedbacks?.length ?? 0})
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-4">
-                    {areFeedbacksLoading && Array.from({length: 2}).map((_, i) => <ReviewCardSkeleton key={i} />)}
-                    
-                    {!areFeedbacksLoading && feedbacks && feedbacks.length > 0 ? (
-                        feedbacks.map(review => <ReviewCard key={review.id} review={review} />)
-                    ) : (
-                        !areFeedbacksLoading && (
-                            <div className="text-center text-sm text-muted-foreground py-8">
-                                No reviews yet. Complete more tasks to get feedback!
-                            </div>
-                        )
-                    )}
-                </CardContent>
-            </Card>
-         )}
+        <div className="grid auto-rows-max items-start gap-4">
+          {helperProfile && (
+              <Card>
+                  <CardHeader>
+                      <CardTitle className="font-headline flex items-center gap-2">
+                          <MessageSquare className="h-5 w-5" />
+                          Reviews ({feedbacks?.length ?? 0})
+                      </CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid gap-4">
+                      {areFeedbacksLoading && Array.from({length: 2}).map((_, i) => <ReviewCardSkeleton key={i} />)}
+                      
+                      {!areFeedbacksLoading && feedbacks && feedbacks.length > 0 ? (
+                          feedbacks.map(review => <ReviewCard key={review.id} review={review} />)
+                      ) : (
+                          !areFeedbacksLoading && (
+                              <div className="text-center text-sm text-muted-foreground py-8">
+                                  No reviews yet. Complete more tasks to get feedback!
+                              </div>
+                          )
+                      )}
+                  </CardContent>
+              </Card>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -25,7 +25,7 @@ export type Helper = {
     percent: number; // 0-100
     missing: Array<'profilePhoto' | 'serviceCategories' | 'serviceAreas' | 'aboutMe'>;
   };
-  lifecycleStage: 'REGISTERED' | 'PROFILE_INCOMPLETE' | 'PENDING_VERIFICATION' | 'VERIFIED_READY' | 'ACTIVE' | 'GROWING';
+  lifecycleStage: 'REGISTERED' | 'PROFILE_INCOMPLETE' | 'PENDING_VERIFICATION' | 'VERIFIED_READY' | 'ACTIVE' | 'GROWING' | 'SUSPENDED';
   stats: {
     jobsCompleted: number;
     jobsCancelled: number;
@@ -105,4 +105,3 @@ export const taskCategories = [
     'Other'
 ];
 
-    
