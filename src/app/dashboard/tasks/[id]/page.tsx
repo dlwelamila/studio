@@ -3,7 +3,7 @@
 import { use, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronLeft, Star } from 'lucide-react';
+import { ChevronLeft, Star, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -426,6 +426,17 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                 </CardContent>
             </Card>
           )}
+          <Card>
+            <CardHeader>
+                <CardTitle className="font-headline text-base">Safety & Support</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <Button variant="outline" className="w-full">
+                    <AlertTriangle className="mr-2 h-4 w-4" />
+                    Report a Problem
+                </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
