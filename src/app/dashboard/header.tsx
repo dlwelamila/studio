@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ClientOnly } from '@/components/client-only';
 
 const breadcrumbMap: Record<string, Record<string, string>> = {
     customer: {
@@ -80,57 +81,59 @@ export default function AppHeader() {
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button size="icon" variant="outline" className="sm:hidden">
-            <PanelLeft className="h-5 w-5" />
-            <span className="sr-only">Toggle Menu</span>
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="sm:max-w-xs">
-          <nav className="grid gap-6 text-lg font-medium">
-            <Link
-              href="#"
-              className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
-            >
-              <Handshake className="h-5 w-5 transition-all group-hover:scale-110" />
-              <span className="sr-only">tasKey</span>
-            </Link>
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
-            >
-              <Home className="h-5 w-5" />
-              Dashboard
-            </Link>
-             {role === 'customer' ? (
-                <Link href="/dashboard/tasks/new" className="flex items-center gap-4 px-2.5 text-foreground">
-                    <PlusCircle className="h-5 w-5" />
-                    New Task
-                </Link>
-            ) : (
-                 <Link href="/dashboard/gigs" className="flex items-center gap-4 px-2.5 text-foreground">
-                    <Briefcase className="h-5 w-5" />
-                    My Gigs
-                </Link>
-            )}
-            <Link
-              href="/dashboard/profile"
-              className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
-            >
-              <Users2 className="h-5 w-5" />
-              Profile
-            </Link>
-            <Link
-              href="#"
-              className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
-            >
-              <Settings className="h-5 w-5" />
-              Settings
-            </Link>
-          </nav>
-        </SheetContent>
-      </Sheet>
+      <ClientOnly>
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button size="icon" variant="outline" className="sm:hidden">
+              <PanelLeft className="h-5 w-5" />
+              <span className="sr-only">Toggle Menu</span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="sm:max-w-xs">
+            <nav className="grid gap-6 text-lg font-medium">
+              <Link
+                href="#"
+                className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
+              >
+                <Handshake className="h-5 w-5 transition-all group-hover:scale-110" />
+                <span className="sr-only">tasKey</span>
+              </Link>
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+              >
+                <Home className="h-5 w-5" />
+                Dashboard
+              </Link>
+               {role === 'customer' ? (
+                  <Link href="/dashboard/tasks/new" className="flex items-center gap-4 px-2.5 text-foreground">
+                      <PlusCircle className="h-5 w-5" />
+                      New Task
+                  </Link>
+              ) : (
+                   <Link href="/dashboard/gigs" className="flex items-center gap-4 px-2.5 text-foreground">
+                      <Briefcase className="h-5 w-5" />
+                      My Gigs
+                  </Link>
+              )}
+              <Link
+                href="/dashboard/profile"
+                className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+              >
+                <Users2 className="h-5 w-5" />
+                Profile
+              </Link>
+              <Link
+                href="#"
+                className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+              >
+                <Settings className="h-5 w-5" />
+                Settings
+              </Link>
+            </nav>
+          </SheetContent>
+        </Sheet>
+      </ClientOnly>
       <Breadcrumb className="hidden md:flex">
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -145,58 +148,60 @@ export default function AppHeader() {
         </BreadcrumbList>
       </Breadcrumb>
       <div className="relative ml-auto flex items-center md:grow-0 gap-4">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon"
-              className="overflow-hidden rounded-full"
-            >
-              {isLoading || !userProfile ? (
-                 <Skeleton className="h-9 w-9 rounded-full" />
-              ) : (
-                <Image
-                    src={userProfile.profilePhotoUrl}
-                    width={36}
-                    height={36}
-                    alt="Avatar"
-                    className="overflow-hidden rounded-full object-cover"
-                />
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>{isLoading ? <Skeleton className="h-4 w-24" /> : userProfile?.fullName || 'My Account'}</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            
-            { isLoading ? (
-              <DropdownMenuItem disabled>
-                <Skeleton className="h-4 w-32" />
-              </DropdownMenuItem>
-            ) : canSwitchRoles ? (
-              <DropdownMenuItem onSelect={toggleRole}>
-                <Repeat className="mr-2 h-4 w-4" />
-                <span>Switch to {role === 'customer' ? 'Helper' : 'Customer'} View</span>
-              </DropdownMenuItem>
-            ) : !hasHelperProfile ? (
-              <DropdownMenuItem onSelect={() => router.push('/onboarding/create-profile?role=helper')}>
-                <Briefcase className="mr-2 h-4 w-4" />
-                <span>Become a Helper</span>
-              </DropdownMenuItem>
-            ) : !hasCustomerProfile ? (
-               <DropdownMenuItem onSelect={() => router.push('/onboarding/create-profile?role=customer')}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                <span>Start Hiring</span>
-              </DropdownMenuItem>
-            ) : null}
+        <ClientOnly>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="overflow-hidden rounded-full"
+              >
+                {isLoading || !userProfile ? (
+                   <Skeleton className="h-9 w-9 rounded-full" />
+                ) : (
+                  <Image
+                      src={userProfile.profilePhotoUrl}
+                      width={36}
+                      height={36}
+                      alt="Avatar"
+                      className="overflow-hidden rounded-full object-cover"
+                  />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>{isLoading ? <Skeleton className="h-4 w-24" /> : userProfile?.fullName || 'My Account'}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              
+              { isLoading ? (
+                <DropdownMenuItem disabled>
+                  <Skeleton className="h-4 w-32" />
+                </DropdownMenuItem>
+              ) : canSwitchRoles ? (
+                <DropdownMenuItem onSelect={toggleRole}>
+                  <Repeat className="mr-2 h-4 w-4" />
+                  <span>Switch to {role === 'customer' ? 'Helper' : 'Customer'} View</span>
+                </DropdownMenuItem>
+              ) : !hasHelperProfile ? (
+                <DropdownMenuItem onSelect={() => router.push('/onboarding/create-profile?role=helper')}>
+                  <Briefcase className="mr-2 h-4 w-4" />
+                  <span>Become a Helper</span>
+                </DropdownMenuItem>
+              ) : !hasCustomerProfile ? (
+                 <DropdownMenuItem onSelect={() => router.push('/onboarding/create-profile?role=customer')}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  <span>Start Hiring</span>
+                </DropdownMenuItem>
+              ) : null}
 
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => router.push('/dashboard/profile')}>Settings</DropdownMenuItem>
-            <DropdownMenuItem>Support</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => router.push('/dashboard/profile')}>Settings</DropdownMenuItem>
+              <DropdownMenuItem>Support</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </ClientOnly>
       </div>
     </header>
   );
