@@ -98,7 +98,7 @@ export default function CustomerDashboard() {
 function TaskRow({ task }: { task: Task }) {
   const firestore = useFirestore();
 
-  const offersQuery = useMemoFirebase(() => firestore && query(collection(firestore, 'tasks', task.id, 'offers')), [firestore, task.id]);
+  const offersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'tasks', task.id, 'offers')) : null, [firestore, task.id]);
   const { data: taskOffers } = useCollection<Offer>(offersQuery);
   
   const helperRef = useMemoFirebase(() => firestore && task.assignedHelperId ? doc(firestore, 'helpers', task.assignedHelperId) : null, [firestore, task.assignedHelperId]);
