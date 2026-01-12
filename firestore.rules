@@ -46,17 +46,6 @@ service cloud.firestore {
       return currentStatus == 'COMPLETED' && nextStatus == 'IN_DISPUTE';
     }
 
-    // New function to check for phone number uniqueness
-    // IMPORTANT: This relies on a client-side implementation that queries
-    // for document existence before writing. Rules cannot query across documents.
-    // This rule is primarily to enforce immutability. True uniqueness
-    // must be handled in client logic or a Cloud Function.
-    function isPhoneNumberUnique(collectionName, phoneNumber) {
-      // This is a placeholder. True uniqueness check requires a different data structure
-      // or a Cloud Function. For now, we allow it and focus on immutability.
-      return true;
-    }
-
     match /customers/{userId} {
       allow get: if isSignedIn();
       allow list: if isSignedIn();

@@ -182,7 +182,7 @@ export default function CreateProfilePage() {
                 rating: 0,
                 completedTasks: 0,
             };
-            await setDoc(doc(firestore, 'helpers', user.uid), helperData);
+            await setDoc(doc(firestore, 'helpers', user.uid), helperData, { merge: true });
         } else {
             if (!defaultAvatar) throw new Error("Default avatar not found");
             const customerData = {
@@ -194,7 +194,7 @@ export default function CreateProfilePage() {
                 rating: 4.0,
                 memberSince: serverTimestamp(),
             };
-            await setDoc(doc(firestore, 'customers', user.uid), customerData);
+            await setDoc(doc(firestore, 'customers', user.uid), customerData, { merge: true });
         }
 
         toast({ title: 'Profile Created!', description: "Welcome to tasKey. You're all set up." });
