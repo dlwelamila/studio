@@ -31,7 +31,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AppHeader() {
-  const { role, toggleRole } = useUserRole();
+  const { role, toggleRole, hasCustomerProfile, hasHelperProfile, isRoleLoading } = useUserRole();
   const { user: authUser, isUserLoading } = useUser();
   const firestore = useFirestore();
   const auth = useAuth();
@@ -43,13 +43,7 @@ export default function AppHeader() {
     return doc(firestore, collectionName, authUser.uid);
   }, [firestore, authUser, role]);
   
-  const customerProfileRef = useMemoFirebase(() => (firestore && authUser) ? doc(firestore, 'customers', authUser.uid) : null, [firestore, authUser]);
-  const helperProfileRef = useMemoFirebase(() => (firestore && authUser) ? doc(firestore, 'helpers', authUser.uid) : null, [firestore, authUser]);
-
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<Helper | Customer>(userRef);
-  const { data: customerProfile, isLoading: isCustomerProfileLoading } = useDoc<Customer>(customerProfileRef);
-  const { data: helperProfile, isLoading: isHelperProfileLoading } = useDoc<Helper>(helperProfileRef);
-
 
   const handleLogout = async () => {
     if (!auth) return;
@@ -58,11 +52,9 @@ export default function AppHeader() {
   };
 
   const breadcrumbText = role === 'customer' ? 'My Tasks' : 'Browse Tasks';
-  const hasCustomerProfile = !!customerProfile;
-  const hasHelperProfile = !!helperProfile;
   const canSwitchRoles = hasCustomerProfile && hasHelperProfile;
   
-  const isLoading = isUserLoading || isProfileLoading || isCustomerProfileLoading || isHelperProfileLoading;
+  const isLoading = isUserLoading || isProfileLoading || isRoleLoading;
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
@@ -152,11 +144,13 @@ export default function AppHeader() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>{userProfile?.fullName || 'My Account'}</DropdownMenuLabel>
+            <DropdownMenuLabel>{isLoading ? <Skeleton className="h-4 w-24" /> : userProfile?.fullName || 'My Account'}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             
             { isLoading ? (
-              <DropdownMenuItem disabled>Loading...</DropdownMenuItem>
+              <DropdownMenuItem disabled>
+                <Skeleton className="h-4 w-32" />
+              </DropdownMenuItem>
             ) : canSwitchRoles ? (
               <DropdownMenuItem onSelect={toggleRole}>
                 <Repeat className="mr-2 h-4 w-4" />
