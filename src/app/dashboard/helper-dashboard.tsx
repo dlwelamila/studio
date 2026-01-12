@@ -65,6 +65,11 @@ export default function HelperDashboard() {
     // Update the document in the background
     updateDocumentNonBlocking(helperRef, { isAvailable });
   }
+  
+  const getDistanceToNow = (date: any) => {
+    if (!date) return '';
+    return formatDistanceToNow(date.toDate(), { addSuffix: true });
+  }
 
   return (
     <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
@@ -102,7 +107,7 @@ export default function HelperDashboard() {
                     htmlFor="availability-toggle" 
                     className={cn(
                         "text-sm",
-                        helper.isAvailable ? "text-muted-foreground" : "font-bold text-destructive"
+                        !helper.isAvailable && "font-bold text-destructive"
                     )}
                   >
                     {helper.isAvailable ? 'Available for tasks' : 'Not available'}
@@ -188,7 +193,7 @@ export default function HelperDashboard() {
                               <div className="flex justify-between items-start">
                                   <Badge variant="outline">{task.category}</Badge>
                                   <div className="text-xs text-muted-foreground">
-                                      {task.createdAt ? formatDistanceToNow(task.createdAt.toDate(), { addSuffix: true }) : ''}
+                                      {getDistanceToNow(task.createdAt)}
                                   </div>
                               </div>
                               <CardTitle className="font-headline pt-2">{task.title}</CardTitle>
