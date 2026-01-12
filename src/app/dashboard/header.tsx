@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 
 import { useUserRole } from '@/context/user-role-context';
 import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth } from '@/firebase';
-import { doc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
+import { doc } from 'firebase/firestore';
 import type { Helper, Customer } from '@/lib/data';
 
 import {
@@ -50,7 +50,7 @@ export default function AppHeader() {
 
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<Helper | Customer>(userRef);
   const { data: customerProfile } = useDoc<Customer>(customerProfileRef);
-  const { data: helperProfile } } = useDoc<Helper>(helperProfileRef);
+  const { data: helperProfile } = useDoc<Helper>(helperProfileRef);
 
 
   const handleLogout = async () => {
