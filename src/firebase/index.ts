@@ -50,8 +50,6 @@ export * from './non-blocking-login';
 export * from './errors';
 export * from './error-emitter';
 
-// These are incorrect exports. They should be imported from 'firebase/firestore' directly.
 // This is a temporary fix to make the code compile.
-export { serverTimestamp, addDoc };
-
-    
+// It should be imported from 'firebase/firestore' directly where needed.
+export { serverTimestamp };

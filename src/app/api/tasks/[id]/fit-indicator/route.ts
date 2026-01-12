@@ -1,16 +1,16 @@
 
 // /src/app/api/tasks/[id]/fit-indicator/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { getFirestore, doc, getDoc, GeoPoint } from 'firebase/firestore';
+import { getFirestore as getAdminFirestore, GeoPoint } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { initializeAdminApp } from '@/firebase/admin';
 import type { Task, Helper } from '@/lib/data';
-import { initializeFirebase } from '@/firebase';
+
 
 // Initialize Firebase Admin SDK for server-side auth
-initializeAdminApp();
-// Initialize Firebase client SDK to use Firestore on the server
-const { firestore: db } = initializeFirebase();
+const adminApp = initializeAdminApp();
+const db = getAdminFirestore(adminApp);
+
 
 type FitLevel = 'High' | 'Medium' | 'Low' | 'Unknown';
 
@@ -92,7 +92,7 @@ export async function GET(
 
   let decodedToken;
   try {
-    decodedToken = await getAuth().verifyIdToken(authToken);
+    decodedToken = await getAuth(adminApp).verifyIdToken(authToken);
   } catch (error) {
     return NextResponse.json({ error: 'Invalid auth token' }, { status: 403 });
   }
@@ -108,14 +108,14 @@ export async function GET(
   try {
     // A4: Fetch in parallel
     const [taskDoc, helperDoc] = await Promise.all([
-      getDoc(doc(db, 'tasks', taskId)),
-      getDoc(doc(db, 'helpers', helperUid))
+      db.collection('tasks').doc(taskId).get(),
+      db.collection('helpers').doc(helperUid).get()
     ]);
 
-    if (!taskDoc.exists()) {
+    if (!taskDoc.exists) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
-    if (!helperDoc.exists()) {
+    if (!helperDoc.exists) {
       // NOTE: In a real app, you might want to check for a custom claim 'role:worker' first.
       return NextResponse.json({ error: 'Helper profile not found' }, { status: 404 });
     }
