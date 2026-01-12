@@ -92,6 +92,11 @@ export function HelperJourneyBanner({ helper }: HelperJourneyBannerProps) {
   const { lifecycleStage, profileCompletion } = journey;
   const config = bannerConfig[lifecycleStage] || bannerConfig.REGISTERED;
 
+  // Do not show the banner for these lifecycle stages as it's no longer a primary instruction.
+  if (['VERIFIED_READY', 'ACTIVE', 'GROWING'].includes(lifecycleStage)) {
+    return null;
+  }
+
   return (
     <Alert variant={config.variant as any} className="mb-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -122,4 +127,3 @@ export function HelperJourneyBanner({ helper }: HelperJourneyBannerProps) {
     </Alert>
   );
 }
-
