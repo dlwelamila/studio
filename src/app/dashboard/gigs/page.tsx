@@ -109,7 +109,8 @@ function GigRow({ gig }: { gig: Task }) {
   const customerRef = useMemoFirebase(() => firestore ? doc(firestore, 'customers', gig.customerId) : null, [firestore, gig.customerId]);
   const { data: customer, isLoading: isCustomerLoading } = useDoc<Customer>(customerRef);
   
-  const price = gig.acceptedOfferPrice ? gig.acceptedOfferPrice.toLocaleString() : gig.budget.max.toLocaleString();
+  // A gig always has an accepted offer price. This is the helper's earnings.
+  const earnings = gig.acceptedOfferPrice ? gig.acceptedOfferPrice.toLocaleString() : 'N/A';
 
   return (
     <TableRow>
@@ -138,7 +139,7 @@ function GigRow({ gig }: { gig: Task }) {
         {gig.completedAt ? format(gig.completedAt.toDate(), 'dd MMM yyyy') : 'Pending'}
       </TableCell>
       <TableCell className="text-right">
-        {price}
+        {earnings}
       </TableCell>
       <TableCell className="text-right">
         <Button variant="outline" size="sm" asChild>
