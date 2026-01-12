@@ -206,7 +206,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
       <div className="grid gap-4 md:grid-cols-[1fr_250px] lg:grid-cols-3 lg:gap-8">
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
           
-          {canShowFitIndicator && <FitIndicator task={task} />}
+          {canShowFitIndicator && task && <FitIndicator task={task} />}
 
           <Card>
             <CardHeader className="flex flex-row items-start justify-between">

@@ -53,15 +53,20 @@ export interface UserHookResult { // Renamed from UserAuthHookResult for consist
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
 // Interceptor for fetch to add auth token
-const originalFetch = typeof window !== 'undefined' ? window.fetch : fetch;
+const originalFetch = typeof window !== 'undefined' ? window.fetch : () => Promise.reject(new Error('fetch is not available in this environment'));
 let currentAuth: Auth | null = null;
 
 const fetchWithAuth = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     if (currentAuth && currentAuth.currentUser) {
-        const token = await getIdToken(currentAuth.currentUser);
-        const headers = new Headers(init?.headers);
-        headers.set('Authorization', `Bearer ${token}`);
-        init = { ...init, headers };
+        try {
+            const token = await getIdToken(currentAuth.currentUser);
+            const headers = new Headers(init?.headers);
+            headers.set('Authorization', `Bearer ${token}`);
+            init = { ...init, headers };
+        } catch (error) {
+            console.error("Error getting auth token:", error);
+            // Decide if you want to proceed without the token or fail the request
+        }
     }
     return originalFetch(input, init);
 };
