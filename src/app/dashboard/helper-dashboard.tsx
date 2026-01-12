@@ -7,8 +7,6 @@ import {
   Search,
   Star,
   BadgeCheck,
-  ToggleLeft,
-  ToggleRight,
   Shield,
   Briefcase,
   Wrench,
@@ -16,6 +14,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 
 import { useCollection, useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection, query, where, doc } from 'firebase/firestore';
 import type { Task, Helper } from '@/lib/data';
 import { taskCategories } from '@/lib/data';
@@ -41,6 +40,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { HelperJourneyBanner } from './helper-journey-banner';
 
 
@@ -49,12 +50,20 @@ export default function HelperDashboard() {
   const firestore = useFirestore();
 
   const helperRef = useMemoFirebase(() => authUser && firestore ? doc(firestore, 'helpers', authUser.uid) : null, [authUser, firestore]);
-  const { data: helper, isLoading: isHelperLoading } = useDoc<Helper>(helperRef);
+  const { data: helper, isLoading: isHelperLoading, mutate: mutateHelper } = useDoc<Helper>(helperRef);
 
   const tasksQuery = useMemoFirebase(() => firestore && authUser ? query(collection(firestore, 'tasks'), where('status', '==', 'OPEN')) : null, [firestore, authUser]);
   const { data: openTasks, isLoading: areTasksLoading } = useCollection<Task>(tasksQuery);
   
   const isLoading = isAuthLoading || isHelperLoading || areTasksLoading;
+
+  const handleAvailabilityToggle = (isAvailable: boolean) => {
+    if (!helperRef) return;
+    // Optimistically update the UI
+    mutateHelper();
+    // Update the document in the background
+    updateDocumentNonBlocking(helperRef, { isAvailable });
+  }
 
   return (
     <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
@@ -81,13 +90,16 @@ export default function HelperDashboard() {
                     </Badge>
                   )}
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2">
-                  {helper.isAvailable ? (
-                      <ToggleRight className="h-5 w-5 text-green-500" />
-                  ) : (
-                      <ToggleLeft className="h-5 w-5" />
-                  )}
-                  <span>{helper.isAvailable ? 'Available for tasks' : 'Not available'}</span>
+                <div className="flex items-center space-x-2 pt-4">
+                  <Switch 
+                    id="availability-toggle" 
+                    checked={helper.isAvailable}
+                    onCheckedChange={handleAvailabilityToggle}
+                    aria-readonly
+                  />
+                  <Label htmlFor="availability-toggle" className="text-sm text-muted-foreground">
+                    {helper.isAvailable ? 'Available for tasks' : 'Not available'}
+                  </Label>
                 </div>
               </CardHeader>
               <CardContent>
@@ -260,4 +272,5 @@ function TaskCardSkeleton() {
         </Card>
     )
 }
+
     
