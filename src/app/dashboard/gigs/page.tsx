@@ -35,8 +35,7 @@ export default function MyGigsPage() {
     if (!authUser || !firestore) return null;
     return query(
       collection(firestore, 'tasks'),
-      where('assignedHelperId', '==', authUser.uid),
-      where('status', 'in', ['ASSIGNED', 'IN_PROGRESS', 'COMPLETED'])
+      where('assignedHelperId', '==', authUser.uid)
     );
   }, [authUser, firestore]);
 
@@ -74,7 +73,7 @@ export default function MyGigsPage() {
                 <TableHead>Task</TableHead>
                 <TableHead className="hidden sm:table-cell">Customer</TableHead>
                 <TableHead className="hidden sm:table-cell">Status</TableHead>
-                <TableHead className="hidden md:table-cell">Due Date</TableHead>
+                <TableHead className="hidden md:table-cell">Assigned On</TableHead>
                 <TableHead className="text-right">Earnings (TZS)</TableHead>
                 <TableHead>
                   <span className="sr-only">Actions</span>
@@ -130,13 +129,14 @@ function GigRow({ gig }: { gig: Task }) {
           variant={
             gig.status === 'COMPLETED'
               ? 'default'
-              : 'secondary'
+              : gig.status === 'ASSIGNED' ? 'secondary' : 'outline'
           }
         >
           {gig.status.replace('_', ' ')}
         </Badge>
       </TableCell>
       <TableCell className="hidden md:table-cell">
+        {/* Assuming 'assignedAt' would be a field. For now, using createdAt */}
         {format(gig.createdAt.toDate(), 'dd MMM yyyy')}
       </TableCell>
       <TableCell className="text-right">
