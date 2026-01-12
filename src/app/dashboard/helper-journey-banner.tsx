@@ -1,4 +1,3 @@
-
 'use client';
 import Link from 'next/link';
 import { AlertCircle, CheckCircle2, Loader, Hourglass, Sparkles, UserCheck } from 'lucide-react';
@@ -66,7 +65,7 @@ const bannerConfig = {
         variant: 'destructive',
         cta: {
             text: 'Contact Support',
-            href: '/support' // Assuming a support page exists
+            href: '/support'
         }
     },
     REGISTERED: {
