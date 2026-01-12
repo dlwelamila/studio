@@ -221,7 +221,7 @@ export default function CreateProfilePage() {
         <CardHeader>
           <CardTitle className="font-headline text-2xl">Create Your Profile</CardTitle>
           <CardDescription>
-            Complete these last few steps to get started with tasKey. Your information has been pre-filled for this test.
+            Tell us who you are and how you'd like to use tasKey.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -287,7 +287,7 @@ export default function CreateProfilePage() {
                             <Input placeholder="+255712345678" {...field} />
                         </FormControl>
                         <FormDescription>
-                            Your phone number will be used for verification and communication.
+                            Your phone number will be used for verification and communication. It cannot be changed later.
                         </FormDescription>
                         <FormMessage />
                         </FormItem>

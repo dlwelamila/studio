@@ -94,12 +94,14 @@ export default function AuthForm() {
   // Setup reCAPTCHA for phone authentication
   useEffect(() => {
     if (!auth) return;
-    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-      'size': 'invisible',
-      'callback': (response: any) => {
-        // reCAPTCHA solved, allow signInWithPhoneNumber.
-      }
-    });
+    if (!(window as any).recaptchaVerifier) {
+        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        'size': 'invisible',
+        'callback': (response: any) => {
+            // reCAPTCHA solved, allow signInWithPhoneNumber.
+        }
+        });
+    }
   }, [auth]);
 
   const handleEmailPasswordAuth = async () => {
@@ -126,7 +128,7 @@ export default function AuthForm() {
       if (!auth || !phoneNumber) return;
       setIsSubmitting(true);
       try {
-          const appVerifier = window.recaptchaVerifier;
+          const appVerifier = (window as any).recaptchaVerifier;
           const result = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
           setConfirmationResult(result);
           toast({ title: "OTP Sent", description: `A code has been sent to ${phoneNumber}.` });
@@ -154,7 +156,7 @@ export default function AuthForm() {
         setIsSubmitting(true);
 
         const actionCodeSettings = {
-            url: window.location.href, // URL to redirect back to
+            url: window.location.href.split('?')[0], // URL to redirect back to
             handleCodeInApp: true,
         };
 

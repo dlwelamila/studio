@@ -50,7 +50,6 @@ service cloud.firestore {
       allow get: if isSignedIn();
       allow list: if isSignedIn();
       allow create: if isOwner(userId) && request.resource.data.id == userId;
-      // Phone number should not be changed after creation
       allow update: if isOwner(userId) && ownerFieldIsImmutable('id') && ownerFieldIsImmutable('phoneNumber');
       allow delete: if isOwner(userId);
     }
@@ -59,7 +58,6 @@ service cloud.firestore {
       allow get: if isSignedIn();
       allow list: if isSignedIn();
       allow create: if isOwner(userId) && request.resource.data.id == userId;
-       // Phone number should not be changed after creation
       allow update: if isOwner(userId) && ownerFieldIsImmutable('id') && ownerFieldIsImmutable('phoneNumber');
       allow delete: if isOwner(userId);
     }
