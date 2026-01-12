@@ -70,16 +70,9 @@ export function ReviewForm({ task, helper }: ReviewFormProps) {
   };
 
   return (
-    <Card>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardHeader>
-            <CardTitle className="font-headline">Leave a Review for {helper.fullName}</CardTitle>
-            <CardDescription>
-              Your feedback is important for the community. Rate your experience and leave a comment.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="w-full">
+          <div className="grid gap-6">
             <FormField
               control={form.control}
               name="rating"
@@ -124,14 +117,13 @@ export function ReviewForm({ task, helper }: ReviewFormProps) {
                 </FormItem>
               )}
             />
-          </CardContent>
-          <CardContent>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
+             <Button type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? 'Submitting...' : 'Submit Review'}
             </Button>
-          </CardContent>
+          </div>
         </form>
       </Form>
-    </Card>
   );
 }
+
+    

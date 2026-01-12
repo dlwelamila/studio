@@ -4,7 +4,7 @@
 import { use, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronLeft, Star, AlertTriangle, Briefcase, Wrench } from 'lucide-react';
+import { ChevronLeft, Star, AlertTriangle, Briefcase, Wrench, CircleX } from 'lucide-react';
 import { format } from 'date-fns';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -138,12 +138,18 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
     mutateTask();
   };
 
-  const handleStatusUpdate = (newStatus: 'IN_PROGRESS' | 'COMPLETED') => {
+  const handleStatusUpdate = (newStatus: 'ACTIVE' | 'COMPLETED' | 'IN_DISPUTE') => {
     if (!taskRef) return;
     
     let updateData: any = { status: newStatus };
     if (newStatus === 'COMPLETED') {
       updateData.completedAt = serverTimestamp();
+    }
+    if (newStatus === 'ACTIVE') {
+      updateData.startedAt = serverTimestamp();
+    }
+    if (newStatus === 'IN_DISPUTE') {
+        updateData.disputedAt = serverTimestamp();
     }
   
     updateDocumentNonBlocking(taskRef, updateData);
@@ -259,7 +265,18 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
           {isCustomerView ? (
             <>
                 {task.status === 'COMPLETED' && !hasReviewed && assignedHelper && !areFeedbacksLoading && (
-                    <ReviewForm task={task} helper={assignedHelper} />
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="font-headline">Confirm Completion</CardTitle>
+                            <CardDescription>Review the work and either confirm completion or mark it as incomplete if you are not satisfied.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex flex-col sm:flex-row gap-4">
+                            <ReviewForm task={task} helper={assignedHelper} />
+                            <Button variant="outline" className="gap-2" onClick={() => handleStatusUpdate('IN_DISPUTE')}>
+                                <CircleX /> Mark as Incomplete
+                            </Button>
+                        </CardContent>
+                    </Card>
                 )}
                  {task.status === 'COMPLETED' && hasReviewed && !areFeedbacksLoading && (
                     <Card>
@@ -269,6 +286,16 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                         <CardContent>
                             <p className="text-center py-8 text-muted-foreground">Thank you for leaving a review!</p>
                         </CardContent>
+                    </Card>
+                 )}
+                 {task.status === 'IN_DISPUTE' && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="font-headline text-destructive">Task in Dispute</CardTitle>
+                            <CardDescription>
+                                You have marked this task as incomplete. Our support team will review this and get in touch with you and the helper to resolve the issue.
+                            </CardDescription>
+                        </CardHeader>
                     </Card>
                  )}
 
@@ -301,17 +328,20 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                 </CardHeader>
                 <CardContent>
                     {task.status === 'ASSIGNED' && (
-                        <Button className="w-full" onClick={() => handleStatusUpdate('IN_PROGRESS')}>
+                        <Button className="w-full" onClick={() => handleStatusUpdate('ACTIVE')}>
                             Start Task
                         </Button>
                     )}
-                    {task.status === 'IN_PROGRESS' && (
+                    {task.status === 'ACTIVE' && (
                          <Button className="w-full" onClick={() => handleStatusUpdate('COMPLETED')}>
                             Mark as Complete
                         </Button>
                     )}
                     {task.status === 'COMPLETED' && (
                         <p className="text-center text-sm text-muted-foreground">This task is complete. Awaiting customer review.</p>
+                    )}
+                     {task.status === 'IN_DISPUTE' && (
+                        <p className="text-center text-sm text-destructive">The customer has disputed this task's completion. Awaiting review.</p>
                     )}
                      {task.status === 'CANCELLED' && (
                         <p className="text-center text-sm text-muted-foreground">This task was cancelled.</p>
@@ -467,6 +497,41 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
           )}
           <Card>
             <CardHeader>
+              <CardTitle className="font-headline text-base">Task Timeline</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-2 text-sm">
+                <div className="flex justify-between">
+                    <span className="text-muted-foreground">Posted</span>
+                    <span>{task.createdAt ? format(task.createdAt.toDate(), 'PP, p') : '-'}</span>
+                </div>
+                {task.assignedAt && (
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Assigned</span>
+                        <span>{format(task.assignedAt.toDate(), 'PP, p')}</span>
+                    </div>
+                )}
+                 {task.startedAt && (
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Started</span>
+                        <span>{format(task.startedAt.toDate(), 'PP, p')}</span>
+                    </div>
+                )}
+                 {task.completedAt && (
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Completed</span>
+                        <span>{format(task.completedAt.toDate(), 'PP, p')}</span>
+                    </div>
+                )}
+                 {task.disputedAt && (
+                    <div className="flex justify-between text-destructive">
+                        <span className="font-medium">Disputed</span>
+                        <span className="font-medium">{format(task.disputedAt.toDate(), 'PP, p')}</span>
+                    </div>
+                )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
               <CardTitle className="font-headline text-base">Safety &amp; Support</CardTitle>
             </CardHeader>
             <CardContent>
@@ -568,3 +633,5 @@ function TaskDetailSkeleton() {
     </div>
   )
 }
+
+    

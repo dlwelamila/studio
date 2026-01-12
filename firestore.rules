@@ -33,8 +33,14 @@ service cloud.firestore {
     }
     
     function canUpdateTaskStatus(currentStatus, nextStatus) {
-      return (currentStatus == 'ASSIGNED' && nextStatus == 'IN_PROGRESS') ||
-             (currentStatus == 'IN_PROGRESS' && nextStatus == 'COMPLETED');
+      // Helper transitions
+      return (currentStatus == 'ASSIGNED' && nextStatus == 'ACTIVE') ||
+             (currentStatus == 'ACTIVE' && nextStatus == 'COMPLETED');
+    }
+    
+    function customerCanDispute(currentStatus, nextStatus) {
+      // Customer transition
+      return currentStatus == 'COMPLETED' && nextStatus == 'IN_DISPUTE';
     }
 
     match /customers/{userId} {
@@ -59,7 +65,12 @@ service cloud.firestore {
       allow create: if isCreatingOwnResource('customerId');
       
       allow update: if isSignedIn() && (
-        (isResourceOwner(resource, 'customerId') && ownerFieldIsImmutable('customerId')) ||
+        // Customer can accept an offer or dispute a completed task
+        (isResourceOwner(resource, 'customerId') && (
+            ownerFieldIsImmutable('customerId') || 
+            customerCanDispute(resource.data.status, request.resource.data.status)
+        )) ||
+        // Helper can update status from ASSIGNED -> ACTIVE -> COMPLETED
         (isAssignedHelper(resource.data) && canUpdateTaskStatus(resource.data.status, request.resource.data.status) && ownerFieldIsImmutable('customerId') && ownerFieldIsImmutable('assignedHelperId'))
       );
       
@@ -67,7 +78,7 @@ service cloud.firestore {
 
       // Offers subcollection
       match /offers/{offerId} {
-        allow get, list: if isResourceOwner(get(/databases/$(database)/documents/tasks/$(taskId)), 'customerId') || isAdmin();
+        allow get, list: if isResourceOwner(get(/databases/$(database)/documents/tasks/$(taskId)), 'customerId') || isAdmin() || isCreatingOwnResource('helperId');
         allow create: if isCreatingOwnResource('helperId');
         allow update: if isResourceOwner(resource, 'helperId') && ownerFieldIsImmutable('helperId');
         allow delete: if isResourceOwner(resource, 'helperId');
@@ -93,3 +104,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

@@ -39,6 +39,7 @@ export function OfferCard({ offer, task, onAccept }: OfferCardProps) {
       status: 'ASSIGNED',
       assignedHelperId: offer.helperId,
       acceptedOfferPrice: offer.price,
+      assignedAt: serverTimestamp(),
     });
 
     // 2. Update the offer status
@@ -129,3 +130,5 @@ export function OfferCard({ offer, task, onAccept }: OfferCardProps) {
     </Card>
   );
 }
+
+    

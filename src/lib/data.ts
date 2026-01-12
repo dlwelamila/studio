@@ -49,10 +49,13 @@ export type Task = {
   effort: 'light' | 'medium' | 'heavy';
   toolsRequired: string[];
   timeWindow: string; // e.g. "Tomorrow afternoon", "Flexible"
-  status: 'OPEN' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  status: 'OPEN' | 'ASSIGNED' | 'ACTIVE' | 'COMPLETED' | 'IN_DISPUTE' | 'REASSIGNED' | 'CANCELLED';
   assignedHelperId?: string;
   createdAt: Timestamp;
+  assignedAt?: Timestamp;
+  startedAt?: Timestamp;
   completedAt?: Timestamp;
+  disputedAt?: Timestamp;
 };
 
 export type Offer = {
@@ -86,3 +89,5 @@ export const taskCategories = [
     'Shopping',
     'Other'
 ];
+
+    
