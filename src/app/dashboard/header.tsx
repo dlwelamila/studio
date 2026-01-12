@@ -39,18 +39,18 @@ export default function AppHeader() {
 
   const userRef = useMemoFirebase(() => {
     if (!firestore || !authUser) return null;
-    // We fetch both profiles to determine which roles are available.
+    // We fetch based on the current active role to display the correct profile info.
     const collectionName = role === 'customer' ? 'customers' : 'helpers';
     return doc(firestore, collectionName, authUser.uid);
   }, [firestore, authUser, role]);
   
-  // We need to know if both profiles exist to conditionally show the switch option
+  // We need to know if both profiles exist to conditionally show the switch option.
   const customerProfileRef = useMemoFirebase(() => (firestore && authUser) ? doc(firestore, 'customers', authUser.uid) : null, [firestore, authUser]);
   const helperProfileRef = useMemoFirebase(() => (firestore && authUser) ? doc(firestore, 'helpers', authUser.uid) : null, [firestore, authUser]);
 
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<Helper | Customer>(userRef);
   const { data: customerProfile } = useDoc<Customer>(customerProfileRef);
-  const { data: helperProfile } = useDoc<Helper>(helperProfileRef);
+  const { data: helperProfile } } = useDoc<Helper>(helperProfileRef);
 
 
   const handleLogout = async () => {
