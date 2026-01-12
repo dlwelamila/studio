@@ -238,12 +238,6 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                         {`TZS ${task.budget.min.toLocaleString()} - ${task.budget.max.toLocaleString()}`}
                     </div>
                 </div>
-                 <div>
-                    <div className="font-semibold text-foreground">Posted On</div>
-                    <div className="text-muted-foreground">
-                        {task.createdAt ? format(task.createdAt.toDate(), 'PP') : ''}
-                    </div>
-                </div>
                  <div className="flex items-start gap-2">
                     <Briefcase className="h-5 w-5 mt-0.5 text-muted-foreground"/>
                     <div>
@@ -259,6 +253,28 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                     </div>
                  </div>
                </div>
+               <Separator className="my-6" />
+                <div>
+                  <h3 className="font-headline text-base font-semibold mb-4">Task Timeline</h3>
+                  <div className="grid gap-4 text-sm">
+                    <div className="grid gap-1">
+                      <div className="font-medium text-muted-foreground">Posted</div>
+                      <div className="text-foreground">{task.createdAt ? format(task.createdAt.toDate(), 'MMM d, yyyy, p') : '-'}</div>
+                    </div>
+                    {task.assignedAt && (
+                      <div className="grid gap-1">
+                        <div className="font-medium text-muted-foreground">Assigned</div>
+                        <div className="text-foreground">{format(task.assignedAt.toDate(), 'MMM d, yyyy, p')}</div>
+                      </div>
+                    )}
+                    {task.completedAt && (
+                      <div className="grid gap-1">
+                        <div className="font-medium text-muted-foreground">Completed</div>
+                        <div className="text-foreground">{format(task.completedAt.toDate(), 'MMM d, yyyy, p')}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
             </CardContent>
           </Card>
           
@@ -495,35 +511,19 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                 </CardContent>
             </Card>
           )}
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-headline text-base">Task Timeline</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4 text-sm">
-              <div className="grid gap-1">
-                <div className="font-medium text-muted-foreground">Posted</div>
-                <div className="text-foreground">{task.createdAt ? format(task.createdAt.toDate(), 'MMM d, yyyy, p') : '-'}</div>
-              </div>
-              {task.assignedAt && (
-                <div className="grid gap-1">
-                  <div className="font-medium text-muted-foreground">Assigned</div>
-                  <div className="text-foreground">{format(task.assignedAt.toDate(), 'MMM d, yyyy, p')}</div>
-                </div>
-              )}
-              {task.completedAt && (
-                <div className="grid gap-1">
-                  <div className="font-medium text-muted-foreground">Completed</div>
-                  <div className="text-foreground">{format(task.completedAt.toDate(), 'MMM d, yyyy, p')}</div>
-                </div>
-              )}
-              {task.disputedAt && (
-                <div className="grid gap-1 text-destructive">
-                  <div className="font-medium">Disputed</div>
-                  <div className="font-medium">{format(task.disputedAt.toDate(), 'MMM d, yyyy, p')}</div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {task.disputedAt && (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline text-base text-destructive">Dispute Information</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-4 text-sm">
+                    <div className="grid gap-1">
+                        <div className="font-medium text-muted-foreground">Disputed On</div>
+                        <div className="font-medium text-destructive">{format(task.disputedAt.toDate(), 'MMM d, yyyy, p')}</div>
+                    </div>
+                </CardContent>
+            </Card>
+          )}
           <Card>
             <CardHeader>
               <CardTitle className="font-headline text-base">Safety &amp; Support</CardTitle>
@@ -627,3 +627,5 @@ function TaskDetailSkeleton() {
     </div>
   )
 }
+
+    
