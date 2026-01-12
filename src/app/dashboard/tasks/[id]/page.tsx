@@ -12,6 +12,7 @@ import { z } from 'zod';
 
 import { useUserRole } from '@/context/user-role-context';
 import { useDoc, useCollection, useMemoFirebase, addDoc, serverTimestamp } from '@/firebase';
+import { updateDocument } from '@/firebase/firestore';
 
 import { doc, collection, query, where } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
@@ -40,7 +41,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { OfferCard } from './offer-card';
 import { RecommendedHelpers } from './recommended-helpers';
-import type { Task, Offer, Customer } from '@/lib/data';
+import type { Task, Offer, Customer, Helper } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 
@@ -66,10 +67,14 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const customerRef = useMemoFirebase(() => firestore && task && doc(firestore, 'customers', task.customerId), [firestore, task]);
   const { data: customer, isLoading: isCustomerLoading } = useDoc<Customer>(customerRef);
 
+  const assignedHelperRef = useMemoFirebase(() => firestore && task?.assignedHelperId && doc(firestore, 'helpers', task.assignedHelperId), [firestore, task]);
+  const { data: assignedHelper } = useDoc<Helper>(assignedHelperRef);
+
   const offersQuery = useMemoFirebase(() => firestore && query(collection(firestore, 'tasks', id, 'offers')), [firestore, id]);
   const { data: offers, isLoading: isOffersLoading, error: offersError } = useCollection<Offer>(offersQuery);
 
   const isCustomerView = role === 'customer';
+  const isAssignedHelperView = currentUser?.uid === task?.assignedHelperId;
   const hasMadeOffer = !!offers?.some(o => o.helperId === currentUser?.uid);
 
   const form = useForm<OfferFormValues>({
@@ -101,7 +106,6 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
         const offersCollection = collection(firestore, 'tasks', task.id, 'offers');
         await addDoc(offersCollection, offerData);
         toast({ title: 'Offer Submitted!', description: 'The customer has been notified of your offer.' });
-        // No need to manually update state, useCollection will do it.
     } catch (error: any) {
         console.error("Error submitting offer:", error);
         toast({ variant: 'destructive', title: 'Failed to Submit Offer', description: error.message });
@@ -109,8 +113,29 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   }
 
   const handleAcceptSuccess = () => {
-    mutateTask(); // Forces a re-fetch of the task data
+    mutateTask();
   };
+
+  const handleStatusUpdate = async (newStatus: 'IN_PROGRESS' | 'COMPLETED') => {
+    if (!taskRef) return;
+
+    let updateData: any = { status: newStatus };
+    if (newStatus === 'COMPLETED') {
+        updateData.completedAt = serverTimestamp();
+    }
+    
+    try {
+      await updateDocument(taskRef, updateData);
+      mutateTask();
+      toast({
+        title: 'Task Status Updated',
+        description: `Task marked as ${newStatus.toLowerCase().replace('_', ' ')}.`,
+      });
+    } catch (error: any) {
+      console.error("Error updating task status:", error);
+      toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
+    }
+  }
   
   if (isTaskLoading || isUserLoading) {
     return <TaskDetailSkeleton />;
@@ -133,14 +158,14 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
     <div className="mx-auto grid max-w-6xl flex-1 auto-rows-max gap-4">
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" className="h-7 w-7" asChild>
-          <Link href={isCustomerView ? "/dashboard" : "/dashboard"}>
+          <Link href={isCustomerView ? "/dashboard" : "/dashboard/gigs"}>
             <ChevronLeft className="h-4 w-4" />
             <span className="sr-only">Back</span>
           </Link>
         </Button>
         <div className="flex-1">
           <h1 className="font-headline text-xl font-semibold tracking-tight">
-            Task Details
+            {isAssignedHelperView ? 'Gig Details' : 'Task Details'}
           </h1>
           <p className="text-sm text-muted-foreground">
             Task ID: {task.id}
@@ -209,6 +234,31 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                 </Card>
                 <RecommendedHelpers task={task} />
             </>
+          ) : isAssignedHelperView ? (
+             <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline">Helper Actions</CardTitle>
+                    <CardDescription>Manage the status of this gig.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {task.status === 'ASSIGNED' && (
+                        <Button className="w-full" onClick={() => handleStatusUpdate('IN_PROGRESS')}>
+                            Start Task
+                        </Button>
+                    )}
+                    {task.status === 'IN_PROGRESS' && (
+                         <Button className="w-full" onClick={() => handleStatusUpdate('COMPLETED')}>
+                            Mark as Complete
+                        </Button>
+                    )}
+                    {task.status === 'COMPLETED' && (
+                        <p className="text-center text-sm text-muted-foreground">This task is complete. Awaiting customer review.</p>
+                    )}
+                     {task.status === 'CANCELLED' && (
+                        <p className="text-center text-sm text-muted-foreground">This task was cancelled.</p>
+                    )}
+                </CardContent>
+             </Card>
           ) : (
             <>
                 {task.status === 'OPEN' && !hasMadeOffer && (
@@ -281,7 +331,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                         </CardContent>
                     </Card>
                 )}
-                 {task.status !== 'OPEN' && (
+                 {task.status !== 'OPEN' && !isAssignedHelperView && (
                      <Card>
                         <CardHeader>
                             <CardTitle className="font-headline">Task Not Available</CardTitle>
@@ -298,7 +348,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
         <div className="grid auto-rows-max items-start gap-4 lg:gap-8">
           <Card>
             <CardHeader>
-              <CardTitle className="font-headline">Posted by</CardTitle>
+              <CardTitle className="font-headline">{isAssignedHelperView ? 'Customer' : 'Posted by'}</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4">
               {isCustomerLoading ? (
@@ -321,7 +371,6 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                     />
                     <div>
                         <div className="font-semibold">{customer.fullName}</div>
-                        {/* <div className="text-sm text-muted-foreground">{customer?.location}</div> */}
                     </div>
                 </div>
               ) : null}
@@ -335,6 +384,28 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                  </div>
             </CardContent>
           </Card>
+          { isAssignedHelperView && assignedHelper && (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline">Assigned Helper</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-4">
+                     <div className="flex items-center gap-4">
+                        <Image
+                            alt="Helper avatar"
+                            className="rounded-full"
+                            height={40}
+                            src={assignedHelper.profilePhotoUrl || ''}
+                            style={{ aspectRatio: '40/40', objectFit: 'cover' }}
+                            width={40}
+                        />
+                        <div>
+                            <div className="font-semibold">{assignedHelper.fullName}</div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
