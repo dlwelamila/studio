@@ -263,6 +263,52 @@
         "helperId",
         "rating"
       ]
+    },
+    "SupportTicket": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Support Ticket",
+      "type": "object",
+      "description": "Represents a support ticket submitted by a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the support ticket."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The Firebase Auth UID of the user submitting the ticket."
+        },
+        "userEmail": {
+          "type": "string",
+          "description": "The email of the user submitting the ticket."
+        },
+        "subject": {
+          "type": "string",
+          "description": "The subject of the support ticket."
+        },
+        "message": {
+          "type": "string",
+          "description": "The detailed message from the user."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["NEW", "IN_PROGRESS", "RESOLVED"],
+          "description": "The current status of the support ticket."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "userEmail",
+        "subject",
+        "message",
+        "status",
+        "createdAt"
+      ]
     }
   },
   "auth": {
@@ -368,10 +414,24 @@
             }
           ]
         }
+      },
+       {
+        "path": "/support_tickets/{ticketId}",
+        "definition": {
+          "entityName": "SupportTicket",
+          "schema": {
+            "$ref": "#/backend/entities/SupportTicket"
+          },
+          "description": "Stores support tickets submitted by users.",
+          "params": [
+            {
+              "name": "ticketId",
+              "description": "The unique ID of the support ticket."
+            }
+          ]
+        }
       }
     ],
     "reasoning": "The Firestore structure is designed to support the tasKey application, focusing on task management, user roles (Customers, Helpers, Admins), and efficient data access with robust security rules.  The key principle is Authorization Independence, achieved through denormalization. For example, tasks denormalize customerId, and offers denormalize helperId and taskId, allowing rules to validate access without needing to `get()` parent documents. \n\n*   **Customers:** `/customers/{userId}` stores customer profiles.\n*   **Helpers:** `/helpers/{userId}` stores helper profiles.\n*   **Tasks:** `/tasks/{taskId}` stores task documents. Tasks denormalize `customerId` to ensure Authorization Independence.\n*   **Offers:** `/tasks/{taskId}/offers/{offerId}` is a subcollection within each task. This simplifies security rules as access to offers can be inherited from the parent task.\n*   **Ratings:** Ratings are stored in `/ratings/{ratingId}`. They denormalize `taskId`, `customerId`, and `helperId` for authorization independence and simpler querying.\n*   **Admins:** Admin status is managed via document existence in `/roles_admin/{userId}`.  This leverages the \"existence over content\" pattern for global role management.\n\n\n**QAPs (Rules are not Filters):**\n\n*   The structure supports secure `list` operations.\n*   Helpers can list all documents in the `/tasks` collection, but rules on `get` will prevent them from reading full details of tasks they are not involved in.\n\nThis structure adheres to all core design principles and strategy mandates, ensuring a secure, scalable, and debuggable Firestore database for the tasKey application."
   }
 }
-
-    

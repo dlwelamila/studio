@@ -94,6 +94,17 @@ export type Feedback = {
   createdAt: Timestamp;
 };
 
+export type SupportTicket = {
+  id: string;
+  userId: string;
+  userEmail: string;
+  subject: string;
+  message: string;
+  status: 'NEW' | 'IN_PROGRESS' | 'RESOLVED';
+  createdAt: Timestamp;
+};
+
+
 export const taskCategories = [
     'Cleaning',
     'Laundry',
@@ -104,4 +115,3 @@ export const taskCategories = [
     'Shopping',
     'Other'
 ];
-
