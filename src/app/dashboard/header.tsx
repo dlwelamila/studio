@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { Home, PanelLeft, Settings, Package, Package2, Users2, Briefcase, Handshake } from 'lucide-react';
+import { Home, PanelLeft, Settings, Package, Package2, Users2, Briefcase, Handshake, Repeat } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
@@ -28,8 +28,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AppHeader() {
@@ -41,11 +39,19 @@ export default function AppHeader() {
 
   const userRef = useMemoFirebase(() => {
     if (!firestore || !authUser) return null;
+    // We fetch both profiles to determine which roles are available.
     const collectionName = role === 'customer' ? 'customers' : 'helpers';
     return doc(firestore, collectionName, authUser.uid);
   }, [firestore, authUser, role]);
+  
+  // We need to know if both profiles exist to conditionally show the switch option
+  const customerProfileRef = useMemoFirebase(() => (firestore && authUser) ? doc(firestore, 'customers', authUser.uid) : null, [firestore, authUser]);
+  const helperProfileRef = useMemoFirebase(() => (firestore && authUser) ? doc(firestore, 'helpers', authUser.uid) : null, [firestore, authUser]);
 
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<Helper | Customer>(userRef);
+  const { data: customerProfile } = useDoc<Customer>(customerProfileRef);
+  const { data: helperProfile } = useDoc<Helper>(helperProfileRef);
+
 
   const handleLogout = async () => {
     if (!auth) return;
@@ -54,6 +60,9 @@ export default function AppHeader() {
   };
 
   const breadcrumbText = role === 'customer' ? 'My Tasks' : 'Browse Tasks';
+  const canBeHelper = !!helperProfile;
+  const canBeCustomer = !!customerProfile;
+  const canSwitchRoles = canBeHelper && canBeCustomer;
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
@@ -122,11 +131,6 @@ export default function AppHeader() {
         </BreadcrumbList>
       </Breadcrumb>
       <div className="relative ml-auto flex items-center md:grow-0 gap-4">
-        <div className="flex items-center space-x-2">
-            <Label htmlFor="role-switcher" className="text-sm text-muted-foreground">Helper</Label>
-            <Switch id="role-switcher" checked={role === 'customer'} onCheckedChange={toggleRole} aria-label="Switch user role" />
-            <Label htmlFor="role-switcher" className="text-sm font-medium">Customer</Label>
-        </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -150,7 +154,16 @@ export default function AppHeader() {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>{userProfile?.fullName || 'My Account'}</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Settings</DropdownMenuItem>
+            {canSwitchRoles && (
+              <>
+                <DropdownMenuItem onSelect={toggleRole}>
+                  <Repeat className="mr-2 h-4 w-4" />
+                  <span>Switch to {role === 'customer' ? 'Helper' : 'Customer'} View</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            <DropdownMenuItem onSelect={() => router.push('/dashboard/profile')}>Settings</DropdownMenuItem>
             <DropdownMenuItem>Support</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
