@@ -8,8 +8,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ChevronLeft } from 'lucide-react';
 
-import { useUser, useFirestore, addDoc, serverTimestamp } from '@/firebase';
+import { useUser, useFirestore, serverTimestamp } from '@/firebase';
 import { collection } from 'firebase/firestore';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -106,7 +107,7 @@ export default function NewTaskPage() {
 
         try {
             const tasksCollection = collection(firestore, 'tasks');
-            await addDoc(tasksCollection, taskData);
+            await addDocumentNonBlocking(tasksCollection, taskData);
             toast({ title: 'Task Posted!', description: 'Your task is now live for helpers to see.' });
             router.push('/dashboard');
         } catch (error: any) {
@@ -305,3 +306,5 @@ export default function NewTaskPage() {
     </div>
   );
 }
+
+    

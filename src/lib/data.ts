@@ -61,7 +61,7 @@ export type Offer = {
   createdAt: Timestamp;
 };
 
-export type Review = {
+export type Feedback = {
   id: string;
   taskId: string;
   customerId: string;
@@ -81,3 +81,5 @@ export const taskCategories = [
     'Shopping',
     'Other'
 ];
+
+    

@@ -53,7 +53,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { OfferCard } from './offer-card';
 import { RecommendedHelpers } from './recommended-helpers';
-import type { Task, Offer, Customer, Helper, Review } from '@/lib/data';
+import type { Task, Offer, Customer, Helper, Feedback } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { ReviewForm } from './review-form';
@@ -86,14 +86,14 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const offersQuery = useMemoFirebase(() => firestore && query(collection(firestore, 'tasks', id, 'offers')), [firestore, id]);
   const { data: offers, isLoading: isOffersLoading, error: offersError } = useCollection<Offer>(offersQuery);
 
-  const reviewsQuery = useMemoFirebase(() => firestore && task ? query(collection(firestore, 'feedbacks'), where('taskId', '==', task.id)) : null, [firestore, task]);
-  const { data: reviews, isLoading: areReviewsLoading } = useCollection<Review>(reviewsQuery);
+  const feedbacksQuery = useMemoFirebase(() => firestore && task ? query(collection(firestore, 'feedbacks'), where('taskId', '==', task.id)) : null, [firestore, task]);
+  const { data: feedbacks, isLoading: areFeedbacksLoading } = useCollection<Feedback>(feedbacksQuery);
 
 
   const isCustomerView = role === 'customer';
   const isAssignedHelperView = currentUser?.uid === task?.assignedHelperId;
   const hasMadeOffer = !!offers?.some(o => o.helperId === currentUser?.uid);
-  const hasReviewed = (reviews?.length ?? 0) > 0;
+  const hasReviewed = (feedbacks?.length ?? 0) > 0;
 
   const form = useForm<OfferFormValues>({
     resolver: zodResolver(offerFormSchema),
@@ -250,10 +250,10 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
           
           {isCustomerView ? (
             <>
-                {task.status === 'COMPLETED' && !hasReviewed && assignedHelper && !areReviewsLoading && (
+                {task.status === 'COMPLETED' && !hasReviewed && assignedHelper && !areFeedbacksLoading && (
                     <ReviewForm task={task} helper={assignedHelper} />
                 )}
-                 {task.status === 'COMPLETED' && hasReviewed && !areReviewsLoading && (
+                 {task.status === 'COMPLETED' && hasReviewed && !areFeedbacksLoading && (
                     <Card>
                         <CardHeader>
                             <CardTitle className='font-headline'>Review Submitted</CardTitle>
@@ -560,3 +560,5 @@ function TaskDetailSkeleton() {
     </div>
   )
 }
+
+    
