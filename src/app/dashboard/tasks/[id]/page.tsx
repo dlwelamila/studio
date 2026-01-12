@@ -1,6 +1,6 @@
 'use client';
 
-import { use } from 'react';
+import { use, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronLeft, Star } from 'lucide-react';
@@ -61,7 +61,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const { toast } = useToast();
 
   const taskRef = useMemoFirebase(() => firestore && doc(firestore, 'tasks', id), [firestore, id]);
-  const { data: task, isLoading: isTaskLoading } = useDoc<Task>(taskRef);
+  const { data: task, isLoading: isTaskLoading, mutate: mutateTask } = useDoc<Task>(taskRef);
 
   const customerRef = useMemoFirebase(() => firestore && task && doc(firestore, 'customers', task.customerId), [firestore, task]);
   const { data: customer, isLoading: isCustomerLoading } = useDoc<Customer>(customerRef);
@@ -107,6 +107,10 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
         toast({ variant: 'destructive', title: 'Failed to Submit Offer', description: error.message });
     }
   }
+
+  const handleAcceptSuccess = () => {
+    mutateTask(); // Forces a re-fetch of the task data
+  };
   
   if (isTaskLoading || isUserLoading) {
     return <TaskDetailSkeleton />;
@@ -197,7 +201,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                              <div className="text-center py-8 text-destructive">Could not load offers. You may not have permission.</div>
                         )}
                         {!isOffersLoading && !offersError && offers && offers.length > 0 ? offers.map(offer => (
-                            <OfferCard key={offer.id} offer={offer} />
+                            <OfferCard key={offer.id} offer={offer} task={task} onAccept={handleAcceptSuccess} />
                         )) : (
                            !isOffersLoading &&  <div className="text-center py-8 text-muted-foreground">No offers received yet.</div>
                         )}
@@ -404,5 +408,3 @@ function TaskDetailSkeleton() {
     </div>
   )
 }
-
-    

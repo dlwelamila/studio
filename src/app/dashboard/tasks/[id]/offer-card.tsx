@@ -3,23 +3,66 @@ import Image from 'next/image';
 import { Star } from 'lucide-react';
 import { doc } from 'firebase/firestore';
 
-import type { Offer, Helper } from '@/lib/data';
+import type { Offer, Helper, Task } from '@/lib/data';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { updateDocument } from '@/firebase/firestore';
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 
 type OfferCardProps = {
   offer: Offer;
+  task: Task;
+  onAccept: () => void;
 };
 
-export function OfferCard({ offer }: OfferCardProps) {
+export function OfferCard({ offer, task, onAccept }: OfferCardProps) {
   const firestore = useFirestore();
+  const { toast } = useToast();
   
   const helperRef = useMemoFirebase(() => firestore && doc(firestore, 'helpers', offer.helperId), [firestore, offer.helperId]);
   const { data: helper, isLoading } = useDoc<Helper>(helperRef);
+
+  const handleAcceptOffer = async () => {
+    if (!firestore) return;
+
+    const taskRef = doc(firestore, 'tasks', offer.taskId);
+    const offerRef = doc(firestore, 'tasks', offer.taskId, 'offers', offer.id);
+
+    try {
+      // 1. Update the task status and assign the helper
+      await updateDocument(taskRef, {
+        status: 'ASSIGNED',
+        assignedHelperId: offer.helperId,
+      });
+
+      // 2. Update the offer status
+      await updateDocument(offerRef, {
+        status: 'ACCEPTED',
+      });
+      
+      onAccept();
+
+      toast({
+        title: 'Offer Accepted!',
+        description: `You have assigned ${helper?.fullName} to this task.`,
+      });
+      
+      // In a real app, you would also update all other offers to 'REJECTED'
+      // and send notifications. This is simplified for now.
+
+    } catch (error: any) {
+      console.error("Failed to accept offer: ", error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not accept the offer. Please try again.',
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -79,7 +122,9 @@ export function OfferCard({ offer }: OfferCardProps) {
         <p className="text-sm text-muted-foreground">{offer.message}</p>
         <div className="mt-4 flex justify-end gap-2">
             <Button variant="ghost">View Profile</Button>
-            <Button>Accept Offer</Button>
+            {task.status === 'OPEN' && (
+              <Button onClick={handleAcceptOffer}>Accept Offer</Button>
+            )}
         </div>
       </CardContent>
     </Card>
