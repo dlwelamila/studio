@@ -499,33 +499,27 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
             <CardHeader>
               <CardTitle className="font-headline text-base">Task Timeline</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-2 text-sm">
-                <div className="flex justify-between">
-                    <span className="text-muted-foreground">Posted</span>
-                    <span>{task.createdAt ? format(task.createdAt.toDate(), 'PP, p') : '-'}</span>
+            <CardContent className="grid gap-4 text-sm">
+                <div className="grid gap-1">
+                    <div className="font-medium text-muted-foreground">Posted</div>
+                    <div className="text-foreground">{task.createdAt ? format(task.createdAt.toDate(), 'PP, p') : '-'}</div>
                 </div>
                 {task.assignedAt && (
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Assigned</span>
-                        <span>{format(task.assignedAt.toDate(), 'PP, p')}</span>
-                    </div>
-                )}
-                 {task.startedAt && (
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Started</span>
-                        <span>{format(task.startedAt.toDate(), 'PP, p')}</span>
+                    <div className="grid gap-1">
+                        <div className="font-medium text-muted-foreground">Assigned</div>
+                        <div className="text-foreground">{format(task.assignedAt.toDate(), 'PP, p')}</div>
                     </div>
                 )}
                  {task.completedAt && (
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Completed</span>
-                        <span>{format(task.completedAt.toDate(), 'PP, p')}</span>
+                    <div className="grid gap-1">
+                        <div className="font-medium text-muted-foreground">Completed</div>
+                        <div className="text-foreground">{format(task.completedAt.toDate(), 'PP, p')}</div>
                     </div>
                 )}
                  {task.disputedAt && (
-                    <div className="flex justify-between text-destructive">
-                        <span className="font-medium">Disputed</span>
-                        <span className="font-medium">{format(task.disputedAt.toDate(), 'PP, p')}</span>
+                    <div className="grid gap-1 text-destructive">
+                        <div className="font-medium">Disputed</div>
+                        <div className="font-medium">{format(task.disputedAt.toDate(), 'PP, p')}</div>
                     </div>
                 )}
             </CardContent>
@@ -633,5 +627,6 @@ function TaskDetailSkeleton() {
     </div>
   )
 }
+
 
     
