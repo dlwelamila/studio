@@ -117,7 +117,7 @@ export default function ProfilePage() {
                             <MapPin className="h-5 w-5 mt-0.5 text-muted-foreground shrink-0" />
                             <div>
                                 <p className="text-muted-foreground">Service Areas</p>
-                                <p className="font-semibold mt-1">{helperProfile.serviceAreas.join(', ')}</p>
+                                <p className="font-semibold mt-1">{helperProfile.serviceAreas?.join(', ') || 'Not set'}</p>
                             </div>
                           </div>
                           <div className="flex items-start gap-3">
@@ -289,5 +289,3 @@ function ProfileSkeleton() {
     </div>
   )
 }
-
-    
