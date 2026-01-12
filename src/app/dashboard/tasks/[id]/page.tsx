@@ -3,7 +3,7 @@
 import { use, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronLeft, Star, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, Star, AlertTriangle, Briefcase, Wrench } from 'lucide-react';
 import { format } from 'date-fns';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -230,6 +230,20 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                         {format(task.createdAt.toDate(), 'PP')}
                     </div>
                 </div>
+                 <div className="flex items-start gap-2">
+                    <Briefcase className="h-5 w-5 mt-0.5 text-muted-foreground"/>
+                    <div>
+                        <p className="font-semibold text-foreground">Effort</p>
+                        <p className="capitalize text-muted-foreground">{task.effort}</p>
+                    </div>
+                 </div>
+                  <div className="flex items-start gap-2">
+                    <Wrench className="h-5 w-5 mt-0.5 text-muted-foreground"/>
+                    <div>
+                        <p className="font-semibold text-foreground">Tools Expected</p>
+                        <p className="capitalize text-muted-foreground">{task.toolsRequired || 'None'}</p>
+                    </div>
+                 </div>
                </div>
             </CardContent>
           </Card>
@@ -445,7 +459,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
           )}
           <Card>
             <CardHeader>
-              <CardTitle className="font-headline text-base">Safety & Support</CardTitle>
+              <CardTitle className="font-headline text-base">Safety &amp; Support</CardTitle>
             </CardHeader>
             <CardContent>
               <AlertDialog>

@@ -42,6 +42,7 @@ export type Task = {
   location?: { lat: number; lng: number }; // Exact location, revealed after assignment
   budget: { min: number; max: number };
   effort: 'light' | 'medium' | 'heavy';
+  toolsRequired?: string;
   timeWindow: string;
   status: 'OPEN' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   assignedHelperId?: string;
@@ -67,6 +68,7 @@ export type Review = {
   helperId: string;
   rating: number;
   feedback: string;
+  createdAt: Timestamp;
 };
 
 export const taskCategories = [

@@ -128,6 +128,15 @@
         "assignedHelperId": {
           "type": "string",
           "description": "Reference to Helper. (Relationship: Helper 1:N Task).  Null if not assigned."
+        },
+        "effort": {
+          "type": "string",
+          "description": "Estimated effort required for the task.",
+          "enum": ["light", "medium", "heavy"]
+        },
+        "toolsRequired": {
+          "type": "string",
+          "description": "A comma-separated list of tools expected for the task."
         }
       },
       "required": [
@@ -136,7 +145,8 @@
         "category",
         "description",
         "location",
-        "status"
+        "status",
+        "effort"
       ]
     },
     "Offer": {

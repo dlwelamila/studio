@@ -11,7 +11,6 @@ import { ChevronLeft } from 'lucide-react';
 import { useUser, useFirestore, addDoc, serverTimestamp } from '@/firebase';
 import { collection } from 'firebase/firestore';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -53,6 +52,8 @@ const taskFormSchema = z.object({
     min: z.coerce.number().positive(),
     max: z.coerce.number().positive(),
   }),
+  effort: z.enum(['light', 'medium', 'heavy'], { required_error: "Please estimate the effort level."}),
+  toolsRequired: z.string().optional(),
 });
 
 type TaskFormValues = z.infer<typeof taskFormSchema>;
@@ -74,7 +75,8 @@ export default function NewTaskPage() {
             budget: {
                 min: 0,
                 max: 0,
-            }
+            },
+            toolsRequired: '',
         }
     });
 
@@ -94,8 +96,9 @@ export default function NewTaskPage() {
                 min: data.budget.min,
                 max: data.budget.max,
             },
+            effort: data.effort,
+            toolsRequired: data.toolsRequired,
             // Default values for fields not in the form
-            effort: 'medium',
             timeWindow: 'Flexible',
             status: 'OPEN',
             createdAt: serverTimestamp(),
@@ -147,7 +150,7 @@ export default function NewTaskPage() {
         <CardHeader>
           <CardTitle>Task Details</CardTitle>
           <CardDescription>
-            Fill out the form below to find a helper for your task. The more details you provide, the better offers you&apos;ll get.
+            Fill out the form below to find a helper for your task. The more details you provide, the better offers you'll get.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -213,6 +216,46 @@ export default function NewTaskPage() {
                             <FormControl>
                                 <Input placeholder="e.g., Masaki, Dar es Salaam" {...field} />
                             </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                     <FormField
+                        control={form.control}
+                        name="effort"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Effort Level</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select estimated effort" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="light">Light (1-2 hours, simple task)</SelectItem>
+                                        <SelectItem value="medium">Medium (2-4 hours, standard task)</SelectItem>
+                                        <SelectItem value="heavy">Heavy (4+ hours, demanding task)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="toolsRequired"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Tools Expected</FormLabel>
+                            <FormControl>
+                                <Input placeholder="e.g., Bucket, soap, iron" {...field} />
+                            </FormControl>
+                             <FormDescription>
+                                List any tools the helper is expected to have. Leave blank if none.
+                             </FormDescription>
                             <FormMessage />
                             </FormItem>
                         )}

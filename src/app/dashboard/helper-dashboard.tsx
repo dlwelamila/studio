@@ -10,6 +10,8 @@ import {
   ToggleLeft,
   ToggleRight,
   Shield,
+  Briefcase,
+  Wrench,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -157,7 +159,7 @@ export default function HelperDashboard() {
             {isLoading && Array.from({length: 3}).map((_, i) => <TaskCardSkeleton key={i} />)}
             {openTasks && openTasks.map(task => {
                 return (
-                    <Card key={task.id}>
+                    <Card key={task.id} className="flex flex-col">
                         <CardHeader>
                             <div className="flex justify-between items-start">
                                 <Badge variant="outline">{task.category}</Badge>
@@ -167,17 +169,37 @@ export default function HelperDashboard() {
                             </div>
                             <CardTitle className="font-headline pt-2">{task.title}</CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="flex-grow">
                             <p className="line-clamp-3 text-sm text-muted-foreground">{task.description}</p>
                             <Separator className="my-4" />
-                            <div className="text-sm font-semibold">Budget (TZS)</div>
-                            <div className="text-lg font-bold text-primary">{`${task.budget.min.toLocaleString()} - ${task.budget.max.toLocaleString()}`}</div>
-                            <div className="mt-2 text-xs text-muted-foreground">{task.area}</div>
+                             <div className="grid gap-4">
+                                <div>
+                                    <div className="font-semibold text-foreground text-sm">Budget (TZS)</div>
+                                    <div className="text-lg font-bold text-primary">{`${task.budget.min.toLocaleString()} - ${task.budget.max.toLocaleString()}`}</div>
+                                    <div className="mt-1 text-xs text-muted-foreground">{task.area}</div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                     <div className="flex items-start gap-2">
+                                        <Briefcase className="h-4 w-4 mt-0.5 text-muted-foreground"/>
+                                        <div>
+                                            <p className="text-muted-foreground">Effort</p>
+                                            <p className="font-semibold capitalize">{task.effort}</p>
+                                        </div>
+                                     </div>
+                                      <div className="flex items-start gap-2">
+                                        <Wrench className="h-4 w-4 mt-0.5 text-muted-foreground"/>
+                                        <div>
+                                            <p className="text-muted-foreground">Tools</p>
+                                            <p className="font-semibold capitalize">{task.toolsRequired || 'None'}</p>
+                                        </div>
+                                     </div>
+                                </div>
+                            </div>
                         </CardContent>
                         <CardFooter>
                             <Button className="w-full" asChild>
                                 <Link href={`/dashboard/tasks/${task.id}`}>
-                                    View & Make Offer <ArrowRight className="ml-2 h-4 w-4" />
+                                    View &amp; Make Offer <ArrowRight className="ml-2 h-4 w-4" />
                                 </Link>
                             </Button>
                         </CardFooter>
