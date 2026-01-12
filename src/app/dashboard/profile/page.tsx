@@ -19,6 +19,7 @@ import type { Helper, Customer, Feedback } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ReviewCard } from './review-card';
 import { HelperJourneyBanner } from '../helper-journey-banner';
+import { PhoneVerificationDialog } from './phone-verification-dialog';
 
 export default function ProfilePage() {
   const { role, isRoleLoading } = useUserRole();
@@ -31,7 +32,7 @@ export default function ProfilePage() {
     return doc(firestore, collectionName, authUser.uid);
   }, [firestore, authUser, role]);
 
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<Helper | Customer>(userRef);
+  const { data: userProfile, isLoading: isProfileLoading, mutate: mutateProfile } = useDoc<Helper | Customer>(userRef);
 
   const feedbacksQuery = useMemoFirebase(() => {
     if (!firestore || !authUser || role !== 'helper') return null;
@@ -43,6 +44,8 @@ export default function ProfilePage() {
   const isLoading = isAuthLoading || isRoleLoading || isProfileLoading;
   const helperProfile = role === 'helper' ? (userProfile as Helper) : null;
   const customerProfile = role === 'customer' ? (userProfile as Customer) : null;
+  
+  const isPhoneVerified = role === 'customer' ? customerProfile?.phoneVerified : true; // Assume helpers are verified for now
 
   if (isLoading || !userProfile) {
     return <ProfileSkeleton />;
@@ -50,6 +53,7 @@ export default function ProfilePage() {
   
   return (
     <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
+      <div id="recaptcha-container" />
       {helperProfile && <HelperJourneyBanner helper={helperProfile} />}
       <div className="grid gap-4 md:grid-cols-[1fr_350px]">
         <div className="grid auto-rows-max items-start gap-4">
@@ -72,22 +76,27 @@ export default function ProfilePage() {
               </CardHeader>
               <CardContent>
               <Separator className="my-4" />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-4 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-8 gap-x-4 text-sm">
                   <div className="flex items-start gap-3">
                       <Phone className="h-5 w-5 mt-0.5 text-muted-foreground shrink-0" />
                       <div>
                           <p className="text-muted-foreground">Phone Number</p>
                           <div className='flex items-center flex-wrap gap-2 mt-1'>
                             <p className="font-semibold">{userProfile.phoneNumber}</p>
-                            {customerProfile && (
-                                customerProfile.phoneVerified ? (
-                                    <Badge variant="secondary" className='gap-1 border-green-500/50 text-green-700'>
-                                        <BadgeCheckIcon className="h-3 w-3" />
-                                        Verified
-                                    </Badge>
-                                ) : (
-                                    <Badge variant="destructive">Unverified</Badge>
-                                )
+                            {isPhoneVerified ? (
+                                <Badge variant="secondary" className='gap-1 border-green-500/50 text-green-700'>
+                                    <BadgeCheckIcon className="h-3 w-3" />
+                                    Verified
+                                </Badge>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="destructive">Unverified</Badge>
+                                  <PhoneVerificationDialog 
+                                    phoneNumber={userProfile.phoneNumber} 
+                                    userDocRef={userRef}
+                                    onSuccess={mutateProfile}
+                                  />
+                                </div>
                             )}
                           </div>
                       </div>
