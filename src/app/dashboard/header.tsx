@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { Home, PanelLeft, Settings, Package, Package2, Users2, Briefcase, Handshake, Repeat } from 'lucide-react';
+import { Home, PanelLeft, Settings, Package2, Users2, Briefcase, Handshake, Repeat, PlusCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
@@ -39,18 +39,16 @@ export default function AppHeader() {
 
   const userRef = useMemoFirebase(() => {
     if (!firestore || !authUser) return null;
-    // We fetch based on the current active role to display the correct profile info.
     const collectionName = role === 'customer' ? 'customers' : 'helpers';
     return doc(firestore, collectionName, authUser.uid);
   }, [firestore, authUser, role]);
   
-  // We need to know if both profiles exist to conditionally show the switch option.
   const customerProfileRef = useMemoFirebase(() => (firestore && authUser) ? doc(firestore, 'customers', authUser.uid) : null, [firestore, authUser]);
   const helperProfileRef = useMemoFirebase(() => (firestore && authUser) ? doc(firestore, 'helpers', authUser.uid) : null, [firestore, authUser]);
 
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<Helper | Customer>(userRef);
-  const { data: customerProfile } = useDoc<Customer>(customerProfileRef);
-  const { data: helperProfile } = useDoc<Helper>(helperProfileRef);
+  const { data: customerProfile, isLoading: isCustomerProfileLoading } = useDoc<Customer>(customerProfileRef);
+  const { data: helperProfile, isLoading: isHelperProfileLoading } = useDoc<Helper>(helperProfileRef);
 
 
   const handleLogout = async () => {
@@ -60,9 +58,11 @@ export default function AppHeader() {
   };
 
   const breadcrumbText = role === 'customer' ? 'My Tasks' : 'Browse Tasks';
-  const canBeHelper = !!helperProfile;
-  const canBeCustomer = !!customerProfile;
-  const canSwitchRoles = canBeHelper && canBeCustomer;
+  const hasCustomerProfile = !!customerProfile;
+  const hasHelperProfile = !!helperProfile;
+  const canSwitchRoles = hasCustomerProfile && hasHelperProfile;
+  
+  const isLoading = isUserLoading || isProfileLoading || isCustomerProfileLoading || isHelperProfileLoading;
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
@@ -91,7 +91,7 @@ export default function AppHeader() {
             </Link>
              {role === 'customer' ? (
                 <Link href="/dashboard/tasks/new" className="flex items-center gap-4 px-2.5 text-foreground">
-                    <Package className="h-5 w-5" />
+                    <Package2 className="h-5 w-5" />
                     New Task
                 </Link>
             ) : (
@@ -138,7 +138,7 @@ export default function AppHeader() {
               size="icon"
               className="overflow-hidden rounded-full"
             >
-              {isUserLoading || isProfileLoading || !userProfile ? (
+              {isLoading || !userProfile ? (
                  <Skeleton className="h-9 w-9 rounded-full" />
               ) : (
                 <Image
@@ -154,15 +154,27 @@ export default function AppHeader() {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>{userProfile?.fullName || 'My Account'}</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {canSwitchRoles && (
-              <>
-                <DropdownMenuItem onSelect={toggleRole}>
-                  <Repeat className="mr-2 h-4 w-4" />
-                  <span>Switch to {role === 'customer' ? 'Helper' : 'Customer'} View</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-              </>
-            )}
+            
+            { isLoading ? (
+              <DropdownMenuItem disabled>Loading...</DropdownMenuItem>
+            ) : canSwitchRoles ? (
+              <DropdownMenuItem onSelect={toggleRole}>
+                <Repeat className="mr-2 h-4 w-4" />
+                <span>Switch to {role === 'customer' ? 'Helper' : 'Customer'} View</span>
+              </DropdownMenuItem>
+            ) : !hasHelperProfile ? (
+              <DropdownMenuItem onSelect={() => router.push('/onboarding/create-profile?role=helper')}>
+                <Briefcase className="mr-2 h-4 w-4" />
+                <span>Become a Helper</span>
+              </DropdownMenuItem>
+            ) : !hasCustomerProfile ? (
+               <DropdownMenuItem onSelect={() => router.push('/onboarding/create-profile?role=customer')}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                <span>Start Hiring</span>
+              </DropdownMenuItem>
+            ) : null}
+
+            <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => router.push('/dashboard/profile')}>Settings</DropdownMenuItem>
             <DropdownMenuItem>Support</DropdownMenuItem>
             <DropdownMenuSeparator />

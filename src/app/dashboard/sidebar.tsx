@@ -3,16 +3,13 @@ import Link from 'next/link';
 import {
   Home,
   Briefcase,
-  Users,
-  PlusCircle,
+  Users2,
+  Package2,
   Settings,
-  Bell,
-  PanelLeft,
   Handshake,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
-import { Logo } from '@/components/logo';
 import { useUserRole } from '@/context/user-role-context';
 import { cn } from '@/lib/utils';
 import {
@@ -24,7 +21,7 @@ import {
 
 const CustomerNav = [
   { href: '/dashboard', label: 'My Tasks', icon: Home },
-  { href: '/dashboard/tasks/new', label: 'New Task', icon: PlusCircle },
+  { href: '/dashboard/tasks/new', label: 'New Task', icon: Package2 },
 ];
 
 const HelperNav = [
@@ -76,15 +73,15 @@ export function AppSidebar() {
                 href="/dashboard/profile"
                 className={cn(
                   'flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8',
-                  pathname === '/dashboard/profile' &&
+                  (pathname === '/dashboard/profile' || pathname === '/dashboard/settings') &&
                     'bg-accent text-accent-foreground'
                 )}
               >
-                <Settings className="h-5 w-5" />
-                <span className="sr-only">Settings</span>
+                <Users2 className="h-5 w-5" />
+                <span className="sr-only">Profile & Settings</span>
               </Link>
             </TooltipTrigger>
-            <TooltipContent side="right">Settings</TooltipContent>
+            <TooltipContent side="right">Profile & Settings</TooltipContent>
           </Tooltip>
         </nav>
       </TooltipProvider>

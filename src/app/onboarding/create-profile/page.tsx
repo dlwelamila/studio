@@ -1,10 +1,8 @@
-
-
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useForm, Controller } from 'react-hook-form';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
@@ -74,6 +72,7 @@ export default function CreateProfilePage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -91,6 +90,14 @@ export default function CreateProfilePage() {
   });
 
   const selectedRole = form.watch('role');
+
+  useEffect(() => {
+    const roleFromQuery = searchParams.get('role');
+    if (roleFromQuery === 'helper' || roleFromQuery === 'customer') {
+      form.setValue('role', roleFromQuery);
+    }
+  }, [searchParams, form]);
+
 
   const onSubmit = async (data: ProfileFormValues) => {
     if (!user || !firestore || !defaultAvatar) {
@@ -127,6 +134,7 @@ export default function CreateProfilePage() {
                 fullName: data.fullName,
                 profilePhotoUrl: defaultAvatar.imageUrl,
                 rating: 0,
+                memberSince: serverTimestamp(),
             };
             await setDoc(doc(firestore, 'customers', user.uid), customerData);
         }
@@ -145,7 +153,7 @@ export default function CreateProfilePage() {
   }
   
   if (!user) {
-    router.push('/login'); // Should not happen, but as a safeguard
+    router.push('/login');
     return null;
   }
 
@@ -172,6 +180,7 @@ export default function CreateProfilePage() {
                             <RadioGroup
                             onValueChange={field.onChange}
                             defaultValue={field.value}
+                            value={field.value}
                             className="flex flex-col space-y-1"
                             >
                             <FormItem className="flex items-center space-x-3 space-y-0">
