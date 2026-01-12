@@ -7,12 +7,12 @@ import { formatDistanceToNow } from 'date-fns';
 
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import type { Review, Customer } from '@/lib/data';
+import type { Feedback, Customer } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 
 type ReviewCardProps = {
-  review: Review;
+  review: Feedback;
 };
 
 export function ReviewCard({ review }: ReviewCardProps) {
@@ -48,7 +48,7 @@ export function ReviewCard({ review }: ReviewCardProps) {
             <div>
               <p className="text-sm font-semibold">{customer.fullName}</p>
               <p className="text-xs text-muted-foreground">
-                {formatDistanceToNow(review.createdAt.toDate(), { addSuffix: true })}
+                {review.createdAt ? formatDistanceToNow(review.createdAt.toDate(), { addSuffix: true }) : ''}
               </p>
             </div>
           </div>

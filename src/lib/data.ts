@@ -30,6 +30,7 @@ export type Customer = {
   email?: string;
   rating?: number;
   profilePhotoUrl: string;
+  memberSince: Timestamp;
 };
 
 export type Task = {
@@ -81,5 +82,3 @@ export const taskCategories = [
     'Shopping',
     'Other'
 ];
-
-    

@@ -15,7 +15,7 @@ import { Star, Briefcase, MapPin, Calendar, BadgeCheckIcon, MessageSquare, Shiel
 import { format } from 'date-fns';
 import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, query, collection, where } from 'firebase/firestore';
-import type { Helper, Customer, Review } from '@/lib/data';
+import type { Helper, Customer, Feedback } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ReviewCard } from './review-card';
 
@@ -32,12 +32,12 @@ export default function ProfilePage() {
 
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<Helper | Customer>(userRef);
 
-  const reviewsQuery = useMemoFirebase(() => {
+  const feedbacksQuery = useMemoFirebase(() => {
     if (!firestore || !authUser || role !== 'helper') return null;
     return query(collection(firestore, 'feedbacks'), where('helperId', '==', authUser.uid));
   }, [firestore, authUser, role]);
 
-  const { data: reviews, isLoading: areReviewsLoading } = useCollection<Review>(reviewsQuery);
+  const { data: feedbacks, isLoading: areFeedbacksLoading } = useCollection<Feedback>(feedbacksQuery);
 
 
   if (isUserLoading || isProfileLoading || !userProfile) {
@@ -82,7 +82,7 @@ export default function ProfilePage() {
                     <Calendar className="h-5 w-5 text-muted-foreground" />
                     <div>
                         <p className="text-muted-foreground">Member Since</p>
-                        <p className="font-semibold">{format(helperProfile?.memberSince.toDate() ?? new Date(), 'MMMM yyyy')}</p>
+                        <p className="font-semibold">{helperProfile?.memberSince ? format(helperProfile.memberSince.toDate(), 'MMMM yyyy') : 'N/A'}</p>
                     </div>
                 </div>
                 {helperProfile && (
@@ -147,16 +147,16 @@ export default function ProfilePage() {
                 <CardHeader>
                     <CardTitle className="font-headline flex items-center gap-2">
                         <MessageSquare className="h-5 w-5" />
-                        Reviews ({reviews?.length ?? 0})
+                        Reviews ({feedbacks?.length ?? 0})
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-4">
-                    {areReviewsLoading && Array.from({length: 2}).map((_, i) => <ReviewCardSkeleton key={i} />)}
+                    {areFeedbacksLoading && Array.from({length: 2}).map((_, i) => <ReviewCardSkeleton key={i} />)}
                     
-                    {!areReviewsLoading && reviews && reviews.length > 0 ? (
-                        reviews.map(review => <ReviewCard key={review.id} review={review} />)
+                    {!areFeedbacksLoading && feedbacks && feedbacks.length > 0 ? (
+                        feedbacks.map(review => <ReviewCard key={review.id} review={review} />)
                     ) : (
-                        !areReviewsLoading && (
+                        !areFeedbacksLoading && (
                             <div className="text-center text-sm text-muted-foreground py-8">
                                 No reviews yet. Complete more tasks to get feedback!
                             </div>
