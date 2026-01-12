@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -40,7 +39,7 @@ export function useHelperJourney(helper: Helper | null | undefined): HelperJourn
     // --- Derivation Rules (as per spec) ---
 
     // 1. Determine Lifecycle Stage
-    if (profileCompletion.percent < 100) {
+    if (profileCompletion && profileCompletion.percent < 100) {
       lifecycleStage = 'PROFILE_INCOMPLETE';
     } else if (verificationStatus === 'PENDING') {
       lifecycleStage = 'PENDING_VERIFICATION';
@@ -65,16 +64,16 @@ export function useHelperJourney(helper: Helper | null | undefined): HelperJourn
     // 3. Determine Next Actions based on Stage
     switch (lifecycleStage) {
       case 'PROFILE_INCOMPLETE':
-        if (profileCompletion.missing.includes('aboutMe')) {
+        if (profileCompletion?.missing.includes('aboutMe')) {
             nextActions.push({ id: 'ADD_ABOUT_ME', label: 'Add your bio', required: true, href: '/dashboard/profile' });
         }
-        if (profileCompletion.missing.includes('serviceAreas')) {
+        if (profileCompletion?.missing.includes('serviceAreas')) {
             nextActions.push({ id: 'ADD_AREAS', label: 'Select service areas', required: true, href: '/dashboard/profile' });
         }
-        if (profileCompletion.missing.includes('serviceCategories')) {
+        if (profileCompletion?.missing.includes('serviceCategories')) {
             nextActions.push({ id: 'ADD_CATEGORIES', label: 'Choose your skills', required: true, href: '/dashboard/profile' });
         }
-        if (profileCompletion.missing.includes('profilePhoto')) {
+        if (profileCompletion?.missing.includes('profilePhoto')) {
             nextActions.push({ id: 'UPLOAD_PHOTO', label: 'Add a clear profile photo', required: true, href: '/dashboard/profile' });
         }
         break;
@@ -92,7 +91,7 @@ export function useHelperJourney(helper: Helper | null | undefined): HelperJourn
 
     return {
       lifecycleStage,
-      profileCompletion,
+      profileCompletion: profileCompletion || { percent: 0, missing: ['profilePhoto', 'serviceCategories', 'serviceAreas', 'aboutMe'] },
       verificationStatus,
       capabilities,
       nextActions,
