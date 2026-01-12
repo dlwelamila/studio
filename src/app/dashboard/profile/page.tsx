@@ -22,6 +22,7 @@ import { HelperJourneyBanner } from '../helper-journey-banner';
 import { MfaEnrollmentDialog } from './mfa-enrollment-dialog';
 import { useHelperJourney } from '@/hooks/use-helper-journey';
 import { cn } from '@/lib/utils';
+import { PhoneVerificationDialog } from './phone-verification-dialog';
 
 
 export default function ProfilePage() {
@@ -95,7 +96,10 @@ export default function ProfilePage() {
                                 </Badge>
                             )}
                              {isPhoneVerified === false && (
+                                <>
                                 <Badge variant="destructive">Unverified</Badge>
+                                <PhoneVerificationDialog phoneNumber={userProfile.phoneNumber} userDocRef={userRef} onSuccess={mutateProfile} />
+                                </>
                              )}
                           </div>
                       </div>
@@ -285,3 +289,5 @@ function ProfileSkeleton() {
     </div>
   )
 }
+
+    

@@ -119,3 +119,5 @@ export const taskCategories = [
     'Shopping',
     'Other'
 ];
+
+    

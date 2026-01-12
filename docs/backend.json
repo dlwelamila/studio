@@ -22,6 +22,9 @@
         "phoneNumber": {
           "type": "string",
           "description": "The unique, verified phone number of the customer."
+        },
+        "phoneVerified": {
+            "type": "boolean"
         }
       },
       "required": [
@@ -182,7 +185,7 @@
           "type": "number",
           "description": "The price offered by the helper."
         },
-        "availability": {
+        "eta": {
           "type": "string",
           "description": "The helper's availability to perform the task."
         },
@@ -196,7 +199,7 @@
         "taskId",
         "helperId",
         "price",
-        "availability",
+        "eta",
         "message"
       ]
     },
@@ -231,9 +234,9 @@
         "email"
       ]
     },
-    "Rating": {
+    "Feedback": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Rating",
+      "title": "Feedback",
       "type": "object",
       "description": "Represents a rating given by a customer to a helper after task completion.",
       "properties": {
@@ -257,7 +260,7 @@
           "type": "number",
           "description": "The rating value (e.g., 1 to 5 stars)."
         },
-        "comment": {
+        "feedback": {
           "type": "string",
           "description": "Optional comment from the customer."
         }
@@ -374,14 +377,18 @@
         }
       },
       {
-        "path": "/offers/{offerId}",
+        "path": "/tasks/{taskId}/offers/{offerId}",
         "definition": {
           "entityName": "Offer",
           "schema": {
             "$ref": "#/backend/entities/Offer"
           },
-          "description": "Stores offers made by helpers for tasks. Includes denormalized 'helperId' and 'taskId' for authorization independence.",
+          "description": "Stores offers made by helpers for tasks. This is a subcollection of the task.",
           "params": [
+            {
+              "name": "taskId",
+              "description": "The ID of the parent task."
+            },
             {
               "name": "offerId",
               "description": "The unique ID of the offer."
@@ -390,17 +397,17 @@
         }
       },
       {
-        "path": "/ratings/{ratingId}",
+        "path": "/feedbacks/{feedbackId}",
         "definition": {
-          "entityName": "Rating",
+          "entityName": "Feedback",
           "schema": {
-            "$ref": "#/backend/entities/Rating"
+            "$ref": "#/backend/entities/Feedback"
           },
-          "description": "Stores ratings given by customers to helpers. Includes denormalized 'taskId', 'customerId', and 'helperId' for authorization independence.",
+          "description": "Stores feedback given by customers to helpers. Includes denormalized 'taskId', 'customerId', and 'helperId' for authorization independence.",
           "params": [
             {
-              "name": "ratingId",
-              "description": "The unique ID of the rating."
+              "name": "feedbackId",
+              "description": "The unique ID of the feedback."
             }
           ]
         }
@@ -438,6 +445,7 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to support the tasKey application, focusing on task management, user roles (Customers, Helpers, Admins), and efficient data access with robust security rules.  The key principle is Authorization Independence, achieved through denormalization. For example, tasks denormalize customerId, and offers denormalize helperId and taskId, allowing rules to validate access without needing to `get()` parent documents. \n\n*   **Customers:** `/customers/{userId}` stores customer profiles.\n*   **Helpers:** `/helpers/{userId}` stores helper profiles.\n*   **Tasks:** `/tasks/{taskId}` stores task documents. Tasks denormalize `customerId` to ensure Authorization Independence.\n*   **Offers:** `/tasks/{taskId}/offers/{offerId}` is a subcollection within each task. This simplifies security rules as access to offers can be inherited from the parent task.\n*   **Ratings:** Ratings are stored in `/ratings/{ratingId}`. They denormalize `taskId`, `customerId`, and `helperId` for authorization independence and simpler querying.\n*   **Admins:** Admin status is managed via document existence in `/roles_admin/{userId}`.  This leverages the \"existence over content\" pattern for global role management.\n\n\n**QAPs (Rules are not Filters):**\n\n*   The structure supports secure `list` operations.\n*   Helpers can list all documents in the `/tasks` collection, but rules on `get` will prevent them from reading full details of tasks they are not involved in.\n\nThis structure adheres to all core design principles and strategy mandates, ensuring a secure, scalable, and debuggable Firestore database for the tasKey application."
+    "reasoning": "The Firestore structure is designed to support the tasKey application, focusing on task management, user roles (Customers, Helpers, Admins), and efficient data access with robust security rules.  The key principle is Authorization Independence, achieved through denormalization. For example, tasks denormalize customerId, and offers denormalize helperId and taskId, allowing rules to validate access without needing to `get()` parent documents. \n\n*   **Customers:** `/customers/{userId}` stores customer profiles.\n*   **Helpers:** `/helpers/{userId}` stores helper profiles.\n*   **Tasks:** `/tasks/{taskId}` stores task documents. Tasks denormalize `customerId` to ensure Authorization Independence.\n*   **Offers:** `/tasks/{taskId}/offers/{offerId}` is a subcollection within each task. This simplifies security rules as access to offers can be inherited from the parent task.\n*   **Feedbacks:** Feedbacks are stored in `/feedbacks/{feedbackId}`. They denormalize `taskId`, `customerId`, and `helperId` for authorization independence and simpler querying.\n*   **Admins:** Admin status is managed via document existence in `/roles_admin/{userId}`.  This leverages the \"existence over content\" pattern for global role management.\n\n\n**QAPs (Rules are not Filters):**\n\n*   The structure supports secure `list` operations.\n*   Helpers can list all documents in the `/tasks` collection, but rules on `get` will prevent them from reading full details of tasks they are not involved in.\n\nThis structure adheres to all core design principles and strategy mandates, ensuring a secure, scalable, and debuggable Firestore database for the tasKey application."
   }
 }
+    
