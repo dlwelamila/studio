@@ -57,6 +57,7 @@ import type { Task, Offer, Customer, Helper, Feedback } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { ReviewForm } from './review-form';
+import { FitIndicator } from './fit-indicator';
 
 const offerFormSchema = z.object({
     price: z.coerce.number().positive({ message: "Please enter a valid price." }),
@@ -82,6 +83,10 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
 
   const assignedHelperRef = useMemoFirebase(() => firestore && task?.assignedHelperId && doc(firestore, 'helpers', task.assignedHelperId), [firestore, task]);
   const { data: assignedHelper } = useDoc<Helper>(assignedHelperRef);
+
+  const helperProfileRef = useMemoFirebase(() => firestore && currentUser ? doc(firestore, 'helpers', currentUser.uid) : null, [firestore, currentUser]);
+  const { data: currentHelperProfile } = useDoc<Helper>(helperProfileRef);
+
 
   const offersQuery = useMemoFirebase(() => firestore && query(collection(firestore, 'tasks', id, 'offers')), [firestore, id]);
   const { data: offers, isLoading: isOffersLoading, error: offersError } = useCollection<Offer>(offersQuery);
@@ -197,6 +202,11 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
       </div>
       <div className="grid gap-4 md:grid-cols-[1fr_250px] lg:grid-cols-3 lg:gap-8">
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
+          
+          {!isCustomerView && !isAssignedHelperView && currentHelperProfile && (
+             <FitIndicator task={task} helper={currentHelperProfile} />
+          )}
+
           <Card>
             <CardHeader className="flex flex-row items-start justify-between">
               <div>
@@ -241,7 +251,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                     <Wrench className="h-5 w-5 mt-0.5 text-muted-foreground"/>
                     <div>
                         <p className="font-semibold text-foreground">Tools Expected</p>
-                        <p className="capitalize text-muted-foreground">{task.toolsRequired || 'None'}</p>
+                        <p className="capitalize text-muted-foreground">{task.toolsRequired?.join(', ') || 'None'}</p>
                     </div>
                  </div>
                </div>
@@ -560,5 +570,3 @@ function TaskDetailSkeleton() {
     </div>
   )
 }
-
-    

@@ -1,6 +1,6 @@
 import type { ImagePlaceholder } from '@/lib/placeholder-images';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp, GeoPoint } from 'firebase/firestore';
 
 const avatars = PlaceHolderImages.filter(img => img.id.startsWith('avatar-'));
 
@@ -40,10 +40,10 @@ export type Task = {
   description: string;
   category: string;
   area: string; // Approximate area
-  location?: { lat: number; lng: number }; // Exact location, revealed after assignment
+  location?: GeoPoint; // Exact location, revealed after assignment
   budget: { min: number; max: number };
   effort: 'light' | 'medium' | 'heavy';
-  toolsRequired?: string;
+  toolsRequired?: string[];
   timeWindow: string;
   status: 'OPEN' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   assignedHelperId?: string;

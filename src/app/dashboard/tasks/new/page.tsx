@@ -98,7 +98,7 @@ export default function NewTaskPage() {
                 max: data.budget.max,
             },
             effort: data.effort,
-            toolsRequired: data.toolsRequired,
+            toolsRequired: data.toolsRequired?.split(',').map(t => t.trim()).filter(Boolean) || [],
             // Default values for fields not in the form
             timeWindow: 'Flexible',
             status: 'OPEN',
@@ -233,7 +233,7 @@ export default function NewTaskPage() {
                                     <FormControl>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select estimated effort" />
-                                    </SelectTrigger>
+                                    </Trigger>
                                     </FormControl>
                                     <SelectContent>
                                         <SelectItem value="light">Light (1-2 hours, simple task)</SelectItem>
@@ -250,7 +250,7 @@ export default function NewTaskPage() {
                         name="toolsRequired"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Tools Expected</FormLabel>
+                            <FormLabel>Tools Expected (comma-separated)</FormLabel>
                             <FormControl>
                                 <Input placeholder="e.g., Bucket, soap, iron" {...field} />
                             </FormControl>
@@ -306,5 +306,3 @@ export default function NewTaskPage() {
     </div>
   );
 }
-
-    
