@@ -169,7 +169,7 @@ export default function HelperDashboard() {
                               <div className="flex justify-between items-start">
                                   <Badge variant="outline">{task.category}</Badge>
                                   <div className="text-xs text-muted-foreground">
-                                      {formatDistanceToNow(task.createdAt.toDate(), { addSuffix: true })}
+                                      {task.createdAt ? formatDistanceToNow(task.createdAt.toDate(), { addSuffix: true }) : ''}
                                   </div>
                               </div>
                               <CardTitle className="font-headline pt-2">{task.title}</CardTitle>

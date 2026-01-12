@@ -1,4 +1,3 @@
-
 'use client';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -103,10 +102,10 @@ export function OfferCard({ offer, task, onAccept }: OfferCardProps) {
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <div className="flex items-center gap-0.5">
                   <Star className="h-4 w-4 fill-primary text-primary" />
-                  <span>{helper.rating?.toFixed(1) || 'New'}</span>
+                  <span>{helper.stats.ratingAvg?.toFixed(1) || 'New'}</span>
                 </div>
                 <span>&middot;</span>
-                <div>{helper.completedTasks || 0} tasks completed</div>
+                <div>{helper.stats.jobsCompleted || 0} tasks completed</div>
               </div>
             </div>
           </div>
