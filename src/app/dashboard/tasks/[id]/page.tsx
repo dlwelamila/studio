@@ -14,8 +14,7 @@ import { serverTimestamp } from 'firebase/firestore';
 
 import { useUserRole } from '@/context/user-role-context';
 import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 import { doc, collection, query, where, GeoPoint } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
@@ -71,7 +70,7 @@ type OfferFormValues = z.infer<typeof offerFormSchema>;
 
 
 export default function TaskDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+  const { id } = use(params);
   const { role } = useUserRole();
   const { user: currentUser, isUserLoading } = useUser();
   const firestore = useFirestore();
