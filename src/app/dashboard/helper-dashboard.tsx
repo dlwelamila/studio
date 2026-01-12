@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   ArrowRight,
   ListFilter,
@@ -13,7 +13,7 @@ import {
   Wrench,
   Wallet,
 } from 'lucide-react';
-import { formatDistanceToNow, isToday, isWeekend } from 'date-fns';
+import { formatDistanceToNow, isToday, isWeekend, subDays } from 'date-fns';
 
 import { useCollection, useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -49,6 +49,12 @@ import { HelperJourneyBanner } from './helper-journey-banner';
 
 type TimeWindowFilter = 'all' | 'today' | 'weekend';
 
+type CalculatedEarnings = {
+    thisWeek: number;
+    thisMonth: number;
+    lifetime: number;
+}
+
 export default function HelperDashboard() {
   const { user: authUser, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
@@ -57,15 +63,46 @@ export default function HelperDashboard() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [areaSearch, setAreaSearch] = useState('');
   const [timeFilter, setTimeFilter] = useState<TimeWindowFilter>('all');
-
+  const [earnings, setEarnings] = useState<CalculatedEarnings>({ thisWeek: 0, thisMonth: 0, lifetime: 0 });
 
   const helperRef = useMemoFirebase(() => authUser && firestore ? doc(firestore, 'helpers', authUser.uid) : null, [authUser, firestore]);
   const { data: helper, isLoading: isHelperLoading, mutate: mutateHelper } = useDoc<Helper>(helperRef);
 
-  const tasksQuery = useMemoFirebase(() => firestore && authUser ? query(collection(firestore, 'tasks'), where('status', '==', 'OPEN')) : null, [firestore, authUser]);
-  const { data: openTasks, isLoading: areTasksLoading } = useCollection<Task>(tasksQuery);
+  const openTasksQuery = useMemoFirebase(() => firestore && authUser ? query(collection(firestore, 'tasks'), where('status', '==', 'OPEN')) : null, [firestore, authUser]);
+  const { data: openTasks, isLoading: areOpenTasksLoading } = useCollection<Task>(openTasksQuery);
+
+  const completedTasksQuery = useMemoFirebase(() => firestore && authUser ? query(collection(firestore, 'tasks'), where('assignedHelperId', '==', authUser.uid), where('status', '==', 'COMPLETED')) : null, [firestore, authUser]);
+  const { data: completedTasks, isLoading: areCompletedTasksLoading } = useCollection<Task>(completedTasksQuery);
   
-  const isLoading = isAuthLoading || isHelperLoading || areTasksLoading;
+  useEffect(() => {
+    if (completedTasks) {
+        const now = new Date();
+        const oneWeekAgo = subDays(now, 7);
+        const oneMonthAgo = subDays(now, 30);
+
+        const newEarnings: CalculatedEarnings = {
+            thisWeek: 0,
+            thisMonth: 0,
+            lifetime: 0,
+        };
+
+        completedTasks.forEach(task => {
+            const price = task.acceptedOfferPrice ?? 0;
+            newEarnings.lifetime += price;
+            
+            if (task.completedAt && task.completedAt.toDate() > oneMonthAgo) {
+                newEarnings.thisMonth += price;
+            }
+            if (task.completedAt && task.completedAt.toDate() > oneWeekAgo) {
+                newEarnings.thisWeek += price;
+            }
+        });
+
+        setEarnings(newEarnings);
+    }
+  }, [completedTasks]);
+
+  const isLoading = isAuthLoading || isHelperLoading || areOpenTasksLoading || areCompletedTasksLoading;
 
   const handleAvailabilityToggle = (isAvailable: boolean) => {
     if (!helperRef) return;
@@ -194,7 +231,7 @@ export default function HelperDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4">
-              {isLoading || !helper ? (
+              {isLoading ? (
                 <>
                   <Skeleton className="h-6 w-3/4" />
                   <Skeleton className="h-4 w-1/2" />
@@ -206,12 +243,17 @@ export default function HelperDashboard() {
                 <>
                   <div>
                     <CardDescription>This Week</CardDescription>
-                    <p className="text-2xl font-bold">{(helper.walletSummary?.earningsThisWeek ?? 0).toLocaleString()} {helper.walletSummary?.currency ?? 'TZS'}</p>
+                    <p className="text-2xl font-bold">{earnings.thisWeek.toLocaleString()} TZS</p>
                   </div>
                   <Separator />
                    <div>
                     <CardDescription>This Month</CardDescription>
-                    <p className="text-2xl font-bold">{(helper.walletSummary?.earningsThisMonth ?? 0).toLocaleString()} {helper.walletSummary?.currency ?? 'TZS'}</p>
+                    <p className="text-2xl font-bold">{earnings.thisMonth.toLocaleString()} TZS</p>
+                  </div>
+                   <Separator />
+                   <div>
+                    <CardDescription>Lifetime</CardDescription>
+                    <p className="text-2xl font-bold">{earnings.lifetime.toLocaleString()} TZS</p>
                   </div>
                 </>
               )}

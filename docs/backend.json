@@ -80,8 +80,7 @@
         "walletSummary": {
           "type": "object",
           "properties": {
-            "earningsThisWeek": { "type": "number" },
-            "earningsThisMonth": { "type": "number" },
+            "lifetimeEarnings": { "type": "number" },
             "currency": { "type": "string", "enum": ["TZS"] }
           }
         },

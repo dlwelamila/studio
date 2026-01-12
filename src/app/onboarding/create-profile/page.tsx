@@ -172,8 +172,7 @@ export default function CreateProfilePage() {
                   reliabilityLevel: 'GREEN',
                 },
                 walletSummary: {
-                  earningsThisWeek: 0,
-                  earningsThisMonth: 0,
+                  lifetimeEarnings: 0,
                   currency: 'TZS',
                 },
 
@@ -187,6 +186,7 @@ export default function CreateProfilePage() {
                 id: user.uid,
                 email: user.email,
                 phoneNumber: user.phoneNumber || '',
+                phoneVerified: user.phoneNumber ? true : false,
                 fullName: data.fullName,
                 profilePhotoUrl: defaultAvatar.imageUrl,
                 rating: 4.0,

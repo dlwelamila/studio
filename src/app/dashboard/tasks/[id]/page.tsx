@@ -547,7 +547,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                 <CardContent className="grid gap-4 text-sm">
                     <div className="grid gap-1">
                         <div className="font-medium text-muted-foreground">Disputed On</div>
-                        <div className="font-medium text-destructive">{format(task.disputedAt.toDate(), 'MMM d, yyyy, h:mm a')}</div>
+                        <div className="font-medium text-destructive">{format(task.disputedAt.toDate(), 'MMM d, yyyy, p')}</div>
                     </div>
                 </CardContent>
             </Card>
@@ -656,4 +656,3 @@ function TaskDetailSkeleton() {
     </div>
   )
 }
-    

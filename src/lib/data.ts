@@ -32,8 +32,7 @@ export type Helper = {
     reliabilityLevel: 'GREEN' | 'YELLOW' | 'RED';
   };
   walletSummary: {
-    earningsThisWeek: number;
-    earningsThisMonth: number;
+    lifetimeEarnings: number;
     currency: 'TZS';
   };
   
@@ -47,6 +46,7 @@ export type Customer = {
   id: string; // Corresponds to Firebase Auth UID
   fullName: string;
   phoneNumber: string;
+  phoneVerified?: boolean;
   email?: string;
   rating?: number;
   profilePhotoUrl: string;
@@ -117,4 +117,3 @@ export const taskCategories = [
     'Shopping',
     'Other'
 ];
-    
