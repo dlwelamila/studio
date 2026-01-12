@@ -99,17 +99,20 @@ export default function AuthForm() {
     }
   }, [user, isUserLoading, router, auth, toast]);
 
-  // Setup reCAPTCHA for phone authentication
+  // Setup reCAPTCHA for phone authentication.
+  // This runs only once on the client after the component mounts.
   useEffect(() => {
     if (!auth) return;
+
+    // Ensure this only runs once and that the container element exists.
     if (!(window as any).recaptchaVerifier) {
-      // The 'recaptcha-container' must exist in the DOM before this is called.
-      // This is why we have it inside a useEffect.
       (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
         size: 'invisible',
       });
       (window as any).recaptchaVerifier.render();
     }
+    
+    // No cleanup function needed as we want it to persist for the component's lifetime.
   }, [auth]);
 
   const handleEmailPasswordAuth = async () => {
