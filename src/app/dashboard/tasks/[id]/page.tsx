@@ -28,6 +28,17 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Form,
   FormControl,
   FormField,
@@ -142,6 +153,15 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
       toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
     }
   }
+
+  const handleReportSubmit = () => {
+    // In a real app, this would submit the report to a backend service.
+    // For now, we just show a toast notification.
+    toast({
+      title: "Report Submitted",
+      description: "Thank you for your feedback. Our support team will review the issue.",
+    });
+  };
   
   if (isTaskLoading || isUserLoading) {
     return <TaskDetailSkeleton />;
@@ -428,13 +448,32 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
           )}
           <Card>
             <CardHeader>
-                <CardTitle className="font-headline text-base">Safety & Support</CardTitle>
+              <CardTitle className="font-headline text-base">Safety & Support</CardTitle>
             </CardHeader>
             <CardContent>
-                <Button variant="outline" className="w-full">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" className="w-full">
                     <AlertTriangle className="mr-2 h-4 w-4" />
                     Report a Problem
-                </Button>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Report an Issue</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Describe the problem you're experiencing with this task or user. Your report will be sent to our support team for review. This is confidential.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <Textarea placeholder="Please provide as much detail as possible..." className="min-h-[120px]" />
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleReportSubmit}>Submit Report</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </CardContent>
           </Card>
         </div>
