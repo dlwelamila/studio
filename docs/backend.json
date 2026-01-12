@@ -57,23 +57,42 @@
           "type": "string",
           "description": "The unique, verified phone number of the helper."
         },
-        "skills": {
-          "type": "array",
-          "description": "List of skills the helper possesses.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "bio": {
+        "aboutMe": {
           "type": "string",
           "description": "A short biography of the helper."
+        },
+        "isAvailable": {
+            "type": "boolean"
+        },
+        "serviceCategories": {
+            "type": "array",
+            "items": { "type": "string" }
+        },
+        "serviceAreas": {
+            "type": "array",
+            "items": { "type": "string" }
+        },
+        "stats": {
+            "type": "object",
+            "properties": {
+                "jobsCompleted": { "type": "number" },
+                "jobsCancelled": { "type": "number" },
+                "ratingAvg": { "type": "number" },
+                "reliabilityLevel": { "type": "string", "enum": ["GREEN", "YELLOW", "RED"] }
+            }
+        },
+        "verificationStatus": {
+            "type": "string",
+            "enum": ["PENDING", "APPROVED", "SUSPENDED"]
         }
       },
       "required": [
         "id",
         "fullName",
         "phoneNumber",
-        "skills"
+        "serviceCategories",
+        "serviceAreas",
+        "aboutMe"
       ]
     },
     "Task": {

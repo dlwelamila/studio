@@ -36,15 +36,15 @@ export type Helper = {
   references?: string;
   additionalSkills?: string;
   reliabilityIndicator: 'Good' | 'Average' | 'Poor';
-  rating?: number;
-  completedTasks?: number;
+  rating?: number; // to be deprecated
+  completedTasks?: number; // to be deprecated
 };
 
 export type Customer = {
   id: string; // Corresponds to Firebase Auth UID
   fullName: string;
   phoneNumber: string;
-  phoneVerified?: boolean; // Made optional for grace period
+  phoneVerified?: boolean; 
   email?: string | null;
   rating?: number;
   profilePhotoUrl: string;

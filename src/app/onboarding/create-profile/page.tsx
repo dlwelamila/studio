@@ -173,8 +173,6 @@ export default function CreateProfilePage() {
                   reliabilityLevel: 'GREEN',
                 },
                 reliabilityIndicator: 'Good',
-                rating: 0,
-                completedTasks: 0,
             };
             await setDoc(doc(firestore, 'helpers', user.uid), helperData, { merge: true });
         } else {
