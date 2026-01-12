@@ -84,13 +84,41 @@ service cloud.firestore {
     }
 
     /**
-     * Checks if the user is either the customer who created the task or the
-     * helper assigned to it. Used for granting update permissions.
+     * Checks if the user is the customer who created the task.
      */
-    function isTaskOwnerOrAssignedHelper() {
-      return resource != null && (isOwner(resource.data.customerId) || isOwner(resource.data.assignedHelperId));
+    function isTaskOwner() {
+        return resource != null && isOwner(resource.data.customerId);
+    }
+    
+    /**
+     * Checks if the user is the helper assigned to the task.
+     */
+    function isAssignedHelper() {
+        return resource != null && isOwner(resource.data.assignedHelperId);
     }
 
+    /**
+     * Validates a helper is updating the task status correctly (ASSIGNED -> IN_PROGRESS -> COMPLETED)
+     */
+    function isValidStatusUpdateByHelper() {
+        let isUpdatingStatus = request.resource.data.keys().hasOnly(['status']) || request.resource.data.keys().hasAll(['status', 'completedAt']);
+        let currentStatus = resource.data.status;
+        let nextStatus = request.resource.data.status;
+        
+        let validTransitions = 
+            (currentStatus == 'ASSIGNED' && nextStatus == 'IN_PROGRESS') ||
+            (currentStatus == 'IN_PROGRESS' && nextStatus == 'COMPLETED');
+            
+        return isAssignedHelper() && isUpdatingStatus && validTransitions;
+    }
+
+    /**
+     * Validates a customer is assigning a helper.
+     */
+    function isValidAssignmentByCustomer() {
+        let isAssigning = request.resource.data.keys().hasAll(['status', 'assignedHelperId']);
+        return isTaskOwner() && isAssigning && request.resource.data.status == 'ASSIGNED';
+    }
 
 
     /**
@@ -166,8 +194,8 @@ service cloud.firestore {
     match /tasks/{taskId} {
       allow get, list: if isSignedIn() || isAdmin();
       allow create: if isCreatingOwnTask();
-      allow update: if isTaskOwnerOrAssignedHelper() || isAdmin();
-      allow delete: if (resource != null && isOwner(resource.data.customerId)) || isAdmin();
+      allow update: if isValidAssignmentByCustomer() || isValidStatusUpdateByHelper() || isAdmin();
+      allow delete: if isTaskOwner() || isAdmin();
 
       /**
        * @description Controls access to offers made on a task.
@@ -180,7 +208,7 @@ service cloud.firestore {
         allow get: if (resource != null && isOwner(resource.data.helperId)) || isParentTaskOwner(taskId) || isAdmin();
         allow list: if isParentTaskOwner(taskId) || isAdmin();
         allow create: if isCreatingOwnOffer(taskId);
-        allow update: if (isExistingOwner(resource.data.helperId) || isAdmin());
+        allow update: if (isExistingOwner(resource.data.helperId) || isAdmin() || isParentTaskOwner(taskId));
         allow delete: if (isExistingOwner(resource.data.helperId) || isAdmin());
       }
     }
