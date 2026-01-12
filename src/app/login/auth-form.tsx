@@ -103,9 +103,10 @@ export default function AuthForm() {
   useEffect(() => {
     if (!auth) return;
     if (!(window as any).recaptchaVerifier) {
-        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-          'size': 'invisible',
-        });
+      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+      });
+      (window as any).recaptchaVerifier.render();
     }
   }, [auth]);
 
@@ -303,5 +304,3 @@ export default function AuthForm() {
     </div>
   );
 }
-
-    
