@@ -11,6 +11,7 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { taskCategories } from '@/lib/data';
+import type { Helper } from '@/lib/data';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -134,21 +135,44 @@ export default function CreateProfilePage() {
     try {
         if (data.role === 'helper') {
             if (!defaultHelperAvatar) throw new Error("Default avatar not found");
-            const helperData = {
+
+            // Calculate profile completion
+            const missing: Array<'profilePhoto' | 'serviceCategories' | 'serviceAreas' | 'aboutMe'> = [];
+            if (!data.serviceCategories || data.serviceCategories.length === 0) missing.push('serviceCategories');
+            if (!data.serviceAreas) missing.push('serviceAreas');
+            if (!data.aboutMe) missing.push('aboutMe');
+            
+            const completionPercent = Math.round(( (4 - missing.length) / 4) * 100);
+
+            const helperData: Helper = {
                 id: user.uid,
                 email: user.email,
                 phoneNumber: user.phoneNumber || '',
                 fullName: data.fullName,
                 profilePhotoUrl: defaultHelperAvatar.imageUrl,
-                serviceCategories: data.serviceCategories,
-                serviceAreas: data.serviceAreas?.split(',').map(s => s.trim()),
-                aboutMe: data.aboutMe,
-                verificationStatus: 'Verified', // Pre-verify for testing
-                isAvailable: true,
+                serviceCategories: data.serviceCategories || [],
+                serviceAreas: data.serviceAreas?.split(',').map(s => s.trim()) || [],
+                aboutMe: data.aboutMe || '',
+                memberSince: serverTimestamp() as Timestamp,
+                
+                // Lifecycle fields
+                verificationStatus: 'PENDING',
+                lifecycleStage: completionPercent < 100 ? 'PROFILE_INCOMPLETE' : 'PENDING_VERIFICATION',
+                profileCompletion: {
+                  percent: completionPercent,
+                  missing: missing,
+                },
+                stats: {
+                  jobsCompleted: 0,
+                  jobsCancelled: 0,
+                  ratingAvg: 0,
+                  reliabilityLevel: 'GREEN',
+                },
+
+                // Legacy fields (set to default/empty)
                 reliabilityIndicator: 'Good',
-                memberSince: serverTimestamp(),
+                rating: 0,
                 completedTasks: 0,
-                rating: 4.5
             };
             await setDoc(doc(firestore, 'helpers', user.uid), helperData);
         } else {
@@ -345,3 +369,5 @@ export default function CreateProfilePage() {
     </div>
   );
 }
+
+    
