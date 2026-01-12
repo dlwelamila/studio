@@ -31,6 +31,11 @@ export type Helper = {
     ratingAvg: number;
     reliabilityLevel: 'GREEN' | 'YELLOW' | 'RED';
   };
+  walletSummary: {
+    earningsThisWeek: number;
+    earningsThisMonth: number;
+    currency: 'TZS';
+  };
   
   // Legacy fields (set to default/empty)
   references?: string;

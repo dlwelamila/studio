@@ -11,6 +11,7 @@ import {
   Shield,
   Briefcase,
   Wrench,
+  Wallet,
 } from 'lucide-react';
 import { formatDistanceToNow, isToday, isWeekend } from 'date-fns';
 
@@ -183,6 +184,38 @@ export default function HelperDashboard() {
                   <Link href="/dashboard/profile">View Profile</Link>
               </Button>
             </CardFooter>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-headline flex items-center gap-2">
+                <Wallet className="h-5 w-5" />
+                <span>Earnings Summary</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4">
+              {isLoading || !helper ? (
+                <>
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Separator />
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </>
+              ) : (
+                <>
+                  <div>
+                    <CardDescription>This Week</CardDescription>
+                    <p className="text-2xl font-bold">{helper.walletSummary.earningsThisWeek.toLocaleString()} {helper.walletSummary.currency}</p>
+                  </div>
+                  <Separator />
+                   <div>
+                    <CardDescription>This Month</CardDescription>
+                    <p className="text-2xl font-bold">{helper.walletSummary.earningsThisMonth.toLocaleString()} {helper.walletSummary.currency}</p>
+                  </div>
+                </>
+              )}
+            </CardContent>
           </Card>
         </div>
 

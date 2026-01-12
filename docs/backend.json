@@ -77,6 +77,14 @@
                 "reliabilityLevel": { "type": "string", "enum": ["GREEN", "YELLOW", "RED"] }
             }
         },
+        "walletSummary": {
+          "type": "object",
+          "properties": {
+            "earningsThisWeek": { "type": "number" },
+            "earningsThisMonth": { "type": "number" },
+            "currency": { "type": "string", "enum": ["TZS"] }
+          }
+        },
         "verificationStatus": {
             "type": "string",
             "enum": ["PENDING", "APPROVED", "SUSPENDED"]

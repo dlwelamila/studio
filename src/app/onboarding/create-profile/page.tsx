@@ -39,6 +39,8 @@ const testAccounts = {
   'customer@taskey.app': {
     role: 'customer',
     fullName: 'Aisha Customer',
+    aboutMe: '',
+    serviceAreas: '',
   },
   'helper@taskey.app': {
     role: 'helper',
@@ -168,6 +170,11 @@ export default function CreateProfilePage() {
                   jobsCancelled: 0,
                   ratingAvg: 0,
                   reliabilityLevel: 'GREEN',
+                },
+                walletSummary: {
+                  earningsThisWeek: 0,
+                  earningsThisMonth: 0,
+                  currency: 'TZS',
                 },
 
                 // Legacy fields (set to default/empty)
@@ -368,4 +375,3 @@ export default function CreateProfilePage() {
     </div>
   );
 }
-    
