@@ -16,12 +16,27 @@ export type Helper = {
   serviceCategories: string[];
   serviceAreas: string[];
   aboutMe: string;
+  isAvailable: boolean;
+  memberSince: Timestamp;
+
+  // New Lifecycle Fields
+  verificationStatus: 'PENDING' | 'APPROVED' | 'SUSPENDED';
+  profileCompletion: {
+    percent: number; // 0-100
+    missing: Array<'profilePhoto' | 'serviceCategories' | 'serviceAreas' | 'aboutMe'>;
+  };
+  lifecycleStage: 'REGISTERED' | 'PROFILE_INCOMPLETE' | 'PENDING_VERIFICATION' | 'VERIFIED_READY' | 'ACTIVE' | 'GROWING';
+  stats: {
+    jobsCompleted: number;
+    jobsCancelled: number;
+    ratingAvg: number;
+    reliabilityLevel: 'GREEN' | 'YELLOW' | 'RED';
+  };
+  
+  // Legacy fields to be deprecated or merged into stats
   references?: string;
   additionalSkills?: string;
-  verificationStatus: 'Pending Verification' | 'Verified';
-  isAvailable: boolean;
   reliabilityIndicator: 'Good' | 'Average' | 'Poor';
-  memberSince: Timestamp;
   rating?: number;
   completedTasks?: number;
 };
