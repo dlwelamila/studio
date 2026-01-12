@@ -233,7 +233,7 @@ export default function NewTaskPage() {
                                     <FormControl>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select estimated effort" />
-                                    </Trigger>
+                                    </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
                                         <SelectItem value="light">Light (1-2 hours, simple task)</SelectItem>
