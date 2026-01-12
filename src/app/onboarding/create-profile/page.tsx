@@ -1,12 +1,11 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -138,9 +137,10 @@ export default function CreateProfilePage() {
 
             // Calculate profile completion
             const missing: Array<'profilePhoto' | 'serviceCategories' | 'serviceAreas' | 'aboutMe'> = [];
+            // We assume a photo is always available for now, but this shows how to check
             if (!data.serviceCategories || data.serviceCategories.length === 0) missing.push('serviceCategories');
-            if (!data.serviceAreas) missing.push('serviceAreas');
-            if (!data.aboutMe) missing.push('aboutMe');
+            if (!data.serviceAreas || data.serviceAreas.trim().length < 3) missing.push('serviceAreas');
+            if (!data.aboutMe || data.aboutMe.trim().length < 10) missing.push('aboutMe');
             
             const completionPercent = Math.round(( (4 - missing.length) / 4) * 100);
 
@@ -153,6 +153,7 @@ export default function CreateProfilePage() {
                 serviceCategories: data.serviceCategories || [],
                 serviceAreas: data.serviceAreas?.split(',').map(s => s.trim()) || [],
                 aboutMe: data.aboutMe || '',
+                isAvailable: true, // Default to available
                 memberSince: serverTimestamp() as Timestamp,
                 
                 // Lifecycle fields
@@ -369,5 +370,3 @@ export default function CreateProfilePage() {
     </div>
   );
 }
-
-    
