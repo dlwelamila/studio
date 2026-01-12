@@ -1,5 +1,16 @@
+
+'use client';
+
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { ChevronLeft } from 'lucide-react';
+
+import { useUser, useFirestore, addDoc, serverTimestamp } from '@/firebase';
+import { collection } from 'firebase/firestore';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,9 +30,106 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { taskCategories } from '@/lib/data';
+import { useToast } from '@/hooks/use-toast';
+import { useUserRole } from '@/context/user-role-context';
+
+
+const taskFormSchema = z.object({
+  title: z.string().min(5, { message: "Title must be at least 5 characters." }),
+  description: z.string().min(20, { message: "Description must be at least 20 characters." }),
+  category: z.string({ required_error: "Please select a category." }),
+  area: z.string().min(3, { message: "Please enter a location." }),
+  budget: z.object({
+    min: z.coerce.number().positive(),
+    max: z.coerce.number().positive(),
+  }),
+});
+
+type TaskFormValues = z.infer<typeof taskFormSchema>;
+
 
 export default function NewTaskPage() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const router = useRouter();
+    const { toast } = useToast();
+    const { role } = useUserRole();
+
+    const form = useForm<TaskFormValues>({
+        resolver: zodResolver(taskFormSchema),
+        defaultValues: {
+            title: '',
+            description: '',
+            area: '',
+            budget: {
+                min: 0,
+                max: 0,
+            }
+        }
+    });
+
+    const onSubmit = async (data: TaskFormValues) => {
+        if (!user || !firestore) {
+            toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to post a task.' });
+            return;
+        }
+
+        const taskData = {
+            customerId: user.uid,
+            title: data.title,
+            description: data.description,
+            category: data.category,
+            area: data.area,
+            budget: {
+                min: data.budget.min,
+                max: data.budget.max,
+            },
+            // Default values for fields not in the form
+            effort: 'medium',
+            timeWindow: 'Flexible',
+            status: 'OPEN',
+            createdAt: serverTimestamp(),
+        };
+
+        try {
+            const tasksCollection = collection(firestore, 'tasks');
+            await addDoc(tasksCollection, taskData);
+            toast({ title: 'Task Posted!', description: 'Your task is now live for helpers to see.' });
+            router.push('/dashboard');
+        } catch (error: any) {
+            console.error("Error posting task:", error);
+            toast({ variant: 'destructive', title: 'Failed to Post Task', description: error.message });
+        }
+    }
+    
+    if (role === 'helper') {
+        return (
+             <div className="mx-auto grid max-w-4xl flex-1 auto-rows-max gap-4">
+                <Card>
+                    <CardHeader>
+                    <CardTitle>Access Denied</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                    <p>This page is only available to customers. Please switch to your customer profile to post a task.</p>
+                    <Button asChild className="mt-4">
+                        <Link href="/dashboard">Go to Dashboard</Link>
+                    </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        )
+    }
+
   return (
     <div className="mx-auto grid max-w-4xl flex-1 auto-rows-max gap-4">
       <div className="flex items-center gap-4">
@@ -43,63 +151,112 @@ export default function NewTaskPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-6">
-            <div className="grid gap-3">
-              <Label htmlFor="title">Task Title</Label>
-              <Input
-                id="title"
-                type="text"
-                className="w-full"
-                placeholder='e.g., "Deep Clean My Kitchen"'
-              />
-            </div>
-            <div className="grid gap-3">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                placeholder="Describe what needs to be done. Include any important details like size of the area, specific instructions, or if you will provide supplies."
-                className="min-h-32"
-              />
-            </div>
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                 <div className="grid gap-3">
-                    <Label htmlFor="category">Category</Label>
-                    <Select>
-                    <SelectTrigger id="category" aria-label="Select category">
-                        <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {taskCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                    </SelectContent>
-                    </Select>
-                </div>
-                 <div className="grid gap-3">
-                    <Label htmlFor="location">Location</Label>
-                    <Input
-                        id="location"
-                        type="text"
-                        placeholder="e.g., Masaki, Dar es Salaam"
+           <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
+                <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Task Title</FormLabel>
+                        <FormControl>
+                            <Input placeholder='e.g., "Deep Clean My Kitchen"' {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                           <Textarea
+                                placeholder="Describe what needs to be done. Include any important details like size of the area, specific instructions, or if you will provide supplies."
+                                className="min-h-32"
+                                {...field}
+                            />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    <FormField
+                        control={form.control}
+                        name="category"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Category</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a category" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                    {taskCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="area"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Location</FormLabel>
+                            <FormControl>
+                                <Input placeholder="e.g., Masaki, Dar es Salaam" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
                     />
                 </div>
-            </div>
-            <div className="grid gap-3">
-                <Label>Budget Range (TZS)</Label>
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                        <Label htmlFor="min-budget" className="text-sm text-muted-foreground">Minimum</Label>
-                        <Input id="min-budget" type="number" placeholder="e.g., 20,000" />
-                    </div>
-                     <div className="grid gap-2">
-                        <Label htmlFor="max-budget" className="text-sm text-muted-foreground">Maximum</Label>
-                        <Input id="max-budget" type="number" placeholder="e.g., 30,000" />
+                 <div className="grid gap-3">
+                    <Label>Budget Range (TZS)</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                       <FormField
+                            control={form.control}
+                            name="budget.min"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel className="text-sm text-muted-foreground">Minimum</FormLabel>
+                                <FormControl>
+                                    <Input type="number" placeholder="e.g., 20,000" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="budget.max"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel className="text-sm text-muted-foreground">Maximum</FormLabel>
+                                <FormControl>
+                                    <Input type="number" placeholder="e.g., 30,000" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                     </div>
                 </div>
-            </div>
-            <div className="flex items-center gap-4">
-                <Button className="ml-auto">Post Task</Button>
-                <Button variant="outline">Save Draft</Button>
-            </div>
-          </div>
+                 <div className="flex items-center gap-4">
+                    <Button type="submit" className="ml-auto" disabled={form.formState.isSubmitting}>
+                        {form.formState.isSubmitting ? 'Posting...' : 'Post Task'}
+                    </Button>
+                    <Button variant="outline">Save Draft</Button>
+                </div>
+          </form>
+          </Form>
         </CardContent>
       </Card>
     </div>

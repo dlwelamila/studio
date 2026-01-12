@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState } from 'react';
@@ -32,17 +33,39 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 
 const profileFormSchema = z.object({
-  fullName: z.string().min(3, {
-    message: 'Full name must be at least 3 characters.',
-  }),
-  serviceCategories: z.array(z.string()).refine(value => value.some(item => item), {
+  role: z.enum(['helper', 'customer'], { required_error: 'You must select a role.' }),
+  fullName: z.string().min(3, { message: 'Full name must be at least 3 characters.' }),
+  serviceCategories: z.array(z.string()).optional(),
+  serviceAreas: z.string().optional(),
+  aboutMe: z.string().optional(),
+}).refine(data => {
+    if (data.role === 'helper') {
+        return data.serviceCategories && data.serviceCategories.length > 0;
+    }
+    return true;
+}, {
     message: 'You have to select at least one service category.',
-  }),
-  serviceAreas: z.string().min(3, { message: 'Please enter at least one service area.'}),
-  aboutMe: z.string().min(10, { message: 'Please tell us a little about yourself (at least 10 characters).' }),
+    path: ['serviceCategories'],
+}).refine(data => {
+    if (data.role === 'helper') {
+        return data.serviceAreas && data.serviceAreas.length > 3;
+    }
+    return true;
+}, {
+    message: 'Please enter at least one service area.',
+    path: ['serviceAreas'],
+}).refine(data => {
+    if (data.role === 'helper') {
+        return data.aboutMe && data.aboutMe.length > 10;
+    }
+    return true;
+}, {
+    message: 'Please tell us a little about yourself (at least 10 characters).',
+    path: ['aboutMe'],
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -59,12 +82,15 @@ export default function CreateProfilePage() {
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
+        role: 'customer',
         fullName: '',
         serviceCategories: [],
         serviceAreas: '',
         aboutMe: '',
     }
   });
+
+  const selectedRole = form.watch('role');
 
   const onSubmit = async (data: ProfileFormValues) => {
     if (!user || !firestore || !defaultAvatar) {
@@ -73,26 +99,38 @@ export default function CreateProfilePage() {
     }
     
     setIsSubmitting(true);
-    
-    const helperData = {
-        id: user.uid,
-        email: user.email,
-        phoneNumber: user.phoneNumber || '',
-        fullName: data.fullName,
-        profilePhotoUrl: defaultAvatar.imageUrl,
-        serviceCategories: data.serviceCategories,
-        serviceAreas: data.serviceAreas.split(',').map(s => s.trim()),
-        aboutMe: data.aboutMe,
-        verificationStatus: 'Pending Verification',
-        isAvailable: true,
-        reliabilityIndicator: '??',
-        memberSince: serverTimestamp(),
-        completedTasks: 0,
-        rating: 0
-    };
 
     try {
-        await setDoc(doc(firestore, 'helpers', user.uid), helperData);
+        if (data.role === 'helper') {
+            const helperData = {
+                id: user.uid,
+                email: user.email,
+                phoneNumber: user.phoneNumber || '',
+                fullName: data.fullName,
+                profilePhotoUrl: defaultAvatar.imageUrl,
+                serviceCategories: data.serviceCategories,
+                serviceAreas: data.serviceAreas?.split(',').map(s => s.trim()),
+                aboutMe: data.aboutMe,
+                verificationStatus: 'Pending Verification',
+                isAvailable: true,
+                reliabilityIndicator: '??',
+                memberSince: serverTimestamp(),
+                completedTasks: 0,
+                rating: 0
+            };
+            await setDoc(doc(firestore, 'helpers', user.uid), helperData);
+        } else {
+            const customerData = {
+                id: user.uid,
+                email: user.email,
+                phoneNumber: user.phoneNumber || '',
+                fullName: data.fullName,
+                profilePhotoUrl: defaultAvatar.imageUrl,
+                rating: 0,
+            };
+            await setDoc(doc(firestore, 'customers', user.uid), customerData);
+        }
+
         toast({ title: 'Profile Created!', description: "Welcome to tasKey. You're all set up." });
         router.push('/dashboard');
     } catch (error: any) {
@@ -115,14 +153,50 @@ export default function CreateProfilePage() {
     <div className="container mx-auto flex min-h-screen items-center justify-center py-12">
       <Card className="w-full max-w-2xl">
         <CardHeader>
-          <CardTitle className="font-headline text-2xl">Create Your Helper Profile</CardTitle>
+          <CardTitle className="font-headline text-2xl">Create Your Profile</CardTitle>
           <CardDescription>
-            Complete these last few steps to start finding tasks on tasKey. This information will be visible to customers.
+            Complete these last few steps to get started with tasKey.
           </CardDescription>
         </CardHeader>
         <CardContent>
             <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+
+                 <FormField
+                    control={form.control}
+                    name="role"
+                    render={({ field }) => (
+                        <FormItem className="space-y-3">
+                        <FormLabel>What do you want to do on tasKey?</FormLabel>
+                        <FormControl>
+                            <RadioGroup
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            className="flex flex-col space-y-1"
+                            >
+                            <FormItem className="flex items-center space-x-3 space-y-0">
+                                <FormControl>
+                                <RadioGroupItem value="customer" />
+                                </FormControl>
+                                <FormLabel className="font-normal">
+                                Post tasks and find help
+                                </FormLabel>
+                            </FormItem>
+                            <FormItem className="flex items-center space-x-3 space-y-0">
+                                <FormControl>
+                                <RadioGroupItem value="helper" />
+                                </FormControl>
+                                <FormLabel className="font-normal">
+                                 Earn money as a helper
+                                </FormLabel>
+                            </FormItem>
+                            </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
                 <FormField
                     control={form.control}
                     name="fullName"
@@ -137,91 +211,95 @@ export default function CreateProfilePage() {
                     )}
                 />
 
-                <FormField
-                    control={form.control}
-                    name="serviceCategories"
-                    render={() => (
-                        <FormItem>
-                         <div className="mb-4">
-                            <FormLabel className="text-base">Service Categories</FormLabel>
-                            <FormDescription>
-                                Select the types of tasks you are skilled in.
-                            </FormDescription>
-                        </div>
-                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            {taskCategories.map((item) => (
-                                <FormField
-                                key={item}
-                                control={form.control}
-                                name="serviceCategories"
-                                render={({ field }) => {
-                                    return (
-                                    <FormItem
+                {selectedRole === 'helper' && (
+                    <>
+                        <FormField
+                            control={form.control}
+                            name="serviceCategories"
+                            render={() => (
+                                <FormItem>
+                                <div className="mb-4">
+                                    <FormLabel className="text-base">Service Categories</FormLabel>
+                                    <FormDescription>
+                                        Select the types of tasks you are skilled in.
+                                    </FormDescription>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                    {taskCategories.map((item) => (
+                                        <FormField
                                         key={item}
-                                        className="flex flex-row items-start space-x-3 space-y-0"
-                                    >
-                                        <FormControl>
-                                        <Checkbox
-                                            checked={field.value?.includes(item)}
-                                            onCheckedChange={(checked) => {
-                                            return checked
-                                                ? field.onChange([...field.value, item])
-                                                : field.onChange(
-                                                    field.value?.filter(
-                                                    (value) => value !== item
-                                                    )
-                                                )
-                                            }}
+                                        control={form.control}
+                                        name="serviceCategories"
+                                        render={({ field }) => {
+                                            return (
+                                            <FormItem
+                                                key={item}
+                                                className="flex flex-row items-start space-x-3 space-y-0"
+                                            >
+                                                <FormControl>
+                                                <Checkbox
+                                                    checked={field.value?.includes(item)}
+                                                    onCheckedChange={(checked) => {
+                                                    return checked
+                                                        ? field.onChange([...(field.value ?? []), item])
+                                                        : field.onChange(
+                                                            field.value?.filter(
+                                                            (value) => value !== item
+                                                            )
+                                                        )
+                                                    }}
+                                                />
+                                                </FormControl>
+                                                <FormLabel className="font-normal">
+                                                {item}
+                                                </FormLabel>
+                                            </FormItem>
+                                            )
+                                        }}
                                         />
-                                        </FormControl>
-                                        <FormLabel className="font-normal">
-                                        {item}
-                                        </FormLabel>
-                                    </FormItem>
-                                    )
-                                }}
-                                />
-                            ))}
-                        </div>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                                    ))}
+                                </div>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
 
-                <FormField
-                    control={form.control}
-                    name="serviceAreas"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Service Areas</FormLabel>
-                        <FormControl>
-                            <Input placeholder="e.g., Masaki, Msasani, Mbezi Beach" {...field} />
-                        </FormControl>
-                         <FormDescription>
-                            List the neighborhoods or wards you can work in, separated by commas.
-                        </FormDescription>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                        <FormField
+                            control={form.control}
+                            name="serviceAreas"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Service Areas</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="e.g., Masaki, Msasani, Mbezi Beach" {...field} />
+                                </FormControl>
+                                <FormDescription>
+                                    List the neighborhoods or wards you can work in, separated by commas.
+                                </FormDescription>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
 
-                 <FormField
-                    control={form.control}
-                    name="aboutMe"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>About Me</FormLabel>
-                        <FormControl>
-                            <Textarea
-                                placeholder="Tell customers a bit about your experience and why you're a great helper."
-                                className="resize-none"
-                                {...field}
-                            />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                        <FormField
+                            control={form.control}
+                            name="aboutMe"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>About Me</FormLabel>
+                                <FormControl>
+                                    <Textarea
+                                        placeholder="Tell customers a bit about your experience and why you're a great helper."
+                                        className="resize-none"
+                                        {...field}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </>
+                )}
                 
                 <Button type="submit" disabled={isSubmitting} className="w-full">
                     {isSubmitting ? 'Saving Profile...' : 'Complete Profile & View Dashboard'}
