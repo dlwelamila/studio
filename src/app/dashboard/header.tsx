@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { Home, PanelLeft, Settings, Package, Package2, Users2, Briefcase } from 'lucide-react';
+import { Home, PanelLeft, Settings, Package, Package2, Users2, Briefcase, Handshake } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
@@ -47,6 +47,7 @@ export default function AppHeader() {
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<Helper | Customer>(userRef);
 
   const handleLogout = async () => {
+    if (!auth) return;
     await signOut(auth);
     router.push('/login');
   };
@@ -68,7 +69,7 @@ export default function AppHeader() {
               href="#"
               className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
             >
-              <Package2 className="h-5 w-5 transition-all group-hover:scale-110" />
+              <Handshake className="h-5 w-5 transition-all group-hover:scale-110" />
               <span className="sr-only">tasKey</span>
             </Link>
             <Link
