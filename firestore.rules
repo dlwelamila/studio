@@ -1,3 +1,27 @@
+/**
+ * Core Philosophy: This ruleset implements a multi-role security model for a task marketplace application,
+ * catering to Customers, Helpers, and Admins. The primary goal is to enforce strict data ownership and role-based
+ * access while maintaining flexibility for rapid development (Prototyping Mode).
+ *
+ * Data Structure: The data is organized into top-level collections for different user types (/customers, /helpers),
+ * core business objects (/tasks, /feedbacks), and administration (/roles_admin). Offers are nested as a
+ * subcollection under their parent task (/tasks/{taskId}/offers/{offerId}) to maintain a clear relational link.
+ *
+ * Key Security Decisions:
+ * - Strict Ownership: A user's private data (e.g., in /customers/{userId}) is only accessible by that user.
+ * - Public vs. Private Data: Publicly consumable data like tasks and feedback are readable by any signed-in user,
+ *   but write operations are strictly limited to the document owner or an authorized role (e.g., an assigned helper).
+ * - Admin Privileges: A user is granted global admin rights by the existence of a document with their UID in the
+ *   /roles_admin collection. Admins have read and write access to all data.
+ * - User Enumeration: Listing users from the /customers or /helpers collections is disallowed to protect user privacy.
+ *
+ * Denormalization for Authorization: To ensure performant and secure rules, ownership and relationship data is
+ * denormalized directly onto documents. For example, a 'Task' document contains a `customerId` field, and an 'Offer'
+ * contains a `helperId`. This avoids slow and costly `get()` calls in most security rules.
+ *
+ * Structural Segregation: User profiles for Customers and Helpers are stored in separate top-level collections.
+ * This allows for distinct security rules and data models for each user type, enhancing clarity and security.
+ */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -5,85 +29,187 @@ service cloud.firestore {
     // --------------------------------------------------------------------------------
     // Helper Functions
     // --------------------------------------------------------------------------------
+
+    /**
+     * Checks if the user is authenticated.
+     */
     function isSignedIn() {
       return request.auth != null;
     }
 
+    /**
+     * Checks if the authenticated user's UID matches the provided userId.
+     * This is the fundamental check for document ownership.
+     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-    
-    // --------------------------------------------------------------------------------
-    // Collection: helpers
-    // --------------------------------------------------------------------------------
-    match /helpers/{helperId} {
-      // Any authenticated user can view a helper's public profile.
-      allow get: if isSignedIn();
-      // Helpers cannot list other helpers.
-      allow list: if false;
-      // A helper can update their own profile.
-      allow update: if isOwner(helperId);
-      // A helper can create their own profile, ensuring the ID matches their auth UID.
-      allow create: if isOwner(helperId) && request.resource.data.id == helperId;
+
+    /**
+     * Checks if the user is an administrator by verifying the existence of their
+     * UID in the /roles_admin collection.
+     */
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
     }
 
+    /**
+     * A robust ownership check for update/delete operations, ensuring the document
+     * exists before attempting to apply the rule.
+     */
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
+    }
+
+    /**
+     * Validates that a user is creating their own profile document and that the
+     * document's internal `id` field correctly matches their auth UID.
+     */
+    function isCreatingOwnProfile(userId) {
+      return isOwner(userId) && request.resource.data.id == userId;
+    }
+
+    /**
+     * Enforces immutability of the primary ID field on a profile document during an update.
+     */
+    function profileIdIsImmutable() {
+      return request.resource.data.id == resource.data.id;
+    }
+
+    /**
+     * Validates that the `customerId` on a new task matches the creator's UID.
+     */
+    function isCreatingOwnTask() {
+      return isSignedIn() && request.resource.data.customerId == request.auth.uid;
+    }
+
+    /**
+     * Checks if the user is either the customer who created the task or the
+     * helper assigned to it. Used for granting update permissions.
+     */
+    function isTaskOwnerOrAssignedHelper() {
+      return resource != null && (isOwner(resource.data.customerId) || isOwner(resource.data.assignedHelperId));
+    }
+
+
+
+    /**
+     * Validates that a helper is creating an offer for an existing task and
+     * correctly self-identifies as the `helperId`.
+     */
+    function isCreatingOwnOffer(taskId) {
+      let taskExists = exists(/databases/$(database)/documents/tasks/$(taskId));
+      return isSignedIn() && taskExists && request.resource.data.helperId == request.auth.uid;
+    }
+
+    /**
+     * Checks if the current user is the owner of the parent task document.
+     * Used to grant access to the offers subcollection.
+     */
+    function isParentTaskOwner(taskId) {
+      let taskData = get(/databases/$(database)/documents/tasks/$(taskId)).data;
+      return isOwner(taskData.customerId);
+    }
+
+    /**
+     * Validates that feedback is being created by the same customer who owns the
+     * associated task, preventing fraudulent reviews.
+     */
+    function isCreatingValidFeedback() {
+      let task = get(/databases/$(database)/documents/tasks/$(request.resource.data.taskId));
+      return isSignedIn() && task != null && isOwner(task.data.customerId) && isOwner(request.resource.data.customerId);
+    }
+
+
     // --------------------------------------------------------------------------------
-    // Collection: customers
+    // Collection Rules
     // --------------------------------------------------------------------------------
+
+    /**
+     * @description Controls access to private customer profiles.
+     * @path /customers/{customerId}
+     * @allow (create) An authenticated user creating their own profile document.
+     * @deny (get) A user trying to read another user's profile.
+     * @principle Restricts access to a user's own data tree and prevents user enumeration.
+     */
     match /customers/{customerId} {
-      // Any signed-in user can view a customer's public profile.
-      allow get: if isSignedIn();
-      // A customer can create and update their own profile.
-      allow create, update: if isOwner(customerId) && request.resource.data.id == customerId;
+      allow get: if isOwner(customerId) || isAdmin();
+      allow list: if false; // Disallow listing customers to protect privacy
+      allow create: if isCreatingOwnProfile(customerId);
+      allow update: if (isExistingOwner(customerId) || isAdmin()) && profileIdIsImmutable();
+      allow delete: if isExistingOwner(customerId) || isAdmin();
     }
-    
-    // --------------------------------------------------------------------------------
-    // Collection: tasks
-    // --------------------------------------------------------------------------------
+
+    /**
+     * @description Controls access to private helper profiles.
+     * @path /helpers/{helperId}
+     * @allow (create) An authenticated user creating their own helper profile.
+     * @deny (get) A user trying to read another helper's profile.
+     * @principle Restricts access to a user's own data tree and prevents user enumeration.
+     */
+    match /helpers/{helperId} {
+      allow get: if isOwner(helperId) || isAdmin();
+      allow list: if false; // Disallow listing helpers to protect privacy
+      allow create: if isCreatingOwnProfile(helperId);
+      allow update: if (isExistingOwner(helperId) || isAdmin()) && profileIdIsImmutable();
+      allow delete: if isExistingOwner(helperId) || isAdmin();
+    }
+
+    /**
+     * @description Controls access to tasks. Tasks are viewable by any signed-in user, but only the
+     * owner (customer) or assigned helper can modify them.
+     * @path /tasks/{taskId}
+     * @allow (get) Any authenticated user can read a task's details.
+     * @deny (delete) A helper trying to delete a task they are assigned to.
+     * @principle Enforces document ownership for destructive actions, while allowing broader read access.
+     */
     match /tasks/{taskId} {
-      // Any signed-in helper can read OPEN tasks. 
-      // The customer who owns the task or the assigned helper can read it regardless of status.
-      allow get: if isSignedIn() && (resource.data.status == 'OPEN' || isOwner(resource.data.customerId) || isOwner(resource.data.assignedHelperId));
-      
-      // Any signed-in helper can list (browse) OPEN tasks.
-      allow list: if isSignedIn() && request.query.where.to_list().join("").matches(".*status.*OPEN.*");
+      allow get, list: if isSignedIn() || isAdmin();
+      allow create: if isCreatingOwnTask();
+      allow update: if isTaskOwnerOrAssignedHelper() || isAdmin();
+      allow delete: if (resource != null && isOwner(resource.data.customerId)) || isAdmin();
 
-      // Customers can create tasks. Helpers cannot.
-      allow create: if isOwner(request.resource.data.customerId);
-
-      // A customer can update their own task if it's still OPEN.
-      // An assigned helper can update a task assigned to them.
-      allow update: if (isOwner(resource.data.customerId) && resource.data.status == 'OPEN') || isOwner(resource.data.assignedHelperId);
-      
-      // A customer can cancel their own task.
-      allow delete: if isOwner(resource.data.customerId);
-      
-      // --- Subcollection: offers ---
+      /**
+       * @description Controls access to offers made on a task.
+       * @path /tasks/{taskId}/offers/{offerId}
+       * @allow (create) A helper creating an offer on an existing task.
+       * @deny (list) A helper trying to list all offers on a task to see competitors.
+       * @principle Implements shared access between the task owner and the offer creator.
+       */
       match /offers/{offerId} {
-        // A helper can create an offer on a task.
-        allow create: if isOwner(request.resource.data.helperId);
-        
-        // The helper who made the offer or the customer who owns the task can read the offer.
-        allow get: if isOwner(resource.data.helperId) || isOwner(get(/databases/$(database)/documents/tasks/$(taskId)).data.customerId);
-        
-        // A helper can update/withdraw their own offer if its status is ACTIVE.
-        allow update, delete: if isOwner(resource.data.helperId) && resource.data.status == 'ACTIVE';
-
-        // Helpers cannot see other helpers' offers. Customers list offers on the client.
-        allow list: if false;
+        allow get: if (resource != null && isOwner(resource.data.helperId)) || isParentTaskOwner(taskId) || isAdmin();
+        allow list: if isParentTaskOwner(taskId) || isAdmin();
+        allow create: if isCreatingOwnOffer(taskId);
+        allow update: if (isExistingOwner(resource.data.helperId) || isAdmin());
+        allow delete: if (isExistingOwner(resource.data.helperId) || isAdmin());
       }
     }
-    
-    // --------------------------------------------------------------------------------
-    // Collection: reviews
-    // --------------------------------------------------------------------------------
-    match /reviews/{reviewId} {
-      // Any authenticated user can read reviews.
-      allow get, list: if isSignedIn();
-      // A customer can create a review for a task they posted.
-      allow create: if isOwner(request.resource.data.customerId);
-      // Reviews are immutable.
-      allow update, delete: if false;
+
+    /**
+     * @description Controls access to feedback. Feedback is publicly viewable by signed-in users,
+     * but can only be created and managed by the customer who posted the original task.
+     * @path /feedbacks/{feedbackId}
+     * @allow (get) Any authenticated user can read feedback.
+     * @deny (create) A user trying to leave feedback for a task they did not create.
+     * @principle Public read with owner-only writes, with relational validation.
+     */
+    match /feedbacks/{feedbackId} {
+      allow get, list: if isSignedIn() || isAdmin();
+      allow create: if isCreatingValidFeedback();
+      allow update: if (isExistingOwner(resource.data.customerId) || isAdmin());
+      allow delete: if (isExistingOwner(resource.data.customerId) || isAdmin());
+    }
+
+    /**
+     * @description Manages administrator roles. Only existing admins can read or modify this collection.
+     * @path /roles_admin/{uid}
+     * @allow (get) An admin reading the roles collection.
+     * @deny (create) A non-admin user trying to grant themselves admin privileges.
+     * @principle Secures administrative roles by restricting all access to current admins only.
+     */
+    match /roles_admin/{uid} {
+      allow get, list: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
   }
 }

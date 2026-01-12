@@ -1,216 +1,142 @@
 {
   "entities": {
-    "Helper": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Helper",
-      "type": "object",
-      "description": "Represents a service provider on the tasKey platform.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Helper entity, matches Firebase Auth UID."
-        },
-        "phoneNumber": {
-          "type": "string",
-          "description": "The helper's primary phone number for registration and communication."
-        },
-        "email": {
-          "type": "string",
-          "description": "Optional email address for the helper.",
-          "format": "email"
-        },
-        "fullName": {
-          "type": "string",
-          "description": "The full name of the helper."
-        },
-        "profilePhotoUrl": {
-          "type": "string",
-          "description": "URL of the helper's profile photo.",
-          "format": "uri"
-        },
-        "serviceCategories": {
-          "type": "array",
-          "description": "An array of service categories the helper provides (e.g., Laundry, Cleaning).",
-          "items": {
-            "type": "string"
-          }
-        },
-        "serviceAreas": {
-          "type": "array",
-          "description": "An array of service areas (ward / neighborhood) the helper operates in.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "aboutMe": {
-          "type": "string",
-          "description": "A short 'About me' description provided by the helper."
-        },
-        "references": {
-          "type": "string",
-          "description": "Optional references provided by the helper."
-        },
-        "additionalSkills": {
-          "type": "string",
-          "description": "Optional additional skills listed by the helper."
-        },
-        "verificationStatus": {
-          "type": "string",
-          "description": "The verification status of the helper.",
-          "enum": [
-            "Pending Verification",
-            "Verified"
-          ]
-        },
-        "isAvailable": {
-          "type": "boolean",
-          "description": "Indicates if the helper is currently available for tasks."
-        },
-        "reliabilityIndicator": {
-          "type": "string",
-          "description": "Indicator of the helper's reliability (e.g., 'Bronze', 'Silver', 'Gold')."
-        },
-        "memberSince": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "completedTasks": {
-            "type": "number"
-        },
-        "rating": {
-            "type": "number"
-        }
-      },
-      "required": [
-        "id",
-        "phoneNumber",
-        "fullName",
-        "profilePhotoUrl",
-        "serviceCategories",
-        "serviceAreas",
-        "aboutMe",
-        "verificationStatus",
-        "isAvailable",
-        "memberSince",
-        "reliabilityIndicator"
-      ]
-    },
     "Customer": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Customer",
       "type": "object",
-      "description": "Represents a customer who posts tasks on the tasKey platform.",
+      "description": "Represents a customer who requests tasks on the platform.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Customer entity, matches Firebase Auth UID."
+          "description": "Unique identifier for the customer entity."
         },
-        "fullName": {
+        "firstName": {
           "type": "string",
-          "description": "The full name of the customer."
+          "description": "First name of the customer."
         },
-        "phoneNumber": {
+        "lastName": {
           "type": "string",
-          "description": "The customer's phone number for contact."
+          "description": "Last name of the customer."
         },
         "email": {
           "type": "string",
-          "description": "The customer's email address.",
+          "description": "Email address of the customer.",
           "format": "email"
         },
-        "rating": {
-          "type": "number",
-          "description": "Average rating given by helpers to this customer."
-        },
-        "profilePhotoUrl": {
+        "phone": {
           "type": "string",
-          "description": "URL of the customer's profile photo.",
-          "format": "uri"
+          "description": "Phone number of the customer."
+        },
+        "address": {
+          "type": "string",
+          "description": "Address of the customer."
         }
       },
       "required": [
         "id",
-        "fullName",
-        "phoneNumber",
-        "profilePhotoUrl"
+        "firstName",
+        "lastName",
+        "email",
+        "phone"
+      ]
+    },
+    "Helper": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Helper",
+      "type": "object",
+      "description": "Represents a helper who provides services on the platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the helper entity."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the helper."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the helper."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the helper.",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Phone number of the helper."
+        },
+        "address": {
+          "type": "string",
+          "description": "Address of the helper."
+        },
+        "skills": {
+          "type": "array",
+          "description": "List of skills the helper possesses.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "verified": {
+          "type": "boolean",
+          "description": "Indicates whether the helper's profile is verified by an administrator."
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "email",
+        "phone"
       ]
     },
     "Task": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Task",
       "type": "object",
-      "description": "Represents a task posted by a customer on the tasKey platform.",
+      "description": "Represents a task posted by a customer.",
       "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the task entity."
+        },
         "customerId": {
           "type": "string",
-          "description": "Reference to the Customer who posted the task."
-        },
-        "title": {
-          "type": "string",
-          "description": "The title of the task."
+          "description": "Reference to Customer. (Relationship: Customer 1:N Task)"
         },
         "category": {
           "type": "string",
-          "description": "The category of the task (e.g., Laundry, Cleaning)."
+          "description": "Category of the task (e.g., Cleaning, Laundry)."
         },
         "description": {
           "type": "string",
-          "description": "A detailed description of the task."
-        },
-        "area": {
-          "type": "string",
-          "description": "The approximate area where the task needs to be performed."
+          "description": "Detailed description of the task."
         },
         "location": {
-            "type": "object",
-            "description": "Exact location, only revealed after assignment."
-        },
-        "budget": {
-          "type": "object",
-          "properties": {
-            "min": { "type": "number" },
-            "max": { "type": "number" }
-          },
-          "description": "The budget range for the task."
-        },
-        "effort": {
           "type": "string",
-          "description": "The expected effort level.",
-          "enum": ["light", "medium", "heavy"]
+          "description": "Location where the task needs to be performed."
         },
-        "timeWindow": {
+        "budgetRange": {
           "type": "string",
-          "description": "The preferred time window for the task to be completed."
+          "description": "The specified budget range for the task."
         },
         "status": {
           "type": "string",
-          "description": "The current status of the task.",
-           "enum": ["OPEN", "ASSIGNED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]
+          "description": "Current status of the task (e.g., Open, Assigned, In Progress, Completed)."
         },
         "assignedHelperId": {
           "type": "string",
-          "description": "Reference to Helper assigned to this task."
-        },
-        "createdAt": {
-            "type": "string",
-            "format": "date-time"
-        },
-        "completedAt": {
-            "type": "string",
-            "format": "date-time"
+          "description": "Reference to Helper. (Relationship: Helper 1:N Task).  Null if not assigned."
         }
       },
       "required": [
+        "id",
         "customerId",
-        "title",
         "category",
         "description",
-        "area",
-        "effort",
-        "timeWindow",
-        "status",
-        "createdAt",
-        "budget"
+        "location",
+        "status"
       ]
     },
     "Offer": {
@@ -219,116 +145,141 @@
       "type": "object",
       "description": "Represents an offer submitted by a helper for a specific task.",
       "properties": {
-        "helperId": {
+        "id": {
           "type": "string",
-          "description": "Reference to the Helper who made the offer."
+          "description": "Unique identifier for the offer entity."
         },
         "taskId": {
           "type": "string",
-          "description": "Reference to the Task the offer is for."
+          "description": "Reference to Task. (Relationship: Task 1:N Offer)"
+        },
+        "helperId": {
+          "type": "string",
+          "description": "Reference to Helper. (Relationship: Helper 1:N Offer)"
         },
         "price": {
           "type": "number",
-          "description": "The price offered by the helper for the task."
+          "description": "Price offered by the helper for the task."
         },
-        "eta": {
+        "availability": {
           "type": "string",
-          "description": "The helper's estimated time of arrival (ETA) or availability."
+          "description": "The availability that the helper would be able to perform the task."
         },
         "message": {
           "type": "string",
-          "description": "A short message from the helper to the customer."
-        },
-        "status": {
-          "type": "string",
-          "description": "The status of the offer.",
-          "enum": ["ACTIVE", "WITHDRAWN", "ACCEPTED", "REJECTED"]
-        },
-        "createdAt": {
-            "type": "string",
-            "format": "date-time"
+          "description": "Additional message from the helper regarding the offer."
         }
       },
       "required": [
-        "helperId",
+        "id",
         "taskId",
+        "helperId",
         "price",
-        "eta",
-        "message",
-        "status",
-        "createdAt"
+        "availability"
       ]
     },
-    "Review": {
+    "Feedback": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Review",
+      "title": "Feedback",
       "type": "object",
-      "description": "Represents a review given by a customer for a completed task.",
+      "description": "Represents feedback provided by a customer after a task is completed.",
       "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the feedback entity."
+        },
         "taskId": {
           "type": "string",
-          "description": "Reference to the completed Task."
+          "description": "Reference to Task. (Relationship: Task 1:1 Feedback)"
         },
         "customerId": {
           "type": "string",
-          "description": "Reference to the Customer who gave the review."
-        },
-        "helperId": {
-          "type": "string",
-          "description": "Reference to the Helper who received the review."
+          "description": "Reference to Customer. (Relationship: Customer 1:N Feedback)"
         },
         "rating": {
           "type": "number",
-          "description": "The rating given by the customer (e.g., 1 to 5 stars)."
+          "description": "Rating given by the customer (e.g., 1 to 5 stars)."
         },
-        "feedback": {
+        "comment": {
           "type": "string",
-          "description": "Short feedback provided by the customer."
+          "description": "Optional comment provided by the customer."
         }
       },
       "required": [
+        "id",
         "taskId",
         "customerId",
-        "helperId",
-        "rating",
-        "feedback"
+        "rating"
+      ]
+    },
+    "Admin": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Admin",
+      "type": "object",
+      "description": "Represents an administrator user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the admin entity."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the administrator."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the administrator."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the administrator.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "email"
       ]
     }
   },
   "auth": {
     "providers": [
-      "phone",
-      "email"
+      "password",
+      "anonymous"
     ]
   },
   "firestore": {
     "structure": [
       {
-        "path": "/helpers/{helperId}",
+        "path": "/customers/{customerId}",
         "definition": {
+          "entityName": "Customer",
           "schema": {
-            "$ref": "#/entities/Helper"
+            "$ref": "#/backend/entities/Customer"
           },
-          "description": "Stores helper profiles. Only the authenticated helper can access and modify their own profile. The document ID corresponds to the Firebase Auth UID.",
+          "description": "Stores customer profiles. Uses path-based ownership for private data.",
           "params": [
             {
-              "name": "helperId",
-              "description": "The Firebase Auth UID of the helper."
+              "name": "customerId",
+              "description": "The unique identifier of the customer."
             }
           ]
         }
       },
       {
-        "path": "/customers/{customerId}",
+        "path": "/helpers/{helperId}",
         "definition": {
+          "entityName": "Helper",
           "schema": {
-            "$ref": "#/entities/Customer"
+            "$ref": "#/backend/entities/Helper"
           },
-          "description": "Stores customer profiles. The document ID corresponds to the Firebase Auth UID.",
+          "description": "Stores helper profiles. Uses path-based ownership for private data.",
           "params": [
             {
-              "name": "customerId",
-              "description": "The Firebase Auth UID of the customer."
+              "name": "helperId",
+              "description": "The unique identifier of the helper."
             }
           ]
         }
@@ -336,14 +287,15 @@
       {
         "path": "/tasks/{taskId}",
         "definition": {
+          "entityName": "Task",
           "schema": {
-            "$ref": "#/entities/Task"
+            "$ref": "#/backend/entities/Task"
           },
-          "description": "Stores task details. Accessible for listing to all authenticated helpers. Write access is restricted.",
+          "description": "Stores task details. Includes 'customerId' for authorization independence.",
           "params": [
             {
               "name": "taskId",
-              "description": "Unique identifier for the task."
+              "description": "The unique identifier of the task."
             }
           ]
         }
@@ -351,38 +303,56 @@
       {
         "path": "/tasks/{taskId}/offers/{offerId}",
         "definition": {
+          "entityName": "Offer",
           "schema": {
-            "$ref": "#/entities/Offer"
+            "$ref": "#/backend/entities/Offer"
           },
-          "description": "Stores offers made by helpers for specific tasks. Includes denormalized 'helperId' and 'taskId' for authorization independence.",
+          "description": "Stores offers for a specific task. Includes 'helperId' and 'taskId' for authorization.",
           "params": [
             {
               "name": "taskId",
-              "description": "The ID of the task the offer is for."
+              "description": "The unique identifier of the task."
             },
             {
               "name": "offerId",
-              "description": "Unique identifier for the offer."
+              "description": "The unique identifier of the offer."
             }
           ]
         }
       },
       {
-        "path": "/reviews/{reviewId}",
+        "path": "/feedbacks/{feedbackId}",
         "definition": {
+          "entityName": "Feedback",
           "schema": {
-            "$ref": "#/entities/Review"
+            "$ref": "#/backend/entities/Feedback"
           },
-          "description": "Stores reviews for completed tasks. Readable by all authenticated users.",
+          "description": "Stores feedback provided by customers for completed tasks. Includes 'customerId' and 'taskId' for authorization.",
           "params": [
             {
-              "name": "reviewId",
-              "description": "Unique identifier for the review."
+              "name": "feedbackId",
+              "description": "The unique identifier of the feedback."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{uid}",
+        "definition": {
+          "entityName": "Admin",
+          "schema": {
+            "$ref": "#/backend/entities/Admin"
+          },
+          "description": "Collection used to grant admin privileges. Existence of a document grants admin role.",
+          "params": [
+            {
+              "name": "uid",
+              "description": "The unique identifier of the user."
             }
           ]
         }
       }
-    ]
+    ],
+    "reasoning": "The Firestore structure is designed to support the tasKey application's core features, focusing on task management, helper services, and user roles. The structure emphasizes authorization independence and straightforward security rules.\n\n**Authorization Independence:**\n*   For tasks created by customers, the `customerId` is included directly within the `/tasks/{taskId}` document. This eliminates the need to perform a `get()` operation to authorize access based on the customer who created the task. Offers made by helpers include the `helperId` and `taskId` to ensure that the offer can be validated against the relevant task and authorized against the helper making the offer. Feedback also includes `customerId` and `taskId` so it can be validated to only allow feedback from the customer that created the task.\n\n**Structural Segregation:**\n*   Customers and Helpers are stored in separate collections (`/customers` and `/helpers`), enabling different security rules for each.\n*   Tasks are stored in a top-level `/tasks` collection, simplifying task queries and management.\n\n**Access Modeling:**\n*   Tasks include the `customerId`, enabling rules to restrict task access based on the customer's ID and the helper assigned.\n*   Offers include the `helperId` and `taskId` to ensure that only the helper that made the offer or the customer that created the task can access the offers, and only if the task exists.\n*   Admin roles are managed using the `/roles_admin/{uid}` collection. Existence of a document at this path grants admin privileges.\n\n**QAPs Support:**\n*   The structure supports QAPs by segregating data based on user type (customer/helper) and task status. Security rules can efficiently filter list operations based on these attributes without needing complex filtering logic within the rules themselves.\n\n**Invariants:**\n*   The structure supports invariants by ensuring that ownership is explicitly defined in each document (`customerId` in Tasks, `helperId` in Offers). Timestamps can be added to each document to track creation and modification times, ensuring data integrity."
   }
 }
-    
