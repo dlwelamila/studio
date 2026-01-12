@@ -25,7 +25,7 @@ const CustomerNav = [
 ];
 
 const HelperNav = [
-  { href: '/dashboard', label: 'Browse Tasks', icon: Home },
+  { href: '/dashboard/browse', label: 'Browse Tasks', icon: Home },
   { href: '/dashboard/gigs', label: 'My Gigs', icon: Briefcase },
 ];
 

@@ -34,6 +34,21 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 
+const testAccounts = {
+  'customer@taskey.app': {
+    role: 'customer',
+    fullName: 'Aisha Customer',
+  },
+  'helper@taskey.app': {
+    role: 'helper',
+    fullName: 'Baraka Helper',
+    serviceCategories: ['Cleaning', 'Laundry'],
+    serviceAreas: 'Masaki, Msasani',
+    aboutMe: 'Reliable and detail-oriented helper with 3+ years of experience in home cleaning and laundry services. I take pride in my work and always ensure customer satisfaction.',
+  }
+};
+
+
 const profileFormSchema = z.object({
   role: z.enum(['helper', 'customer'], { required_error: 'You must select a role.' }),
   fullName: z.string().min(3, { message: 'Full name must be at least 3 characters.' }),
@@ -77,6 +92,7 @@ export default function CreateProfilePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const defaultAvatar = useMemoFirebase(() => PlaceHolderImages.find(p => p.id === 'avatar-1'), []);
+  const defaultHelperAvatar = useMemoFirebase(() => PlaceHolderImages.find(p => p.id === 'avatar-2'), []);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -92,15 +108,22 @@ export default function CreateProfilePage() {
   const selectedRole = form.watch('role');
 
   useEffect(() => {
+    // Set role from query param
     const roleFromQuery = searchParams.get('role');
     if (roleFromQuery === 'helper' || roleFromQuery === 'customer') {
       form.setValue('role', roleFromQuery);
     }
-  }, [searchParams, form]);
+    
+    // Pre-fill form if it's a test user
+    if (user?.email && user.email in testAccounts) {
+      const testData = testAccounts[user.email as keyof typeof testAccounts];
+      form.reset(testData);
+    }
+  }, [searchParams, form, user]);
 
 
   const onSubmit = async (data: ProfileFormValues) => {
-    if (!user || !firestore || !defaultAvatar) {
+    if (!user || !firestore) {
         toast({ variant: 'destructive', title: 'Error', description: 'User not authenticated or system not ready.' });
         return;
     }
@@ -109,31 +132,33 @@ export default function CreateProfilePage() {
 
     try {
         if (data.role === 'helper') {
+            if (!defaultHelperAvatar) throw new Error("Default avatar not found");
             const helperData = {
                 id: user.uid,
                 email: user.email,
                 phoneNumber: user.phoneNumber || '',
                 fullName: data.fullName,
-                profilePhotoUrl: defaultAvatar.imageUrl,
+                profilePhotoUrl: defaultHelperAvatar.imageUrl,
                 serviceCategories: data.serviceCategories,
                 serviceAreas: data.serviceAreas?.split(',').map(s => s.trim()),
                 aboutMe: data.aboutMe,
-                verificationStatus: 'Pending Verification',
+                verificationStatus: 'Verified', // Pre-verify for testing
                 isAvailable: true,
-                reliabilityIndicator: '??',
+                reliabilityIndicator: 'Good',
                 memberSince: serverTimestamp(),
                 completedTasks: 0,
-                rating: 0
+                rating: 4.5
             };
             await setDoc(doc(firestore, 'helpers', user.uid), helperData);
         } else {
+            if (!defaultAvatar) throw new Error("Default avatar not found");
             const customerData = {
                 id: user.uid,
                 email: user.email,
                 phoneNumber: user.phoneNumber || '',
                 fullName: data.fullName,
                 profilePhotoUrl: defaultAvatar.imageUrl,
-                rating: 0,
+                rating: 4.0,
                 memberSince: serverTimestamp(),
             };
             await setDoc(doc(firestore, 'customers', user.uid), customerData);
@@ -163,7 +188,7 @@ export default function CreateProfilePage() {
         <CardHeader>
           <CardTitle className="font-headline text-2xl">Create Your Profile</CardTitle>
           <CardDescription>
-            Complete these last few steps to get started with tasKey.
+            Complete these last few steps to get started with tasKey. Your information has been pre-filled for this test.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -179,7 +204,6 @@ export default function CreateProfilePage() {
                         <FormControl>
                             <RadioGroup
                             onValueChange={field.onChange}
-                            defaultValue={field.value}
                             value={field.value}
                             className="flex flex-col space-y-1"
                             >

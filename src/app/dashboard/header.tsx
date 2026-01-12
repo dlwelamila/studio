@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { Home, PanelLeft, Settings, Package2, Users2, Briefcase, Handshake, Repeat, PlusCircle } from 'lucide-react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 import { useUserRole } from '@/context/user-role-context';
 import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth } from '@/firebase';
@@ -30,12 +30,27 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 
+const breadcrumbMap: Record<string, Record<string, string>> = {
+    customer: {
+        '/dashboard': 'My Tasks',
+        '/dashboard/tasks/new': 'New Task',
+        '/dashboard/profile': 'My Profile',
+    },
+    helper: {
+        '/dashboard': 'Browse Tasks',
+        '/dashboard/browse': 'Browse Tasks',
+        '/dashboard/gigs': 'My Gigs',
+        '/dashboard/profile': 'My Profile',
+    }
+}
+
 export default function AppHeader() {
   const { role, toggleRole, hasCustomerProfile, hasHelperProfile, isRoleLoading } = useUserRole();
   const { user: authUser, isUserLoading } = useUser();
   const firestore = useFirestore();
   const auth = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   const userRef = useMemoFirebase(() => {
     if (!firestore || !authUser) return null;
@@ -51,7 +66,14 @@ export default function AppHeader() {
     router.push('/login');
   };
 
-  const breadcrumbText = role === 'customer' ? 'My Tasks' : 'Browse Tasks';
+  const getBreadcrumbText = () => {
+    const roleRoutes = breadcrumbMap[role] || {};
+    // Find a matching route, including dynamic ones
+    const matchingRoute = Object.keys(roleRoutes).find(route => pathname.startsWith(route) && (pathname.length === route.length || pathname[route.length] === '/'));
+    return matchingRoute ? roleRoutes[matchingRoute] : 'Dashboard';
+  };
+
+  const breadcrumbText = getBreadcrumbText();
   const canSwitchRoles = hasCustomerProfile && hasHelperProfile;
   
   const isLoading = isUserLoading || isProfileLoading || isRoleLoading;
@@ -83,7 +105,7 @@ export default function AppHeader() {
             </Link>
              {role === 'customer' ? (
                 <Link href="/dashboard/tasks/new" className="flex items-center gap-4 px-2.5 text-foreground">
-                    <Package2 className="h-5 w-5" />
+                    <PlusCircle className="h-5 w-5" />
                     New Task
                 </Link>
             ) : (
@@ -138,7 +160,7 @@ export default function AppHeader() {
                     width={36}
                     height={36}
                     alt="Avatar"
-                    className="overflow-hidden rounded-full"
+                    className="overflow-hidden rounded-full object-cover"
                 />
               )}
             </Button>

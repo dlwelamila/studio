@@ -12,6 +12,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { User, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
+const testAccounts = [
+  { role: 'Customer', email: 'customer@taskey.app', password: 'password123' },
+  { role: 'Helper', email: 'helper@taskey.app', password: 'password123' },
+];
+
 export default function AuthForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,6 +42,7 @@ export default function AuthForm() {
              if (authAction === 'signUp') {
                 router.push('/onboarding/create-profile');
             } else {
+                // If user exists in Auth but not in Firestore, guide to create profile
                 router.push('/onboarding/create-profile');
             }
         }
@@ -82,106 +88,131 @@ export default function AuthForm() {
     }
   };
 
+  const setTestCredentials = (account: typeof testAccounts[0]) => {
+    setEmail(account.email);
+    setPassword(account.password);
+  }
+
   if (isUserLoading || user) {
     return (
         <div className="flex justify-center items-center h-screen">
-            <p>Loading...</p>
+            <div className="text-center">
+                <p className="font-semibold">Loading Dashboard...</p>
+                <p className="text-sm text-muted-foreground">Please wait a moment.</p>
+            </div>
         </div>
     );
   }
 
   return (
-    <Tabs defaultValue="signIn" className="w-full max-w-sm" onValueChange={(value) => setAuthAction(value as 'signIn' | 'signUp')}>
-        <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="signIn">Sign In</TabsTrigger>
-            <TabsTrigger value="signUp">Register</TabsTrigger>
-        </TabsList>
-        <TabsContent value="signIn">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-2xl">Login</CardTitle>
-                    <CardDescription>
-                    Enter your email and password to access your account.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                    <Label htmlFor="email-signin">Email</Label>
-                    <Input 
-                        id="email-signin" 
-                        type="email" 
-                        placeholder="m@example.com" 
-                        required 
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        disabled={isSubmitting}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                    <Label htmlFor="password-signin">Password</Label>
-                    <Input 
-                        id="password-signin" 
-                        type="password" 
-                        required 
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        disabled={isSubmitting}
-                        />
-                    </div>
-                </CardContent>
-                <CardFooter>
-                    <Button 
-                        className="w-full" 
-                        onClick={handleAuth}
-                        disabled={isSubmitting}>
-                            {isSubmitting ? 'Signing In...' : 'Sign In'}
+    <div className="w-full max-w-sm">
+        <Tabs defaultValue="signIn" onValueChange={(value) => setAuthAction(value as 'signIn' | 'signUp')}>
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="signIn">Sign In</TabsTrigger>
+                <TabsTrigger value="signUp">Register</TabsTrigger>
+            </TabsList>
+            <TabsContent value="signIn">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-2xl">Login</CardTitle>
+                        <CardDescription>
+                        Enter your email and password to access your account.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                        <Label htmlFor="email-signin">Email</Label>
+                        <Input 
+                            id="email-signin" 
+                            type="email" 
+                            placeholder="m@example.com" 
+                            required 
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            disabled={isSubmitting}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                        <Label htmlFor="password-signin">Password</Label>
+                        <Input 
+                            id="password-signin" 
+                            type="password" 
+                            required 
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            disabled={isSubmitting}
+                            />
+                        </div>
+                    </CardContent>
+                    <CardFooter>
+                        <Button 
+                            className="w-full" 
+                            onClick={handleAuth}
+                            disabled={isSubmitting}>
+                                {isSubmitting ? 'Signing In...' : 'Sign In'}
+                        </Button>
+                    </CardFooter>
+                </Card>
+            </TabsContent>
+            <TabsContent value="signUp">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-2xl">Register</CardTitle>
+                        <CardDescription>
+                        Create a new account to get started with tasKey.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                        <Label htmlFor="email-signup">Email</Label>
+                        <Input 
+                            id="email-signup" 
+                            type="email" 
+                            placeholder="m@example.com" 
+                            required 
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            disabled={isSubmitting}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                        <Label htmlFor="password-signup">Password</Label>
+                        <Input 
+                            id="password-signup" 
+                            type="password" 
+                            required 
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            disabled={isSubmitting}
+                            />
+                        </div>
+                    </CardContent>
+                    <CardFooter>
+                        <Button 
+                            className="w-full" 
+                            onClick={handleAuth}
+                            disabled={isSubmitting}>
+                                {isSubmitting ? 'Registering...' : 'Create Account'}
+                        </Button>
+                    </CardFooter>
+                </Card>
+            </TabsContent>
+        </Tabs>
+        <Card className="mt-4">
+            <CardHeader>
+                <CardTitle className="text-sm">Test Accounts</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-2 text-sm">
+                {testAccounts.map(acc => (
+                    <Button key={acc.role} variant="outline" size="sm" onClick={() => setTestCredentials(acc)}>
+                       Log in as {acc.role}
                     </Button>
-                </CardFooter>
-            </Card>
-        </TabsContent>
-        <TabsContent value="signUp">
-             <Card>
-                <CardHeader>
-                    <CardTitle className="text-2xl">Register</CardTitle>
-                    <CardDescription>
-                    Create a new account to get started with tasKey.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                    <Label htmlFor="email-signup">Email</Label>
-                    <Input 
-                        id="email-signup" 
-                        type="email" 
-                        placeholder="m@example.com" 
-                        required 
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        disabled={isSubmitting}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                    <Label htmlFor="password-signup">Password</Label>
-                    <Input 
-                        id="password-signup" 
-                        type="password" 
-                        required 
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        disabled={isSubmitting}
-                        />
-                    </div>
-                </CardContent>
-                <CardFooter>
-                    <Button 
-                        className="w-full" 
-                        onClick={handleAuth}
-                        disabled={isSubmitting}>
-                            {isSubmitting ? 'Registering...' : 'Create Account'}
-                    </Button>
-                </CardFooter>
-            </Card>
-        </TabsContent>
-    </Tabs>
+                ))}
+            </CardContent>
+             <CardFooter>
+                <p className="text-xs text-muted-foreground">Note: If registering for the first time, use the "Register" tab. The password for both accounts is `password123`.</p>
+            </CardFooter>
+        </Card>
+    </div>
   );
 }
