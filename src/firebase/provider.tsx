@@ -3,7 +3,7 @@
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
-import { Auth, User, onAuthStateChanged, getIdToken } from 'firebase/auth';
+import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 
 interface FirebaseProviderProps {
@@ -52,31 +52,6 @@ export interface UserHookResult { // Renamed from UserAuthHookResult for consist
 // React Context
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
-// Interceptor for fetch to add auth token
-const originalFetch = typeof window !== 'undefined' ? window.fetch : () => Promise.reject(new Error('fetch is not available in this environment'));
-let currentAuth: Auth | null = null;
-
-const fetchWithAuth = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    if (currentAuth && currentAuth.currentUser) {
-        try {
-            const token = await getIdToken(currentAuth.currentUser);
-            const headers = new Headers(init?.headers);
-            headers.set('Authorization', `Bearer ${token}`);
-            init = { ...init, headers };
-        } catch (error) {
-            console.error("Error getting auth token:", error);
-            // Decide if you want to proceed without the token or fail the request
-        }
-    }
-    return originalFetch(input, init);
-};
-
-// Monkey-patch fetch if it hasn't been patched already and we are in a browser environment
-if (typeof window !== 'undefined' && (window as any).fetch.name !== 'fetchWithAuth') {
-    (window as any).fetch = fetchWithAuth;
-}
-
-
 /**
  * FirebaseProvider manages and provides Firebase services and user authentication state.
  */
@@ -91,11 +66,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     isUserLoading: true, // Start loading until first auth event
     userError: null,
   });
-
-  // Keep a reference to the current auth instance for the fetch interceptor
-  useEffect(() => {
-    currentAuth = auth;
-  }, [auth]);
 
   // Effect to subscribe to Firebase auth state changes
   useEffect(() => {
@@ -167,30 +137,21 @@ export const useFirebase = (): FirebaseServicesAndUser => {
 };
 
 /** Hook to access Firebase Auth instance. */
-export const useAuth = (): Auth | null => {
-  const context = useContext(FirebaseContext);
-   if (context === undefined) {
-    throw new Error('useAuth must be used within a FirebaseProvider.');
-  }
-  return context.auth;
+export const useAuth = (): Auth => {
+  const { auth } = useFirebase();
+  return auth;
 };
 
 /** Hook to access Firestore instance. */
-export const useFirestore = (): Firestore | null => {
-  const context = useContext(FirebaseContext);
-   if (context === undefined) {
-    throw new Error('useFirestore must be used within a FirebaseProvider.');
-  }
-  return context.firestore;
+export const useFirestore = (): Firestore => {
+  const { firestore } = useFirebase();
+  return firestore;
 };
 
 /** Hook to access Firebase App instance. */
-export const useFirebaseApp = (): FirebaseApp | null => {
-  const context = useContext(FirebaseContext);
-  if (context === undefined) {
-    throw new Error('useFirebaseApp must be used within a FirebaseProvider.');
-  }
-  return context.firebaseApp;
+export const useFirebaseApp = (): FirebaseApp => {
+  const { firebaseApp } = useFirebase();
+  return firebaseApp;
 };
 
 type MemoFirebase <T> = T & {__memo?: boolean};
@@ -199,13 +160,7 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | 
   const memoized = useMemo(factory, deps);
   
   if(typeof memoized !== 'object' || memoized === null) return memoized;
-  if (!('__memo' in memoized)) {
-    try {
-      (memoized as MemoFirebase<T>).__memo = true;
-    } catch(e) {
-      // ignore, this is a best effort
-    }
-  }
+  (memoized as MemoFirebase<T>).__memo = true;
   
   return memoized;
 }
@@ -216,10 +171,6 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | 
  * @returns {UserHookResult} Object with user, isUserLoading, userError.
  */
 export const useUser = (): UserHookResult => { // Renamed from useAuthUser
-  const context = useContext(FirebaseContext);
-  if (context === undefined) {
-    throw new Error('useUser must be used within a FirebaseProvider.');
-  }
-  const { user, isUserLoading, userError } = context;
+  const { user, isUserLoading, userError } = useFirebase(); // Leverages the main hook
   return { user, isUserLoading, userError };
 };
