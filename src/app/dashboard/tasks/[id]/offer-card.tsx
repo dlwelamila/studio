@@ -1,7 +1,8 @@
 
 'use client';
 import Image from 'next/image';
-import { Star } from 'lucide-react';
+import Link from 'next/link';
+import { Star, AlarmClock } from 'lucide-react';
 import { doc, serverTimestamp } from 'firebase/firestore';
 
 import type { Offer, Helper, Task } from '@/lib/data';
@@ -33,10 +34,11 @@ export function OfferCard({ offer, task, onAccept }: OfferCardProps) {
     const taskRef = doc(firestore, 'tasks', offer.taskId);
     const offerRef = doc(firestore, 'tasks', offer.taskId, 'offers', offer.id);
 
-    // 1. Update the task status and assign the helper
+    // 1. Update the task status, assign the helper, and store final price
     updateDocumentNonBlocking(taskRef, {
       status: 'ASSIGNED',
       assignedHelperId: offer.helperId,
+      acceptedOfferPrice: offer.price,
     });
 
     // 2. Update the offer status
@@ -111,8 +113,14 @@ export function OfferCard({ offer, task, onAccept }: OfferCardProps) {
         </div>
         <Separator className="my-4" />
         <p className="text-sm text-muted-foreground">{offer.message}</p>
+        <div className="flex items-center text-sm text-muted-foreground mt-3">
+            <AlarmClock className="h-4 w-4 mr-2" />
+            {offer.eta}
+        </div>
         <div className="mt-4 flex justify-end gap-2">
-            <Button variant="ghost">View Profile</Button>
+            <Button variant="ghost" asChild>
+                <Link href={`/profile/${helper.id}`} target="_blank">View Profile</Link>
+            </Button>
             {task.status === 'OPEN' && (
               <Button onClick={handleAcceptOffer}>Accept Offer</Button>
             )}

@@ -9,7 +9,7 @@ import { format } from 'date-fns';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-
+import { completeTaskAndupdateHelperStats } from '@/ai/flows/complete-task-flow';
 
 import { useUserRole } from '@/context/user-role-context';
 import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
@@ -138,21 +138,35 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
     mutateTask();
   };
 
-  const handleStatusUpdate = (newStatus: 'IN_PROGRESS' | 'COMPLETED') => {
-    if (!taskRef) return;
-
-    let updateData: any = { status: newStatus };
-    if (newStatus === 'COMPLETED') {
-        updateData.completedAt = serverTimestamp();
+  const handleStatusUpdate = async (newStatus: 'IN_PROGRESS' | 'COMPLETED') => {
+    if (!taskRef || !task || !task.assignedHelperId) return;
+  
+    try {
+      if (newStatus === 'COMPLETED') {
+        // Use the new transactional flow for completion
+        await completeTaskAndupdateHelperStats({
+          taskId: task.id,
+          helperId: task.assignedHelperId,
+        });
+      } else {
+        // For other statuses, just update the task
+        updateDocumentNonBlocking(taskRef, { status: newStatus });
+      }
+  
+      mutateTask();
+      toast({
+        title: 'Task Status Updated',
+        description: `Task marked as ${newStatus.toLowerCase().replace('_', ' ')}.`,
+      });
+    } catch (error: any) {
+      console.error("Error updating status:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: error.message || 'Could not update the task status.',
+      });
     }
-    
-    updateDocumentNonBlocking(taskRef, updateData);
-    mutateTask();
-    toast({
-      title: 'Task Status Updated',
-      description: `Task marked as ${newStatus.toLowerCase().replace('_', ' ')}.`,
-    });
-  }
+  };
 
   const handleReportSubmit = () => {
     // In a real app, this would submit the report to a backend service.

@@ -45,6 +45,7 @@ export type Task = {
   area: string; // Approximate area
   location?: GeoPoint; // Exact location, revealed after assignment
   budget: { min: number; max: number };
+  acceptedOfferPrice?: number; // Final price from the accepted offer
   effort: 'light' | 'medium' | 'heavy';
   toolsRequired: string[];
   timeWindow: string; // e.g. "Tomorrow afternoon", "Flexible"

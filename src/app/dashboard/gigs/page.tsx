@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -73,7 +74,7 @@ export default function MyGigsPage() {
                 <TableHead>Task</TableHead>
                 <TableHead className="hidden sm:table-cell">Customer</TableHead>
                 <TableHead className="hidden sm:table-cell">Status</TableHead>
-                <TableHead className="hidden md:table-cell">Assigned On</TableHead>
+                <TableHead className="hidden md:table-cell">Completed On</TableHead>
                 <TableHead className="text-right">Earnings (TZS)</TableHead>
                 <TableHead>
                   <span className="sr-only">Actions</span>
@@ -108,9 +109,7 @@ function GigRow({ gig }: { gig: Task }) {
   const customerRef = useMemoFirebase(() => firestore ? doc(firestore, 'customers', gig.customerId) : null, [firestore, gig.customerId]);
   const { data: customer, isLoading: isCustomerLoading } = useDoc<Customer>(customerRef);
   
-  // NOTE: In a real app, the agreed-upon price would be stored on the task object
-  // after an offer is accepted. For now, we use the max budget as an estimate.
-  const price = gig.budget.max;
+  const price = gig.acceptedOfferPrice ?? gig.budget.max;
 
   return (
     <TableRow>
@@ -136,8 +135,7 @@ function GigRow({ gig }: { gig: Task }) {
         </Badge>
       </TableCell>
       <TableCell className="hidden md:table-cell">
-        {/* Assuming 'assignedAt' would be a field. For now, using createdAt */}
-        {format(gig.createdAt.toDate(), 'dd MMM yyyy')}
+        {gig.completedAt ? format(gig.completedAt.toDate(), 'dd MMM yyyy') : 'Pending'}
       </TableCell>
       <TableCell className="text-right">
         {price.toLocaleString()}

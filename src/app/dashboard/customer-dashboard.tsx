@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -61,11 +62,10 @@ export default function CustomerDashboard() {
             <TableHeader>
               <TableRow>
                 <TableHead>Task</TableHead>
-                <TableHead className="hidden sm:table-cell">Category</TableHead>
                 <TableHead className="hidden sm:table-cell">Status</TableHead>
                 <TableHead className="hidden md:table-cell">Offers</TableHead>
-                <TableHead className="hidden md:table-cell">Posted On</TableHead>
-                <TableHead className="text-right">Budget (TZS)</TableHead>
+                <TableHead className="hidden md:table-cell">Completed</TableHead>
+                <TableHead className="text-right">Cost (TZS)</TableHead>
                 <TableHead>
                   <span className="sr-only">Actions</span>
                 </TableHead>
@@ -104,16 +104,15 @@ function TaskRow({ task }: { task: Task }) {
   const helperRef = useMemoFirebase(() => firestore && task.assignedHelperId ? doc(firestore, 'helpers', task.assignedHelperId) : null, [firestore, task.assignedHelperId]);
   const { data: assignedHelper } = useDoc<Helper>(helperRef);
 
+  const finalCost = task.acceptedOfferPrice?.toLocaleString() ?? `${task.budget.min.toLocaleString()} - ${task.budget.max.toLocaleString()}`;
+
   return (
     <TableRow>
       <TableCell>
         <div className="font-medium">{task.title}</div>
         <div className="hidden text-sm text-muted-foreground md:inline">
-          {assignedHelper ? `Assigned to ${assignedHelper.fullName}` : task.area}
+          {assignedHelper ? `Assigned to ${assignedHelper.fullName}` : task.category}
         </div>
-      </TableCell>
-      <TableCell className="hidden sm:table-cell">
-        {task.category}
       </TableCell>
       <TableCell className="hidden sm:table-cell">
         <Badge
@@ -132,11 +131,11 @@ function TaskRow({ task }: { task: Task }) {
       <TableCell className="hidden md:table-cell">
         {taskOffers?.length ?? 0}
       </TableCell>
-        <TableCell className="hidden md:table-cell">
-        {format(task.createdAt.toDate(), 'dd MMM yyyy')}
+      <TableCell className="hidden md:table-cell">
+        {task.completedAt ? format(task.completedAt.toDate(), 'dd MMM yyyy') : 'Pending'}
       </TableCell>
       <TableCell className="text-right">
-          {`${task.budget.min.toLocaleString()} - ${task.budget.max.toLocaleString()}`}
+          {finalCost}
       </TableCell>
       <TableCell className="text-right">
         <Button variant="outline" size="sm" asChild>
@@ -155,9 +154,6 @@ function TaskRowSkeleton() {
       <TableCell>
         <Skeleton className="h-5 w-32" />
         <Skeleton className="h-4 w-24 mt-1" />
-      </TableCell>
-      <TableCell className="hidden sm:table-cell">
-        <Skeleton className="h-5 w-20" />
       </TableCell>
       <TableCell className="hidden sm:table-cell">
         <Skeleton className="h-6 w-24" />
