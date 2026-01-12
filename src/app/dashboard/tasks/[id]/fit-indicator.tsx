@@ -91,30 +91,29 @@ export function FitIndicator({ task }: FitIndicatorProps) {
   const [locationError, setLocationError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setLocationError('Geolocation is not supported by your browser.');
-      return;
+    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+      const watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          setLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+          setLocationError(null);
+        },
+        (err) => {
+          setLocationError(err.message);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        }
+      );
+
+      return () => navigator.geolocation.clearWatch(watchId);
+    } else {
+        setLocationError('Geolocation is not supported by your browser.');
     }
-
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        setLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
-        setLocationError(null);
-      },
-      (err) => {
-        setLocationError(err.message);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      }
-    );
-
-    return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
   const isLoading = isHelperLoading;
@@ -178,22 +177,12 @@ function IndicatorCard({ title, fit, icon }: IndicatorCardProps) {
         }
     }, [fit.level]);
 
-    const isSkillMatch = title === 'Skill Match';
-
     return (
         <div className="p-4 rounded-lg border bg-background/50 flex flex-col justify-between">
             <div>
                 <div className="flex items-center gap-2 mb-2 text-sm font-semibold text-muted-foreground">
                     {icon}
-                    {isSkillMatch ? (
-                        <div>
-                            <span>Skill</span>
-                            <br />
-                            <span>Match</span>
-                        </div>
-                    ) : (
-                        <span>{title}</span>
-                    )}
+                    <span>{title}</span>
                 </div>
                 <div className="flex items-baseline gap-2">
                     <div className={cn("text-lg font-bold", textColor)}>{fit.level}</div>

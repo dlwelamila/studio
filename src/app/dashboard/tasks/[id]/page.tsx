@@ -4,7 +4,7 @@
 import { use, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronLeft, Star, AlertTriangle, Briefcase, Wrench, CircleX } from 'lucide-react';
+import { ChevronLeft, Star, AlertTriangle, Briefcase, Wrench, CircleX, UserCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -59,6 +59,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { ReviewForm } from './review-form';
 import { FitIndicator } from './fit-indicator';
+import { useHelperJourney } from '@/hooks/use-helper-journey';
 
 const offerFormSchema = z.object({
     price: z.coerce.number().positive({ message: "Please enter a valid price." }),
@@ -87,6 +88,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
 
   const helperProfileRef = useMemoFirebase(() => firestore && currentUser ? doc(firestore, 'helpers', currentUser.uid) : null, [firestore, currentUser]);
   const { data: currentHelperProfile } = useDoc<Helper>(helperProfileRef);
+  const journey = useHelperJourney(currentHelperProfile);
 
 
   const offersQuery = useMemoFirebase(() => firestore && query(collection(firestore, 'tasks', id, 'offers')), [firestore, id]);
@@ -116,6 +118,11 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const handleMakeOffer = (data: OfferFormValues) => {
     if (!currentUser || !firestore || !task) {
         toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to make an offer.' });
+        return;
+    }
+
+    if (!journey?.capabilities.canSendOffers) {
+        toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'Your profile is not yet approved to send offers.' });
         return;
     }
 
@@ -388,64 +395,86 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
           ) : (
             <>
                 {task.status === 'OPEN' && !hasMadeOffer && (
-                    <Card>
-                         <Form {...form}>
-                            <form onSubmit={form.handleSubmit(handleMakeOffer)}>
-                                <CardHeader>
-                                <CardTitle className="font-headline">Make an Offer</CardTitle>
+                    <>
+                    {journey?.capabilities.canSendOffers ? (
+                        <Card>
+                            <Form {...form}>
+                                <form onSubmit={form.handleSubmit(handleMakeOffer)}>
+                                    <CardHeader>
+                                    <CardTitle className="font-headline">Make an Offer</CardTitle>
+                                    <CardDescription>
+                                        Submit your price and a message to the customer.
+                                    </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="grid gap-6">
+                                        <FormField
+                                            control={form.control}
+                                            name="price"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                <FormLabel>Your Price (TZS)</FormLabel>
+                                                <FormControl>
+                                                    <Input type="number" placeholder="e.g., 25,000" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="eta"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                <FormLabel>Availability / ETA</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="e.g., Tomorrow afternoon" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="message"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                <FormLabel>Message to Customer</FormLabel>
+                                                <FormControl>
+                                                    <Textarea placeholder="Introduce yourself and explain why you're a good fit for this task." className="min-h-24" {...field}/>
+                                                </FormControl>
+                                                <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </CardContent>
+                                    <CardFooter>
+                                        <Button type="submit" className="ml-auto" disabled={form.formState.isSubmitting}>
+                                            {form.formState.isSubmitting ? 'Submitting...' : 'Submit Offer'}
+                                        </Button>
+                                    </CardFooter>
+                                </form>
+                            </Form>
+                        </Card>
+                    ) : (
+                        <Card>
+                             <CardHeader>
+                                <CardTitle className="font-headline flex items-center gap-2">
+                                    <UserCheck className="h-5 w-5" />
+                                    Become a Verified Helper
+                                </CardTitle>
                                 <CardDescription>
-                                    Submit your price and a message to the customer.
+                                    You must complete your profile and get verified before you can make offers on tasks.
                                 </CardDescription>
-                                </CardHeader>
-                                <CardContent className="grid gap-6">
-                                    <FormField
-                                        control={form.control}
-                                        name="price"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                            <FormLabel>Your Price (TZS)</FormLabel>
-                                            <FormControl>
-                                                <Input type="number" placeholder="e.g., 25,000" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                     <FormField
-                                        control={form.control}
-                                        name="eta"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                            <FormLabel>Availability / ETA</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="e.g., Tomorrow afternoon" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="message"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                            <FormLabel>Message to Customer</FormLabel>
-                                            <FormControl>
-                                                <Textarea placeholder="Introduce yourself and explain why you're a good fit for this task." className="min-h-24" {...field}/>
-                                            </FormControl>
-                                            <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </CardContent>
-                                <CardFooter>
-                                    <Button type="submit" className="ml-auto" disabled={form.formState.isSubmitting}>
-                                        {form.formState.isSubmitting ? 'Submitting...' : 'Submit Offer'}
-                                    </Button>
-                                </CardFooter>
-                            </form>
-                        </Form>
-                    </Card>
+                            </CardHeader>
+                            <CardContent>
+                                <Button asChild className="w-full">
+                                    <Link href="/dashboard/profile">Complete Your Profile</Link>
+                                </Button>
+                                <p className="text-xs text-center text-muted-foreground mt-3">Once your profile is complete, our team will review it for verification.</p>
+                            </CardContent>
+                        </Card>
+                    )}
+                    </>
                 )}
                 {task.status === 'OPEN' && hasMadeOffer && (
                      <Card>
