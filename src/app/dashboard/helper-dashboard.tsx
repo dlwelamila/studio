@@ -18,6 +18,7 @@ import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection, query, where, doc } from 'firebase/firestore';
 import type { Task, Helper } from '@/lib/data';
 import { taskCategories } from '@/lib/data';
+import { cn } from '@/lib/utils';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -97,7 +98,13 @@ export default function HelperDashboard() {
                     onCheckedChange={handleAvailabilityToggle}
                     aria-readonly
                   />
-                  <Label htmlFor="availability-toggle" className="text-sm text-muted-foreground">
+                  <Label 
+                    htmlFor="availability-toggle" 
+                    className={cn(
+                        "text-sm",
+                        helper.isAvailable ? "text-muted-foreground" : "font-bold text-destructive"
+                    )}
+                  >
                     {helper.isAvailable ? 'Available for tasks' : 'Not available'}
                   </Label>
                 </div>
@@ -272,5 +279,3 @@ function TaskCardSkeleton() {
         </Card>
     )
 }
-
-    
