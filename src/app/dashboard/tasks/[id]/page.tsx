@@ -12,7 +12,7 @@ import { z } from 'zod';
 
 import { useUserRole } from '@/context/user-role-context';
 import { useDoc, useCollection, useMemoFirebase, serverTimestamp } from '@/firebase';
-import { updateDocument } from '@/firebase/firestore';
+import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 import { doc, collection, query, where, GeoPoint } from 'firebase/firestore';
@@ -112,7 +112,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
     }
   });
   
-  const handleMakeOffer = async (data: OfferFormValues) => {
+  const handleMakeOffer = (data: OfferFormValues) => {
     if (!currentUser || !firestore || !task) {
         toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to make an offer.' });
         return;
@@ -137,7 +137,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
     mutateTask();
   };
 
-  const handleStatusUpdate = async (newStatus: 'IN_PROGRESS' | 'COMPLETED') => {
+  const handleStatusUpdate = (newStatus: 'IN_PROGRESS' | 'COMPLETED') => {
     if (!taskRef) return;
 
     let updateData: any = { status: newStatus };
@@ -145,17 +145,12 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
         updateData.completedAt = serverTimestamp();
     }
     
-    try {
-      await updateDocument(taskRef, updateData);
-      mutateTask();
-      toast({
-        title: 'Task Status Updated',
-        description: `Task marked as ${newStatus.toLowerCase().replace('_', ' ')}.`,
-      });
-    } catch (error: any) {
-      console.error("Error updating task status:", error);
-      toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
-    }
+    updateDocumentNonBlocking(taskRef, updateData);
+    mutateTask();
+    toast({
+      title: 'Task Status Updated',
+      description: `Task marked as ${newStatus.toLowerCase().replace('_', ' ')}.`,
+    });
   }
 
   const handleReportSubmit = () => {

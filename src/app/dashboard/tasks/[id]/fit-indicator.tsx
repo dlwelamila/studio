@@ -1,12 +1,15 @@
-
 'use client';
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { CheckCircle2, MapPin, Clock, AlertCircle } from 'lucide-react';
+import { GeoPoint } from 'firebase/firestore';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Task } from '@/lib/data';
+import type { Task, Helper } from '@/lib/data';
 import { cn } from '@/lib/utils';
-import { useUser, useAuth } from '@/firebase';
+import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+
 
 type FitIndicatorProps = {
   task: Task;
@@ -17,33 +20,75 @@ type FitLevel = 'High' | 'Medium' | 'Low' | 'Unknown';
 type FitResult = {
   level: FitLevel;
   reason: string;
+  km?: number;
 };
 
-// Custom debounce hook implemented directly for simplicity
-function useDebouncedValue<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-
-  return debouncedValue;
+function getHaversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Radius of the Earth in kilometers
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+  return distance;
 }
+
+
+const getSkillFit = (task: Task, helper: Helper): FitResult => {
+  if (!task.category || !helper.serviceCategories) {
+    return { level: 'Unknown', reason: "Category or skills missing." };
+  }
+  const isMatch = helper.serviceCategories.includes(task.category);
+  if (isMatch) {
+    return { level: 'High', reason: "You specialize in this task's category." };
+  }
+  return { level: 'Low', reason: "This task is outside your primary service categories." };
+};
+
+const getDistanceFit = (task: Task, helperGeo?: { lat: number; lng: number }): FitResult => {
+    const taskLocation = task.location as GeoPoint | undefined;
+    if (!helperGeo || !taskLocation) {
+        return { level: 'Unknown', reason: "Location data unavailable." };
+    }
+
+    const distanceKm = getHaversineDistance(taskLocation.latitude, taskLocation.longitude, helperGeo.lat, helperGeo.lng);
+    const thresholds = { near: 3, moderate: 8 };
+
+    if (distanceKm <= thresholds.near) {
+        return { level: 'High', km: parseFloat(distanceKm.toFixed(1)), reason: "Task is very close to you." };
+    }
+    if (distanceKm <= thresholds.moderate) {
+        return { level: 'Medium', km: parseFloat(distanceKm.toFixed(1)), reason: "Task is a short drive away." };
+    }
+    return { level: 'Low', km: parseFloat(distanceKm.toFixed(1)), reason: "Task is far from your location." };
+};
+
+
+const getTimeFit = (task: Task): FitResult => {
+    if (task.timeWindow?.toLowerCase() === 'flexible') {
+        return { level: 'High', reason: 'Task has a flexible schedule.' };
+    }
+    if(task.timeWindow){
+        return { level: 'Medium', reason: 'Task has a specific time window.' };
+    }
+    return { level: 'Unknown', reason: 'Time preference not specified.' };
+};
+
 
 export function FitIndicator({ task }: FitIndicatorProps) {
   const { user } = useUser();
-  const auth = useAuth();
-  const [fitData, setFitData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const firestore = useFirestore();
+  
+  const helperRef = useMemoFirebase(() => (firestore && user) ? doc(firestore, 'helpers', user.uid) : null, [firestore, user]);
+  const { data: helper, isLoading: isHelperLoading } = useDoc<Helper>(helperRef);
 
-  // B3: Real-time Location State
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const debouncedLocation = useDebouncedValue(location, 800); // Debounce API calls by 800ms
 
-  // B3: Watch for location changes
   useEffect(() => {
     if (!navigator.geolocation) {
       setLocationError('Geolocation is not supported by your browser.');
@@ -68,93 +113,36 @@ export function FitIndicator({ task }: FitIndicatorProps) {
       }
     );
 
-    // Cleanup watcher on component unmount
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
-
-  // B2: Data fetching logic, now dependent on debouncedLocation
-  useEffect(() => {
-    if (!task || !user || !auth) return;
-
-    // If location is required and not available yet, wait.
-    // If there's a location error, we can still proceed to show other fits.
-    if (!debouncedLocation && !locationError) {
-        setIsLoading(true); // Show loading skeleton while waiting for initial location
-        return;
-    }
-
-    const fetchFitData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const token = await auth.currentUser?.getIdToken();
-        
-        let apiUrl = `/api/tasks/${task.id}/fit-indicator`;
-        if (debouncedLocation) {
-          apiUrl += `?lat=${debouncedLocation.lat}&lng=${debouncedLocation.lng}`;
-        }
-
-        const response = await fetch(
-          apiUrl,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
-        );
-
-        if (!response.ok) {
-           const errorText = await response.text();
-           try {
-             const errorJson = JSON.parse(errorText);
-             throw new Error(errorJson.error || 'Failed to fetch fit data');
-           } catch (e) {
-             throw new Error(errorText || 'An unexpected server error occurred.');
-           }
-        }
-        const data = await response.json();
-        setFitData(data);
-      } catch (error: any) {
-        console.error(error);
-        setError(error.message);
-        setFitData(null); // Clear data on error
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchFitData();
-  }, [task, user, auth, debouncedLocation, locationError]); // Re-fetches when debounced location changes
+  const isLoading = isHelperLoading;
 
   if (isLoading) {
     return <FitIndicatorSkeleton />;
   }
+
+  if (!helper) {
+    return (
+       <Card>
+          <CardHeader>
+              <CardTitle className="font-headline">Task Fit Indicator</CardTitle>
+          </CardHeader>
+          <CardContent>
+              <div className="text-sm text-destructive text-center py-4 flex items-center justify-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                Could not load your Helper profile to determine fit.
+              </div>
+          </CardContent>
+       </Card>
+    )
+  }
+
+  const skillMatch = getSkillFit(task, helper);
+  const timeFit = getTimeFit(task);
+  const distance = getDistanceFit(task, location || undefined);
   
-  if (error) {
-      return (
-         <Card>
-            <CardHeader>
-                <CardTitle className="font-headline">Task Fit Indicator</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="text-sm text-destructive text-center py-4 flex items-center justify-center gap-2">
-                  <AlertCircle className="h-4 w-4" />
-                  Could not load task fit data: {error}
-                </div>
-            </CardContent>
-         </Card>
-      )
-  }
-
-  if (!fitData) {
-     return null; // Don't render anything if there's no data and no error
-  }
-
-  const { skillMatch, distance, timeFit } = fitData;
-
-  // Manually handle distance if there was a location error on the client
-  const finalDistance = locationError ? { level: 'Unknown', reason: 'Could not get your location.' } : distance;
+  const finalDistance = locationError ? { level: 'Unknown', reason: 'Could not get your location.' } as FitResult : distance;
 
   return (
     <Card>
@@ -175,7 +163,7 @@ export function FitIndicator({ task }: FitIndicatorProps) {
 
 type IndicatorCardProps = {
     title: string;
-    fit: FitResult & { km?: number };
+    fit: FitResult;
     icon: React.ReactNode;
 }
 

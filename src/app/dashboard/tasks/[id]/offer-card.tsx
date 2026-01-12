@@ -5,7 +5,7 @@ import { doc } from 'firebase/firestore';
 
 import type { Offer, Helper, Task } from '@/lib/data';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { updateDocument } from '@/firebase/firestore';
+import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,41 +27,31 @@ export function OfferCard({ offer, task, onAccept }: OfferCardProps) {
   const { data: helper, isLoading } = useDoc<Helper>(helperRef);
 
   const handleAcceptOffer = async () => {
-    if (!firestore) return;
+    if (!firestore || !helper) return;
 
     const taskRef = doc(firestore, 'tasks', offer.taskId);
     const offerRef = doc(firestore, 'tasks', offer.taskId, 'offers', offer.id);
 
-    try {
-      // 1. Update the task status and assign the helper
-      await updateDocument(taskRef, {
-        status: 'ASSIGNED',
-        assignedHelperId: offer.helperId,
-      });
+    // 1. Update the task status and assign the helper
+    updateDocumentNonBlocking(taskRef, {
+      status: 'ASSIGNED',
+      assignedHelperId: offer.helperId,
+    });
 
-      // 2. Update the offer status
-      await updateDocument(offerRef, {
-        status: 'ACCEPTED',
-      });
-      
-      onAccept();
+    // 2. Update the offer status
+    updateDocumentNonBlocking(offerRef, {
+      status: 'ACCEPTED',
+    });
+    
+    onAccept();
 
-      toast({
-        title: 'Offer Accepted!',
-        description: `You have assigned ${helper?.fullName} to this task.`,
-      });
-      
-      // In a real app, you would also update all other offers to 'REJECTED'
-      // and send notifications. This is simplified for now.
-
-    } catch (error: any) {
-      console.error("Failed to accept offer: ", error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not accept the offer. Please try again.',
-      });
-    }
+    toast({
+      title: 'Offer Accepted!',
+      description: `You have assigned ${helper?.fullName} to this task.`,
+    });
+    
+    // In a real app, you would also update all other offers to 'REJECTED'
+    // and send notifications. This is simplified for now.
   };
 
   if (isLoading) {
