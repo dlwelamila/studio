@@ -206,12 +206,12 @@ export default function HelperDashboard() {
                 <>
                   <div>
                     <CardDescription>This Week</CardDescription>
-                    <p className="text-2xl font-bold">{helper.walletSummary.earningsThisWeek.toLocaleString()} {helper.walletSummary.currency}</p>
+                    <p className="text-2xl font-bold">{(helper.walletSummary?.earningsThisWeek ?? 0).toLocaleString()} {helper.walletSummary?.currency ?? 'TZS'}</p>
                   </div>
                   <Separator />
                    <div>
                     <CardDescription>This Month</CardDescription>
-                    <p className="text-2xl font-bold">{helper.walletSummary.earningsThisMonth.toLocaleString()} {helper.walletSummary.currency}</p>
+                    <p className="text-2xl font-bold">{(helper.walletSummary?.earningsThisMonth ?? 0).toLocaleString()} {helper.walletSummary?.currency ?? 'TZS'}</p>
                   </div>
                 </>
               )}
