@@ -104,7 +104,7 @@ function TaskRow({ task }: { task: Task }) {
   const helperRef = useMemoFirebase(() => firestore && task.assignedHelperId ? doc(firestore, 'helpers', task.assignedHelperId) : null, [firestore, task.assignedHelperId]);
   const { data: assignedHelper } = useDoc<Helper>(helperRef);
 
-  const finalCost = task.acceptedOfferPrice?.toLocaleString() ?? `${task.budget.min.toLocaleString()} - ${task.budget.max.toLocaleString()}`;
+  const finalCost = task.acceptedOfferPrice ? task.acceptedOfferPrice.toLocaleString() : `${task.budget.min.toLocaleString()} - ${task.budget.max.toLocaleString()}`;
 
   return (
     <TableRow>
