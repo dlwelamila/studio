@@ -3,9 +3,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { CheckCircle2, MapPin, Clock, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Task, Helper } from '@/lib/data';
+import type { Task } from '@/lib/data';
 import { cn } from '@/lib/utils';
-import { useUser } from '@/firebase';
+import { useUser, useAuth } from '@/firebase';
 
 type FitIndicatorProps = {
   task: Task;
@@ -20,30 +20,43 @@ type FitResult = {
 
 export function FitIndicator({ task }: FitIndicatorProps) {
   const { user } = useUser();
+  const auth = useAuth();
   const [fitData, setFitData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!task || !user) return;
+    if (!task || !user || !auth) return;
 
     const fetchFitData = async () => {
       setIsLoading(true);
+      setError(null);
       try {
-        // In a future step, we will add live location fetching here.
-        // For now, we simulate passing a location.
-        const helperLat = -6.7924; // Placeholder for Dar es Salaam
+        // In a future step (B3), we will add live location fetching here.
+        // For now, we simulate passing a location for Dar es Salaam.
+        const helperLat = -6.7924;
         const helperLng = 39.2083;
+        
+        const token = await auth.currentUser?.getIdToken();
 
         const response = await fetch(
-          `/api/tasks/${task.id}/fit-indicator?lat=${helperLat}&lng=${helperLng}`
+          `/api/tasks/${task.id}/fit-indicator?lat=${helperLat}&lng=${helperLng}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
         );
+
         if (!response.ok) {
-          throw new Error('Failed to fetch fit data');
+           const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to fetch fit data');
         }
         const data = await response.json();
         setFitData(data);
-      } catch (error) {
+      } catch (error: any) {
         console.error(error);
+        setError(error.message);
         setFitData(null); // Clear data on error
       } finally {
         setIsLoading(false);
@@ -51,23 +64,30 @@ export function FitIndicator({ task }: FitIndicatorProps) {
     };
 
     fetchFitData();
-  }, [task, user]);
+  }, [task, user, auth]);
 
   if (isLoading) {
     return <FitIndicatorSkeleton />;
   }
   
-  if (!fitData) {
+  if (error) {
       return (
          <Card>
             <CardHeader>
                 <CardTitle className="font-headline">Task Fit Indicator</CardTitle>
             </CardHeader>
             <CardContent>
-                <p className="text-sm text-muted-foreground text-center py-4">Could not load task fit data. Please try again later.</p>
+                <div className="text-sm text-destructive text-center py-4 flex items-center justify-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  Could not load task fit data: {error}
+                </div>
             </CardContent>
          </Card>
       )
+  }
+
+  if (!fitData) {
+     return null; // Don't render anything if there's no data and no error
   }
 
   const { skillMatch, distance, timeFit } = fitData;

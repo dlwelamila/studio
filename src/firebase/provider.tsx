@@ -53,7 +53,7 @@ export interface UserHookResult { // Renamed from UserAuthHookResult for consist
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
 // Interceptor for fetch to add auth token
-const originalFetch = fetch;
+const originalFetch = typeof window !== 'undefined' ? window.fetch : fetch;
 let currentAuth: Auth | null = null;
 
 const fetchWithAuth = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -66,7 +66,7 @@ const fetchWithAuth = async (input: RequestInfo | URL, init?: RequestInit): Prom
     return originalFetch(input, init);
 };
 
-// Monkey-patch fetch if it hasn't been patched already
+// Monkey-patch fetch if it hasn't been patched already and we are in a browser environment
 if (typeof window !== 'undefined' && (window as any).fetch.name !== 'fetchWithAuth') {
     (window as any).fetch = fetchWithAuth;
 }
@@ -162,21 +162,30 @@ export const useFirebase = (): FirebaseServicesAndUser => {
 };
 
 /** Hook to access Firebase Auth instance. */
-export const useAuth = (): Auth => {
-  const { auth } = useFirebase();
-  return auth;
+export const useAuth = (): Auth | null => {
+  const context = useContext(FirebaseContext);
+   if (context === undefined) {
+    throw new Error('useAuth must be used within a FirebaseProvider.');
+  }
+  return context.auth;
 };
 
 /** Hook to access Firestore instance. */
-export const useFirestore = (): Firestore => {
-  const { firestore } = useFirebase();
-  return firestore;
+export const useFirestore = (): Firestore | null => {
+  const context = useContext(FirebaseContext);
+   if (context === undefined) {
+    throw new Error('useFirestore must be used within a FirebaseProvider.');
+  }
+  return context.firestore;
 };
 
 /** Hook to access Firebase App instance. */
-export const useFirebaseApp = (): FirebaseApp => {
-  const { firebaseApp } = useFirebase();
-  return firebaseApp;
+export const useFirebaseApp = (): FirebaseApp | null => {
+  const context = useContext(FirebaseContext);
+  if (context === undefined) {
+    throw new Error('useFirebaseApp must be used within a FirebaseProvider.');
+  }
+  return context.firebaseApp;
 };
 
 type MemoFirebase <T> = T & {__memo?: boolean};
@@ -185,7 +194,13 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | 
   const memoized = useMemo(factory, deps);
   
   if(typeof memoized !== 'object' || memoized === null) return memoized;
-  (memoized as MemoFirebase<T>).__memo = true;
+  if (!('__memo' in memoized)) {
+    try {
+      (memoized as MemoFirebase<T>).__memo = true;
+    } catch(e) {
+      // ignore, this is a best effort
+    }
+  }
   
   return memoized;
 }
@@ -196,6 +211,10 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | 
  * @returns {UserHookResult} Object with user, isUserLoading, userError.
  */
 export const useUser = (): UserHookResult => { // Renamed from useAuthUser
-  const { user, isUserLoading, userError } = useFirebase(); // Leverages the main hook
+  const context = useContext(FirebaseContext);
+  if (context === undefined) {
+    throw new Error('useUser must be used within a FirebaseProvider.');
+  }
+  const { user, isUserLoading, userError } = context;
   return { user, isUserLoading, userError };
 };

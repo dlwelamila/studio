@@ -4,9 +4,12 @@ import { getFirestore, doc, getDoc, GeoPoint } from 'firebase/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { initializeAdminApp } from '@/firebase/admin';
 import type { Task, Helper } from '@/lib/data';
+import { initializeFirebase } from '@/firebase';
 
-// Initialize Firebase Admin SDK
+// Initialize Firebase Admin SDK for server-side auth
 initializeAdminApp();
+// Initialize Firebase client SDK to use Firestore on the server
+const { firestore: db } = initializeFirebase();
 
 type FitLevel = 'High' | 'Medium' | 'Low' | 'Unknown';
 
@@ -102,8 +105,6 @@ export async function GET(
   const helperGeo = lat && lng ? { lat: parseFloat(lat), lng: parseFloat(lng) } : undefined;
 
   try {
-    const db = getFirestore();
-
     // A4: Fetch in parallel
     const [taskDoc, helperDoc] = await Promise.all([
       getDoc(doc(db, 'tasks', taskId)),
@@ -114,6 +115,7 @@ export async function GET(
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
     if (!helperDoc.exists()) {
+      // NOTE: In a real app, you might want to check for a custom claim 'role:worker' first.
       return NextResponse.json({ error: 'Helper profile not found' }, { status: 404 });
     }
 

@@ -16,8 +16,9 @@ export function initializeAdminApp() {
     }
 
     try {
+        const serviceAccountJson = JSON.parse(serviceAccount);
         app = admin.initializeApp({
-            credential: admin.credential.cert(JSON.parse(serviceAccount)),
+            credential: admin.credential.cert(serviceAccountJson),
         });
         return app;
     } catch(e) {
