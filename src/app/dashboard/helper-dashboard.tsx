@@ -95,18 +95,18 @@ export default function HelperDashboard() {
                 <div className="grid gap-2 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-2"><Shield className="h-4 w-4" /> Reliability</span>
-                    <Badge variant="outline">{helper.stats.reliabilityLevel}</Badge>
+                    <Badge variant="outline">{helper.stats?.reliabilityLevel || 'N/A'}</Badge>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Rating</span>
                     <div className="flex items-center gap-1">
                       <Star className="h-4 w-4 fill-primary text-primary" />
-                      <span>{helper.stats.ratingAvg?.toFixed(1) || 'N/A'}</span>
+                      <span>{helper.stats?.ratingAvg?.toFixed(1) || 'N/A'}</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Completed Gigs</span>
-                    <span>{helper.stats.jobsCompleted || 0}</span>
+                    <span>{helper.stats?.jobsCompleted || 0}</span>
                   </div>
                 </div>
               </CardContent>
