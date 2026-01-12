@@ -36,12 +36,14 @@ const breadcrumbMap: Record<string, Record<string, string>> = {
         '/dashboard': 'My Tasks',
         '/dashboard/tasks/new': 'New Task',
         '/dashboard/profile': 'My Profile',
+        '/support': 'Support',
     },
     helper: {
         '/dashboard': 'Browse Tasks',
         '/dashboard/browse': 'Browse Tasks',
         '/dashboard/gigs': 'My Gigs',
         '/dashboard/profile': 'My Profile',
+        '/support': 'Support',
     }
 }
 
@@ -196,7 +198,7 @@ export default function AppHeader() {
 
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => router.push('/dashboard/profile')}>Settings</DropdownMenuItem>
-              <DropdownMenuItem>Support</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => router.push('/support')}>Support</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
             </DropdownMenuContent>
