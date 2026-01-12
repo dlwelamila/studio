@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { serverTimestamp } from 'firebase/firestore';
 
 
 import { useUserRole } from '@/context/user-role-context';
@@ -16,7 +17,7 @@ import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
-import { doc, collection, query, where, GeoPoint, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, query, where, GeoPoint } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 
 import { Badge } from '@/components/ui/badge';
@@ -70,7 +71,7 @@ type OfferFormValues = z.infer<typeof offerFormSchema>;
 
 
 export default function TaskDetailPage({ params }: { params: { id: string } }) {
-  const { id } = use(params);
+  const { id } = params;
   const { role } = useUserRole();
   const { user: currentUser, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -500,28 +501,28 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
               <CardTitle className="font-headline text-base">Task Timeline</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4 text-sm">
+              <div className="grid gap-1">
+                <div className="font-medium text-muted-foreground">Posted</div>
+                <div className="text-foreground">{task.createdAt ? format(task.createdAt.toDate(), 'MMM d, yyyy, p') : '-'}</div>
+              </div>
+              {task.assignedAt && (
                 <div className="grid gap-1">
-                    <div className="font-medium text-muted-foreground">Posted</div>
-                    <div className="text-foreground">{task.createdAt ? format(task.createdAt.toDate(), 'PP, p') : '-'}</div>
+                  <div className="font-medium text-muted-foreground">Assigned</div>
+                  <div className="text-foreground">{format(task.assignedAt.toDate(), 'MMM d, yyyy, p')}</div>
                 </div>
-                {task.assignedAt && (
-                    <div className="grid gap-1">
-                        <div className="font-medium text-muted-foreground">Assigned</div>
-                        <div className="text-foreground">{format(task.assignedAt.toDate(), 'PP, p')}</div>
-                    </div>
-                )}
-                 {task.completedAt && (
-                    <div className="grid gap-1">
-                        <div className="font-medium text-muted-foreground">Completed</div>
-                        <div className="text-foreground">{format(task.completedAt.toDate(), 'PP, p')}</div>
-                    </div>
-                )}
-                 {task.disputedAt && (
-                    <div className="grid gap-1 text-destructive">
-                        <div className="font-medium">Disputed</div>
-                        <div className="font-medium">{format(task.disputedAt.toDate(), 'PP, p')}</div>
-                    </div>
-                )}
+              )}
+              {task.completedAt && (
+                <div className="grid gap-1">
+                  <div className="font-medium text-muted-foreground">Completed</div>
+                  <div className="text-foreground">{format(task.completedAt.toDate(), 'MMM d, yyyy, p')}</div>
+                </div>
+              )}
+              {task.disputedAt && (
+                <div className="grid gap-1 text-destructive">
+                  <div className="font-medium">Disputed</div>
+                  <div className="font-medium">{format(task.disputedAt.toDate(), 'MMM d, yyyy, p')}</div>
+                </div>
+              )}
             </CardContent>
           </Card>
           <Card>
@@ -627,6 +628,3 @@ function TaskDetailSkeleton() {
     </div>
   )
 }
-
-
-    
