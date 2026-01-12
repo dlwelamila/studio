@@ -37,15 +37,24 @@ service cloud.firestore {
              (currentStatus == 'IN_PROGRESS' && nextStatus == 'COMPLETED');
     }
 
-    match /users/{userId} {
-      allow get, list: if true;
+    match /customers/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isOwner(userId) && ownerFieldIsImmutable('id');
+      allow delete: if isOwner(userId);
+    }
+    
+    match /helpers/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if isOwner(userId) && ownerFieldIsImmutable('id');
       allow delete: if isOwner(userId);
     }
 
     match /tasks/{taskId} {
-      allow get: if (isSignedIn() && (isResourceOwner(resource, 'customerId') || isAssignedHelper(resource.data) || isAdmin()));
+      allow get: if isSignedIn(); // Let client logic handle what to show
       allow list: if isSignedIn();
       allow create: if isCreatingOwnResource('customerId');
       
@@ -70,6 +79,12 @@ service cloud.firestore {
       allow create: if isCreatingOwnResource('customerId');
       allow update: if false;
       allow delete: if false;
+    }
+    
+    match /feedbacks/{feedbackId} {
+       allow get, list: if true;
+       allow create: if isCreatingOwnResource('customerId');
+       allow update, delete: if false;
     }
 
     match /roles_admin/{userId} {

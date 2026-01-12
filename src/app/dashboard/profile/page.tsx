@@ -20,8 +20,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ReviewCard } from './review-card';
 
 export default function ProfilePage() {
-  const { role } = useUserRole();
-  const { user: authUser, isUserLoading } = useUser();
+  const { role, isRoleLoading } = useUserRole();
+  const { user: authUser, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
 
   const userRef = useMemoFirebase(() => {
@@ -39,8 +39,9 @@ export default function ProfilePage() {
 
   const { data: feedbacks, isLoading: areFeedbacksLoading } = useCollection<Feedback>(feedbacksQuery);
 
+  const isLoading = isAuthLoading || isRoleLoading || isProfileLoading;
 
-  if (isUserLoading || isProfileLoading || !userProfile) {
+  if (isLoading || !userProfile) {
     return <ProfileSkeleton />;
   }
 
@@ -82,7 +83,7 @@ export default function ProfilePage() {
                     <Calendar className="h-5 w-5 text-muted-foreground" />
                     <div>
                         <p className="text-muted-foreground">Member Since</p>
-                        <p className="font-semibold">{helperProfile?.memberSince ? format(helperProfile.memberSince.toDate(), 'MMMM yyyy') : 'N/A'}</p>
+                        <p className="font-semibold">{userProfile?.memberSince ? format(userProfile.memberSince.toDate(), 'MMMM yyyy') : 'N/A'}</p>
                     </div>
                 </div>
                 {helperProfile && (
