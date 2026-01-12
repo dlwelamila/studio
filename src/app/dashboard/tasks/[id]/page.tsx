@@ -256,7 +256,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                <Separator className="my-6" />
                 <div>
                   <h3 className="font-headline text-base font-semibold mb-4">Task Timeline</h3>
-                  <div className="grid gap-4 text-sm">
+                  <div className="grid gap-4 text-sm sm:grid-cols-3">
                     <div className="grid gap-1">
                       <div className="font-medium text-muted-foreground">Posted</div>
                       <div className="text-foreground">{task.createdAt ? format(task.createdAt.toDate(), 'MMM d, yyyy, p') : '-'}</div>
@@ -275,6 +275,27 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                     )}
                   </div>
                 </div>
+                {assignedHelper && (
+                  <>
+                    <Separator className="my-6" />
+                    <div>
+                      <h3 className="font-headline text-base font-semibold mb-4">Assigned Helper</h3>
+                       <div className="flex items-center gap-4">
+                          <Image
+                              alt="Helper avatar"
+                              className="rounded-full"
+                              height={40}
+                              src={assignedHelper.profilePhotoUrl || ''}
+                              style={{ aspectRatio: '40/40', objectFit: 'cover' }}
+                              width={40}
+                          />
+                          <div>
+                              <div className="font-semibold">{assignedHelper.fullName}</div>
+                          </div>
+                      </div>
+                    </div>
+                  </>
+                )}
             </CardContent>
           </Card>
           
@@ -489,28 +510,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                  </div>
             </CardContent>
           </Card>
-          { assignedHelper && (
-            <Card>
-                <CardHeader>
-                    <CardTitle className="font-headline">Assigned Helper</CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-4">
-                     <div className="flex items-center gap-4">
-                        <Image
-                            alt="Helper avatar"
-                            className="rounded-full"
-                            height={40}
-                            src={assignedHelper.profilePhotoUrl || ''}
-                            style={{ aspectRatio: '40/40', objectFit: 'cover' }}
-                            width={40}
-                        />
-                        <div>
-                            <div className="font-semibold">{assignedHelper.fullName}</div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-          )}
+          
           {task.disputedAt && (
             <Card>
                 <CardHeader>
@@ -548,6 +548,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                   </div>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
+
                     <AlertDialogAction onClick={handleReportSubmit}>Submit Report</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -627,5 +628,3 @@ function TaskDetailSkeleton() {
     </div>
   )
 }
-
-    
