@@ -14,6 +14,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { recommendHelpersForTask } from '@/ai/flows/recommend-helpers-for-task';
+import { useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+
 
 type RecommendedHelpersProps = {
   task: Task;
@@ -22,9 +25,11 @@ type RecommendedHelpersProps = {
 export function RecommendedHelpers({ task }: RecommendedHelpersProps) {
   const [recommended, setRecommended] = useState<Helper[]>([]);
   const [loading, setLoading] = useState(true);
+  const firestore = useFirestore();
 
   useEffect(() => {
     const getRecommendations = async () => {
+      if (!firestore) return;
       setLoading(true);
       try {
         const result = await recommendHelpersForTask({
@@ -33,25 +38,30 @@ export function RecommendedHelpers({ task }: RecommendedHelpersProps) {
           customerRating: 4.5, // Mock customer rating
         });
         
-        // In a real app, you would fetch helper details from a database using the IDs from the result.
-        // For now, we are mocking this part. This will be connected to Firestore in a future step.
-        setTimeout(() => {
-          // const helpers = users.filter(u => result.recommendedHelpers.includes(u.id));
-          // setRecommended(helpers);
-          setLoading(false);
-        }, 1500);
-
+        if (result.recommendedHelpers && result.recommendedHelpers.length > 0) {
+            const helpersQuery = query(collection(firestore, 'helpers'), where('id', 'in', result.recommendedHelpers));
+            const querySnapshot = await getDocs(helpersQuery);
+            const fetchedHelpers: Helper[] = [];
+            querySnapshot.forEach(doc => {
+                fetchedHelpers.push(doc.data() as Helper);
+            });
+            setRecommended(fetchedHelpers);
+        }
+        
       } catch (error) {
         console.error('Failed to get recommendations:', error);
+      } finally {
         setLoading(false);
       }
     };
 
-    if (task) {
-        // getRecommendations();
-        setLoading(false); // Temporarily disable AI recommendations
+    if (task && firestore) {
+        // Temporarily disable while AI functionality is being debugged.
+        // In a real scenario, you'd want this active.
+        // getRecommendations(); 
+        setLoading(false);
     }
-  }, [task]);
+  }, [task, firestore]);
 
   if (!task) return null;
 
