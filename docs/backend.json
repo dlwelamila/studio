@@ -10,35 +10,24 @@
           "type": "string",
           "description": "Unique identifier for the customer entity."
         },
-        "firstName": {
+        "fullName": {
           "type": "string",
-          "description": "The first name of the customer."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "The last name of the customer."
+          "description": "The full name of the customer."
         },
         "email": {
           "type": "string",
           "description": "The email address of the customer.",
           "format": "email"
         },
-        "phone": {
+        "phoneNumber": {
           "type": "string",
-          "description": "The phone number of the customer."
-        },
-        "address": {
-          "type": "string",
-          "description": "The address of the customer."
+          "description": "The unique, verified phone number of the customer."
         }
       },
       "required": [
         "id",
-        "firstName",
-        "lastName",
-        "email",
-        "phone",
-        "address"
+        "fullName",
+        "phoneNumber"
       ]
     },
     "Helper": {
@@ -51,26 +40,18 @@
           "type": "string",
           "description": "Unique identifier for the helper entity."
         },
-        "firstName": {
+        "fullName": {
           "type": "string",
-          "description": "The first name of the helper."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "The last name of the helper."
+          "description": "The full name of the helper."
         },
         "email": {
           "type": "string",
           "description": "The email address of the helper.",
           "format": "email"
         },
-        "phone": {
+        "phoneNumber": {
           "type": "string",
-          "description": "The phone number of the helper."
-        },
-        "address": {
-          "type": "string",
-          "description": "The address of the helper."
+          "description": "The unique, verified phone number of the helper."
         },
         "skills": {
           "type": "array",
@@ -86,11 +67,8 @@
       },
       "required": [
         "id",
-        "firstName",
-        "lastName",
-        "email",
-        "phone",
-        "address",
+        "fullName",
+        "phoneNumber",
         "skills"
       ]
     },
@@ -314,7 +292,8 @@
   "auth": {
     "providers": [
       "password",
-      "anonymous"
+      "anonymous",
+      "phone"
     ]
   },
   "firestore": {

@@ -9,7 +9,7 @@ const avatars = PlaceHolderImages.filter(img => img.id.startsWith('avatar-'));
 export type Helper = {
   id: string; // Corresponds to Firebase Auth UID
   fullName: string;
-  email?: string;
+  email?: string | null;
   phoneNumber: string;
   profilePhotoUrl: string;
   serviceCategories: string[];
@@ -44,7 +44,7 @@ export type Customer = {
   id: string; // Corresponds to Firebase Auth UID
   fullName: string;
   phoneNumber: string;
-  email?: string;
+  email?: string | null;
   rating?: number;
   profilePhotoUrl: string;
   memberSince: Timestamp;
@@ -114,3 +114,5 @@ export const taskCategories = [
     'Shopping',
     'Other'
 ];
+
+    

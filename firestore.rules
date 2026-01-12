@@ -34,6 +34,14 @@ service cloud.firestore {
     function ownerFieldIsImmutable(key) {
       return request.resource.data[key] == resource.data[key];
     }
+
+    function hasRequiredFields(role) {
+      let fields = ['id', 'fullName', 'phoneNumber'];
+      if (role == 'helper') {
+        fields.push('serviceCategories', 'serviceAreas', 'aboutMe');
+      }
+      return request.resource.data.keys().hasAll(fields);
+    }
     
     function canUpdateTaskStatus(currentStatus, nextStatus) {
       // Helper transitions
@@ -49,7 +57,7 @@ service cloud.firestore {
     match /customers/{userId} {
       allow get: if isSignedIn();
       allow list: if isSignedIn();
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow create: if isOwner(userId) && hasRequiredFields('customer');
       allow update: if isOwner(userId) && ownerFieldIsImmutable('id') && ownerFieldIsImmutable('phoneNumber');
       allow delete: if isOwner(userId);
     }
@@ -57,7 +65,7 @@ service cloud.firestore {
     match /helpers/{userId} {
       allow get: if isSignedIn();
       allow list: if isSignedIn();
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow create: if isOwner(userId) && hasRequiredFields('helper');
       allow update: if isOwner(userId) && ownerFieldIsImmutable('id') && ownerFieldIsImmutable('phoneNumber');
       allow delete: if isOwner(userId);
     }
@@ -65,7 +73,7 @@ service cloud.firestore {
     match /tasks/{taskId} {
       allow get: if isSignedIn(); // Let client logic handle what to show
       allow list: if isSignedIn();
-      allow create: if isCreatingOwnResource('customerId');
+      allow create: if isCreatingOwnResource('customerId') && exists(/databases/$(database)/documents/customers/$(request.auth.uid));
       
       allow update: if isSignedIn() && (
         // Customer can accept an offer or dispute a completed task
@@ -112,3 +120,4 @@ service cloud.firestore {
     }
   }
 }
+    
