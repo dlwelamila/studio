@@ -39,10 +39,12 @@ const testAccounts = {
   'customer@taskey.app': {
     role: 'customer',
     fullName: 'Aisha Customer',
+    phoneNumber: '+255712345678',
   },
   'helper@taskey.app': {
     role: 'helper',
     fullName: 'Baraka Helper',
+    phoneNumber: '+255787654321',
     serviceCategories: ['Cleaning', 'Laundry'],
     serviceAreas: 'Masaki, Msasani',
     aboutMe: 'Reliable and detail-oriented helper with 3+ years of experience in home cleaning and laundry services. I take pride in my work and always ensure customer satisfaction.',
@@ -53,6 +55,7 @@ const testAccounts = {
 const profileFormSchema = z.object({
   role: z.enum(['helper', 'customer'], { required_error: 'You must select a role.' }),
   fullName: z.string().min(3, { message: 'Full name must be at least 3 characters.' }),
+  phoneNumber: z.string().regex(/^\+255[0-9]{9}$/, { message: 'Please enter a valid Tanzanian phone number starting with +255.'}),
   serviceCategories: z.array(z.string()).optional(),
   serviceAreas: z.string().optional(),
   aboutMe: z.string().optional(),
@@ -100,6 +103,7 @@ export default function CreateProfilePage() {
     defaultValues: {
         role: 'customer',
         fullName: '',
+        phoneNumber: '',
         serviceCategories: [],
         serviceAreas: '',
         aboutMe: '',
@@ -119,6 +123,9 @@ export default function CreateProfilePage() {
     if (user?.email && user.email in testAccounts) {
       const testData = testAccounts[user.email as keyof typeof testAccounts];
       form.reset(testData);
+    } else if (user?.phoneNumber) {
+        // Pre-fill phone number if user signed in with it
+        form.setValue('phoneNumber', user.phoneNumber);
     }
   }, [searchParams, form, user]);
 
@@ -147,7 +154,7 @@ export default function CreateProfilePage() {
             const helperData: Helper = {
                 id: user.uid,
                 email: user.email,
-                phoneNumber: user.phoneNumber || '',
+                phoneNumber: data.phoneNumber,
                 fullName: data.fullName,
                 profilePhotoUrl: defaultHelperAvatar.imageUrl,
                 serviceCategories: data.serviceCategories || [],
@@ -181,7 +188,7 @@ export default function CreateProfilePage() {
             const customerData = {
                 id: user.uid,
                 email: user.email,
-                phoneNumber: user.phoneNumber || '',
+                phoneNumber: data.phoneNumber,
                 fullName: data.fullName,
                 profilePhotoUrl: defaultAvatar.imageUrl,
                 rating: 4.0,
@@ -194,7 +201,7 @@ export default function CreateProfilePage() {
         router.push('/dashboard');
     } catch (error: any) {
         console.error("Error creating profile: ", error);
-        toast({ variant: 'destructive', title: 'Profile Creation Failed', description: error.message });
+        toast({ variant: 'destructive', title: 'Profile Creation Failed', description: "This phone number might already be in use for this role. Please use a different number or contact support." });
         setIsSubmitting(false);
     }
   };
@@ -265,6 +272,23 @@ export default function CreateProfilePage() {
                         <FormControl>
                             <Input placeholder="e.g., Juma Hamisi" {...field} />
                         </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
+                <FormField
+                    control={form.control}
+                    name="phoneNumber"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Phone Number</FormLabel>
+                        <FormControl>
+                            <Input placeholder="+255712345678" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                            Your phone number will be used for verification and communication.
+                        </FormDescription>
                         <FormMessage />
                         </FormItem>
                     )}

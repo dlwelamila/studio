@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { ImagePlaceholder } from '@/lib/placeholder-images';
@@ -115,5 +114,3 @@ export const taskCategories = [
     'Shopping',
     'Other'
 ];
-
-    

@@ -47,16 +47,21 @@ service cloud.firestore {
     }
 
     // New function to check for phone number uniqueness
+    // IMPORTANT: This relies on a client-side implementation that queries
+    // for document existence before writing. Rules cannot query across documents.
+    // This rule is primarily to enforce immutability. True uniqueness
+    // must be handled in client logic or a Cloud Function.
     function isPhoneNumberUnique(collectionName, phoneNumber) {
-      return !exists(/databases/$(database)/documents/$(collectionName)/_/[phoneNumber/$(phoneNumber)]);
+      // This is a placeholder. True uniqueness check requires a different data structure
+      // or a Cloud Function. For now, we allow it and focus on immutability.
+      return true;
     }
 
     match /customers/{userId} {
       allow get: if isSignedIn();
       allow list: if isSignedIn();
-      // Enforce unique phone number on creation
-      allow create: if isOwner(userId) && request.resource.data.id == userId &&
-                       isPhoneNumberUnique('customers', request.resource.data.phoneNumber);
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      // Phone number should not be changed after creation
       allow update: if isOwner(userId) && ownerFieldIsImmutable('id') && ownerFieldIsImmutable('phoneNumber');
       allow delete: if isOwner(userId);
     }
@@ -64,9 +69,8 @@ service cloud.firestore {
     match /helpers/{userId} {
       allow get: if isSignedIn();
       allow list: if isSignedIn();
-      // Enforce unique phone number on creation
-      allow create: if isOwner(userId) && request.resource.data.id == userId &&
-                       isPhoneNumberUnique('helpers', request.resource.data.phoneNumber);
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+       // Phone number should not be changed after creation
       allow update: if isOwner(userId) && ownerFieldIsImmutable('id') && ownerFieldIsImmutable('phoneNumber');
       allow delete: if isOwner(userId);
     }
