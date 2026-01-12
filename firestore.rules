@@ -15,6 +15,10 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
     }
+    
+    function isApprovedHelper() {
+        return isSignedIn() && get(/databases/$(database)/documents/helpers/$(request.auth.uid)).data.verificationStatus == 'APPROVED';
+    }
 
     function isAssignedHelper(taskData) {
       return isSignedIn() && taskData.assignedHelperId == request.auth.uid;
@@ -79,7 +83,7 @@ service cloud.firestore {
       // Offers subcollection
       match /offers/{offerId} {
         allow get, list: if isResourceOwner(get(/databases/$(database)/documents/tasks/$(taskId)), 'customerId') || isAdmin() || isCreatingOwnResource('helperId');
-        allow create: if isCreatingOwnResource('helperId');
+        allow create: if isCreatingOwnResource('helperId') && isApprovedHelper();
         allow update: if isResourceOwner(resource, 'helperId') && ownerFieldIsImmutable('helperId');
         allow delete: if isResourceOwner(resource, 'helperId');
       }
