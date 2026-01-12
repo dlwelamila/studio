@@ -72,12 +72,12 @@ export default function ProfilePage() {
               </CardHeader>
               <CardContent>
               <Separator className="my-4" />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-                  <div className="flex items-center gap-3">
-                      <Phone className="h-5 w-5 text-muted-foreground" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-4 text-sm">
+                  <div className="flex items-start gap-3">
+                      <Phone className="h-5 w-5 mt-0.5 text-muted-foreground" />
                       <div>
                           <p className="text-muted-foreground">Phone Number</p>
-                          <div className='flex items-center gap-2'>
+                          <div className='flex items-center gap-2 mt-1'>
                             <p className="font-semibold">{userProfile.phoneNumber}</p>
                             {customerProfile && (
                                 customerProfile.phoneVerified ? (
@@ -92,27 +92,27 @@ export default function ProfilePage() {
                           </div>
                       </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                      <Calendar className="h-5 w-5 text-muted-foreground" />
+                  <div className="flex items-start gap-3">
+                      <Calendar className="h-5 w-5 mt-0.5 text-muted-foreground" />
                       <div>
                           <p className="text-muted-foreground">Member Since</p>
-                          <p className="font-semibold">{userProfile?.memberSince ? format(userProfile.memberSince.toDate(), 'MMMM yyyy') : 'N/A'}</p>
+                          <p className="font-semibold mt-1">{userProfile?.memberSince ? format(userProfile.memberSince.toDate(), 'MMMM yyyy') : 'N/A'}</p>
                       </div>
                   </div>
                   {helperProfile && (
                       <>
-                          <div className="flex items-center gap-3">
-                            <MapPin className="h-5 w-5 text-muted-foreground" />
+                          <div className="flex items-start gap-3">
+                            <MapPin className="h-5 w-5 mt-0.5 text-muted-foreground" />
                             <div>
                                 <p className="text-muted-foreground">Service Areas</p>
-                                <p className="font-semibold">{helperProfile.serviceAreas.join(', ')}</p>
+                                <p className="font-semibold mt-1">{helperProfile.serviceAreas.join(', ')}</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                              <BadgeCheckIcon className="h-5 w-5 text-muted-foreground" />
+                          <div className="flex items-start gap-3">
+                              <BadgeCheckIcon className="h-5 w-5 mt-0.5 text-muted-foreground" />
                               <div>
                                   <p className="text-muted-foreground">Verification</p>
-                                  <div className="font-semibold">
+                                  <div className="font-semibold mt-1">
                                       {helperProfile.verificationStatus === 'APPROVED' ? (
                                           <Badge variant="secondary" className='gap-1 border-green-500/50 text-green-700'>
                                             <BadgeCheckIcon className="h-3 w-3" />
@@ -124,32 +124,32 @@ export default function ProfilePage() {
                                   </div>
                               </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                              <Star className="h-5 w-5 text-muted-foreground" />
+                          <div className="flex items-start gap-3">
+                              <Star className="h-5 w-5 mt-0.5 text-muted-foreground" />
                               <div>
                                   <p className="text-muted-foreground">Rating</p>
-                                  <p className="font-semibold">{helperProfile.stats.ratingAvg ? `${helperProfile.stats.ratingAvg.toFixed(1)} / 5.0` : 'No ratings yet'}</p>
+                                  <p className="font-semibold mt-1">{helperProfile.stats.ratingAvg ? `${helperProfile.stats.ratingAvg.toFixed(1)} / 5.0` : 'No ratings yet'}</p>
                               </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                              <Briefcase className="h-5 w-5 text-muted-foreground" />
+                          <div className="flex items-start gap-3">
+                              <Briefcase className="h-5 w-5 mt-0.5 text-muted-foreground" />
                               <div>
                                   <p className="text-muted-foreground">Completed Gigs</p>
-                                  <p className="font-semibold">{helperProfile.stats.jobsCompleted || 0}</p>
+                                  <p className="font-semibold mt-1">{helperProfile.stats.jobsCompleted || 0}</p>
                               </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                              <Shield className="h-5 w-5 text-muted-foreground" />
+                          <div className="flex items-start gap-3">
+                              <Shield className="h-5 w-5 mt-0.5 text-muted-foreground" />
                               <div>
                                   <p className="text-muted-foreground">Reliability</p>
-                                  <p className="font-semibold">{helperProfile.stats.reliabilityLevel || 'Not Yet Rated'}</p>
+                                  <p className="font-semibold mt-1">{helperProfile.stats.reliabilityLevel || 'Not Yet Rated'}</p>
                               </div>
                           </div>
-                          <div className="flex items-center gap-3 md:col-span-2">
-                              <Briefcase className="h-5 w-5 text-muted-foreground" />
+                          <div className="flex items-start gap-3 md:col-span-2">
+                              <Briefcase className="h-5 w-5 mt-0.5 text-muted-foreground" />
                               <div>
                                   <p className="text-muted-foreground">Skills</p>
-                                  <div className="flex flex-wrap gap-2">
+                                  <div className="flex flex-wrap gap-2 mt-1">
                                       {helperProfile.serviceCategories?.map(skill => <Badge key={skill} variant="outline">{skill}</Badge>)}
                                   </div>
                               </div>
