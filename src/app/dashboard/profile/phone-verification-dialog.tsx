@@ -40,22 +40,21 @@ export function PhoneVerificationDialog({ phoneNumber, userDocRef, onSuccess }: 
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
 
   useEffect(() => {
-    if (!open || !auth) return;
-    
-    // Ensure reCAPTCHA is only initialized once and when needed
+    if (!auth) return;
+
+    // This is a workaround for testing without visible reCAPTCHA.
+    // In production, a visible reCAPTCHA is recommended.
+    // Ensure the container element exists and is only initialized once.
     if (!(window as any).recaptchaVerifier) {
       (window as any).recaptchaVerifier = new RecaptchaVerifier(
         auth,
-        'recaptcha-container', // This ID must exist in the DOM
+        'recaptcha-container', // This ID must exist in the DOM, even if hidden
         {
           size: 'invisible',
-          callback: () => {
-            // reCAPTCHA solved
-          },
         }
       );
     }
-  }, [open, auth]);
+  }, [auth]);
 
   const handleSendOtp = async () => {
     if (!auth || !phoneNumber) return;
@@ -74,6 +73,12 @@ export function PhoneVerificationDialog({ phoneNumber, userDocRef, onSuccess }: 
         title: 'Failed to Send Code',
         description: error.message,
       });
+       // Reset the verifier if it fails, allowing for a retry
+      if ((window as any).recaptchaVerifier) {
+        (window as any).recaptchaVerifier.render().then((widgetId: any) => {
+          grecaptcha.reset(widgetId);
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -85,15 +90,14 @@ export function PhoneVerificationDialog({ phoneNumber, userDocRef, onSuccess }: 
     try {
       await confirmationResult.confirm(otp);
       
-      // Update the user's document to mark phone as verified
       updateDocumentNonBlocking(userDocRef, { phoneVerified: true });
       
       toast({
         title: 'Phone Number Verified!',
         description: 'Your account is now fully active.',
       });
-      onSuccess(); // Trigger a re-fetch of the profile data
-      setOpen(false); // Close the dialog
+      onSuccess();
+      setOpen(false);
     } catch (error: any) {
       toast({
         variant: 'destructive',

@@ -53,7 +53,7 @@ export default function ProfilePage() {
   
   return (
     <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
-      <div id="recaptcha-container" />
+      <div id="recaptcha-container" className="hidden" />
       {helperProfile && <HelperJourneyBanner helper={helperProfile} />}
       <div className="grid gap-4 md:grid-cols-[1fr_350px]">
         <div className="grid auto-rows-max items-start gap-4">

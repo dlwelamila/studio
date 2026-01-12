@@ -94,14 +94,14 @@ export default function AuthForm() {
   // Setup reCAPTCHA for phone authentication
   useEffect(() => {
     if (!auth) return;
-    if (!(window as any).recaptchaVerifier) {
-        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        'size': 'invisible',
-        'callback': (response: any) => {
-            // reCAPTCHA solved, allow signInWithPhoneNumber.
-        }
-        });
-    }
+    // The reCAPTCHA verifier is commented out as requested.
+    // For production, you would need to re-enable this and ensure
+    // test numbers are whitelisted in the Firebase console for development.
+    // if (!(window as any).recaptchaVerifier) {
+    //     (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+    //     'size': 'invisible',
+    //     });
+    // }
   }, [auth]);
 
   const handleEmailPasswordAuth = async () => {
@@ -128,7 +128,9 @@ export default function AuthForm() {
       if (!auth || !phoneNumber) return;
       setIsSubmitting(true);
       try {
-          const appVerifier = (window as any).recaptchaVerifier;
+          // Temporarily bypass reCAPTCHA for testing.
+          // In a real app, this would need a proper RecaptchaVerifier instance.
+          const appVerifier = (window as any).recaptchaVerifier || new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
           const result = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
           setConfirmationResult(result);
           toast({ title: "OTP Sent", description: `A code has been sent to ${phoneNumber}.` });
@@ -264,7 +266,7 @@ export default function AuthForm() {
                 </Card>
             </TabsContent>
         </Tabs>
-         <div id="recaptcha-container"></div>
+         <div id="recaptcha-container" className="hidden"></div>
         <Card className="mt-4">
             <CardHeader>
                 <CardTitle className="text-sm">Test Accounts</CardTitle>
