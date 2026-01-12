@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useState, useMemo } from 'react';
 import {
   ArrowRight,
   ListFilter,
@@ -11,11 +12,11 @@ import {
   Briefcase,
   Wrench,
 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, isToday, isThisWeekend } from 'date-fns';
 
 import { useCollection, useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { collection, query, where, doc, Timestamp } from 'firebase/firestore';
 import type { Task, Helper } from '@/lib/data';
 import { taskCategories } from '@/lib/data';
 import { cn } from '@/lib/utils';
@@ -45,10 +46,17 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { HelperJourneyBanner } from './helper-journey-banner';
 
+type TimeWindowFilter = 'all' | 'today' | 'weekend';
 
 export default function HelperDashboard() {
   const { user: authUser, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
+
+  // State for filters
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [areaSearch, setAreaSearch] = useState('');
+  const [timeFilter, setTimeFilter] = useState<TimeWindowFilter>('all');
+
 
   const helperRef = useMemoFirebase(() => authUser && firestore ? doc(firestore, 'helpers', authUser.uid) : null, [authUser, firestore]);
   const { data: helper, isLoading: isHelperLoading, mutate: mutateHelper } = useDoc<Helper>(helperRef);
@@ -65,11 +73,38 @@ export default function HelperDashboard() {
     // Update the document in the background
     updateDocumentNonBlocking(helperRef, { isAvailable });
   }
+
+  const handleCategoryChange = (category: string, checked: boolean) => {
+    setSelectedCategories(prev => 
+      checked ? [...prev, category] : prev.filter(c => c !== category)
+    );
+  };
   
   const getDistanceToNow = (date: any) => {
     if (!date) return '';
     return formatDistanceToNow(date.toDate(), { addSuffix: true });
   }
+
+  const filteredTasks = useMemo(() => {
+    if (!openTasks) return [];
+    return openTasks.filter(task => {
+      const categoryMatch = selectedCategories.length === 0 || selectedCategories.includes(task.category);
+      const areaMatch = areaSearch === '' || task.area.toLowerCase().includes(areaSearch.toLowerCase());
+      
+      const timeMatch = (() => {
+        if (timeFilter === 'all') return true;
+        // This is a simplification. A real implementation would need to parse task.timeWindow
+        // For now, we filter based on creation date.
+        const createdAt = task.createdAt instanceof Timestamp ? task.createdAt.toDate() : new Date();
+        if (timeFilter === 'today') return isToday(createdAt);
+        if (timeFilter === 'weekend') return isThisWeekend(createdAt);
+        return true;
+      })();
+
+      return categoryMatch && areaMatch && timeMatch;
+    });
+  }, [openTasks, selectedCategories, areaSearch, timeFilter]);
+
 
   return (
     <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
@@ -107,7 +142,7 @@ export default function HelperDashboard() {
                     htmlFor="availability-toggle" 
                     className={cn(
                         "text-sm",
-                        !helper.isAvailable && "font-bold text-destructive"
+                        !helper.isAvailable ? "text-destructive font-bold" : "text-muted-foreground"
                     )}
                   >
                     {helper.isAvailable ? 'Available for tasks' : 'Not available'}
@@ -168,8 +203,12 @@ export default function HelperDashboard() {
                   <DropdownMenuLabel>Filter by category</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {taskCategories.map(cat => (
-                      <DropdownMenuCheckboxItem key={cat} checked>
-                      {cat}
+                      <DropdownMenuCheckboxItem 
+                        key={cat} 
+                        checked={selectedCategories.includes(cat)}
+                        onCheckedChange={(checked) => handleCategoryChange(cat, !!checked)}
+                      >
+                        {cat}
                       </DropdownMenuCheckboxItem>
                   ))}
                 </DropdownMenuContent>
@@ -180,13 +219,23 @@ export default function HelperDashboard() {
                   type="search"
                   placeholder="Search by location..."
                   className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
+                  value={areaSearch}
+                  onChange={(e) => setAreaSearch(e.target.value)}
                 />
               </div>
             </div>
           </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground">Time:</span>
+            <Button variant={timeFilter === 'all' ? 'secondary' : 'ghost'} size="sm" onClick={() => setTimeFilter('all')}>All Time</Button>
+            <Button variant={timeFilter === 'today' ? 'secondary' : 'ghost'} size="sm" onClick={() => setTimeFilter('today')}>Today</Button>
+            <Button variant={timeFilter === 'weekend' ? 'secondary' : 'ghost'} size="sm" onClick={() => setTimeFilter('weekend')}>This Weekend</Button>
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2">
               {isLoading && Array.from({length: 2}).map((_, i) => <TaskCardSkeleton key={i} />)}
-              {openTasks && openTasks.map(task => {
+              {filteredTasks && filteredTasks.map(task => {
                   return (
                       <Card key={task.id} className="flex flex-col">
                           <CardHeader>
@@ -228,7 +277,7 @@ export default function HelperDashboard() {
                           <CardFooter>
                               <Button className="w-full" asChild>
                                   <Link href={`/dashboard/tasks/${task.id}`}>
-                                      View &amp; Make Offer <ArrowRight className="ml-2 h-4 w-4" />
+                                      View & Make Offer <ArrowRight className="ml-2 h-4 w-4" />
                                   </Link>
                               </Button>
                           </CardFooter>
@@ -236,10 +285,10 @@ export default function HelperDashboard() {
                   )
               })}
           </div>
-          {openTasks?.length === 0 && !isLoading && authUser && (
+          {filteredTasks?.length === 0 && !isLoading && authUser && (
               <Card className="md:col-span-2">
                   <CardContent className="p-12 text-center">
-                      <p className="text-muted-foreground">No open tasks right now. Check back soon!</p>
+                      <p className="text-muted-foreground">No open tasks match your filters. Try widening your search!</p>
                   </CardContent>
               </Card>
           )}
