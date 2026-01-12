@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { Home, PanelLeft, Settings, Package2, Users2, Briefcase, Handshake, Repeat, PlusCircle } from 'lucide-react';
+import { Home, PanelLeft, Settings, Package2, Users2, Briefcase, Handshake, Repeat, PlusCircle, LifeBuoy } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -197,8 +197,14 @@ export default function AppHeader() {
               ) : null}
 
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => router.push('/dashboard/profile')}>Settings</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => router.push('/support')}>Support</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => router.push('/dashboard/profile')}>
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => router.push('/support')}>
+                <LifeBuoy className="mr-2 h-4 w-4" />
+                Support
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
             </DropdownMenuContent>
