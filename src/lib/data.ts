@@ -44,6 +44,7 @@ export type Customer = {
   id: string; // Corresponds to Firebase Auth UID
   fullName: string;
   phoneNumber: string;
+  phoneVerified: boolean;
   email?: string | null;
   rating?: number;
   profilePhotoUrl: string;
@@ -114,5 +115,3 @@ export const taskCategories = [
     'Shopping',
     'Other'
 ];
-
-    

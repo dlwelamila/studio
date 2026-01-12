@@ -1,4 +1,3 @@
-
 'use client'
 
 import {
@@ -12,7 +11,7 @@ import { useUserRole } from '@/context/user-role-context';
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Star, Briefcase, MapPin, Calendar, BadgeCheckIcon, MessageSquare, Shield } from 'lucide-react';
+import { Star, Briefcase, MapPin, Calendar, BadgeCheckIcon, MessageSquare, Shield, Phone } from 'lucide-react';
 import { format } from 'date-fns';
 import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, query, collection, where } from 'firebase/firestore';
@@ -43,6 +42,7 @@ export default function ProfilePage() {
 
   const isLoading = isAuthLoading || isRoleLoading || isProfileLoading;
   const helperProfile = role === 'helper' ? (userProfile as Helper) : null;
+  const customerProfile = role === 'customer' ? (userProfile as Customer) : null;
 
   if (isLoading || !userProfile) {
     return <ProfileSkeleton />;
@@ -73,15 +73,25 @@ export default function ProfilePage() {
               <CardContent>
               <Separator className="my-4" />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-                  {helperProfile?.serviceAreas && (
                   <div className="flex items-center gap-3">
-                      <MapPin className="h-5 w-5 text-muted-foreground" />
+                      <Phone className="h-5 w-5 text-muted-foreground" />
                       <div>
-                          <p className="text-muted-foreground">Service Areas</p>
-                          <p className="font-semibold">{helperProfile.serviceAreas.join(', ')}</p>
+                          <p className="text-muted-foreground">Phone Number</p>
+                          <div className='flex items-center gap-2'>
+                            <p className="font-semibold">{userProfile.phoneNumber}</p>
+                            {customerProfile && (
+                                customerProfile.phoneVerified ? (
+                                    <Badge variant="secondary" className='gap-1 border-green-500/50 text-green-700'>
+                                        <BadgeCheckIcon className="h-3 w-3" />
+                                        Verified
+                                    </Badge>
+                                ) : (
+                                    <Badge variant="destructive">Unverified</Badge>
+                                )
+                            )}
+                          </div>
                       </div>
                   </div>
-                  )}
                   <div className="flex items-center gap-3">
                       <Calendar className="h-5 w-5 text-muted-foreground" />
                       <div>
@@ -91,6 +101,13 @@ export default function ProfilePage() {
                   </div>
                   {helperProfile && (
                       <>
+                          <div className="flex items-center gap-3">
+                            <MapPin className="h-5 w-5 text-muted-foreground" />
+                            <div>
+                                <p className="text-muted-foreground">Service Areas</p>
+                                <p className="font-semibold">{helperProfile.serviceAreas.join(', ')}</p>
+                            </div>
+                          </div>
                           <div className="flex items-center gap-3">
                               <BadgeCheckIcon className="h-5 w-5 text-muted-foreground" />
                               <div>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -6,11 +5,13 @@ import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, AlertTriangle } from 'lucide-react';
 
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, serverTimestamp } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { doc } from 'firebase/firestore';
+import type { Customer } from '@/lib/data';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -20,6 +21,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert"
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -67,6 +73,9 @@ export default function NewTaskPage() {
     const { toast } = useToast();
     const { role } = useUserRole();
 
+    const customerRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'customers', user.uid) : null, [user, firestore]);
+    const { data: customerProfile, isLoading: isCustomerLoading } = useDoc<Customer>(customerRef);
+
     const form = useForm<TaskFormValues>({
         resolver: zodResolver(taskFormSchema),
         defaultValues: {
@@ -87,6 +96,11 @@ export default function NewTaskPage() {
             return;
         }
 
+        if (!customerProfile?.phoneVerified) {
+            toast({ variant: 'destructive', title: 'Verification Required', description: 'You must verify your phone number before posting a task.' });
+            return;
+        }
+
         const taskData = {
             customerId: user.uid,
             title: data.title,
@@ -99,7 +113,6 @@ export default function NewTaskPage() {
             },
             effort: data.effort,
             toolsRequired: data.toolsRequired?.split(',').map(t => t.trim()).filter(Boolean) || [],
-            // Default values for fields not in the form
             timeWindow: 'Flexible',
             status: 'OPEN',
             createdAt: serverTimestamp(),
@@ -147,6 +160,20 @@ export default function NewTaskPage() {
           Post a New Task
         </h1>
       </div>
+      
+      {customerProfile && !customerProfile.phoneVerified && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Phone Verification Required</AlertTitle>
+          <AlertDescription>
+            You must verify your phone number before you can post a new task. Please go to your profile to complete this step.
+          </AlertDescription>
+           <Button asChild variant="secondary" className="mt-4">
+              <Link href="/dashboard/profile">Go to Profile</Link>
+            </Button>
+        </Alert>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Task Details</CardTitle>
@@ -157,148 +184,152 @@ export default function NewTaskPage() {
         <CardContent>
            <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
-                <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Task Title</FormLabel>
-                        <FormControl>
-                            <Input placeholder='e.g., "Deep Clean My Kitchen"' {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                           <Textarea
-                                placeholder="Describe what needs to be done. Include any important details like size of the area, specific instructions, or if you will provide supplies."
-                                className="min-h-32"
-                                {...field}
+                <fieldset disabled={!customerProfile?.phoneVerified || isCustomerLoading}>
+                    <div className="grid gap-6">
+                        <FormField
+                            control={form.control}
+                            name="title"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Task Title</FormLabel>
+                                <FormControl>
+                                    <Input placeholder='e.g., "Deep Clean My Kitchen"' {...field} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="description"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Description</FormLabel>
+                                <FormControl>
+                                <Textarea
+                                        placeholder="Describe what needs to be done. Include any important details like size of the area, specific instructions, or if you will provide supplies."
+                                        className="min-h-32"
+                                        {...field}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                            <FormField
+                                control={form.control}
+                                name="category"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Category</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select a category" />
+                                            </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                            {taskCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
                             />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                    <FormField
-                        control={form.control}
-                        name="category"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Category</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormField
+                                control={form.control}
+                                name="area"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Location</FormLabel>
                                     <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select a category" />
-                                    </SelectTrigger>
+                                        <Input placeholder="e.g., Masaki, Dar es Salaam" {...field} />
                                     </FormControl>
-                                    <SelectContent>
-                                    {taskCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                     <FormField
-                        control={form.control}
-                        name="area"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Location</FormLabel>
-                            <FormControl>
-                                <Input placeholder="e.g., Masaki, Dar es Salaam" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </div>
-                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                     <FormField
-                        control={form.control}
-                        name="effort"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Effort Level</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                            <FormField
+                                control={form.control}
+                                name="effort"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Effort Level</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select estimated effort" />
+                                            </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="light">Light (1-2 hours, simple task)</SelectItem>
+                                                <SelectItem value="medium">Medium (2-4 hours, standard task)</SelectItem>
+                                                <SelectItem value="heavy">Heavy (4+ hours, demanding task)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="toolsRequired"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Tools Expected (comma-separated)</FormLabel>
                                     <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select estimated effort" />
-                                    </SelectTrigger>
+                                        <Input placeholder="e.g., Bucket, soap, iron" {...field} />
                                     </FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="light">Light (1-2 hours, simple task)</SelectItem>
-                                        <SelectItem value="medium">Medium (2-4 hours, standard task)</SelectItem>
-                                        <SelectItem value="heavy">Heavy (4+ hours, demanding task)</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                     <FormField
-                        control={form.control}
-                        name="toolsRequired"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Tools Expected (comma-separated)</FormLabel>
-                            <FormControl>
-                                <Input placeholder="e.g., Bucket, soap, iron" {...field} />
-                            </FormControl>
-                             <FormDescription>
-                                List any tools the helper is expected to have. Leave blank if none.
-                             </FormDescription>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </div>
-                 <div className="grid gap-3">
-                    <Label>Budget Range (TZS)</Label>
-                    <div className="grid grid-cols-2 gap-4">
-                       <FormField
-                            control={form.control}
-                            name="budget.min"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel className="text-sm text-muted-foreground">Minimum</FormLabel>
-                                <FormControl>
-                                    <Input type="number" placeholder="e.g., 20,000" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="budget.max"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel className="text-sm text-muted-foreground">Maximum</FormLabel>
-                                <FormControl>
-                                    <Input type="number" placeholder="e.g., 30,000" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                                    <FormDescription>
+                                        List any tools the helper is expected to have. Leave blank if none.
+                                    </FormDescription>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                        <div className="grid gap-3">
+                            <Label>Budget Range (TZS)</Label>
+                            <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                                    control={form.control}
+                                    name="budget.min"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel className="text-sm text-muted-foreground">Minimum</FormLabel>
+                                        <FormControl>
+                                            <Input type="number" placeholder="e.g., 20,000" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="budget.max"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel className="text-sm text-muted-foreground">Maximum</FormLabel>
+                                        <FormControl>
+                                            <Input type="number" placeholder="e.g., 30,000" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <Button type="submit" className="ml-auto" disabled={form.formState.isSubmitting || !customerProfile?.phoneVerified || isCustomerLoading}>
+                                {form.formState.isSubmitting ? 'Posting...' : 'Post Task'}
+                            </Button>
+                            <Button variant="outline" type="button">Save Draft</Button>
+                        </div>
                     </div>
-                </div>
-                 <div className="flex items-center gap-4">
-                    <Button type="submit" className="ml-auto" disabled={form.formState.isSubmitting}>
-                        {form.formState.isSubmitting ? 'Posting...' : 'Post Task'}
-                    </Button>
-                    <Button variant="outline">Save Draft</Button>
-                </div>
+                </fieldset>
           </form>
           </Form>
         </CardContent>

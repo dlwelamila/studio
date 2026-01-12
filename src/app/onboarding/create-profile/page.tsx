@@ -10,7 +10,7 @@ import { doc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { taskCategories } from '@/lib/data';
-import type { Helper } from '@/lib/data';
+import type { Helper, Customer } from '@/lib/data';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -113,18 +113,15 @@ export default function CreateProfilePage() {
   const selectedRole = form.watch('role');
 
   useEffect(() => {
-    // Set role from query param
     const roleFromQuery = searchParams.get('role');
     if (roleFromQuery === 'helper' || roleFromQuery === 'customer') {
       form.setValue('role', roleFromQuery);
     }
     
-    // Pre-fill form if it's a test user
     if (user?.email && user.email in testAccounts) {
       const testData = testAccounts[user.email as keyof typeof testAccounts];
       form.reset(testData);
     } else if (user?.phoneNumber) {
-        // Pre-fill phone number if user signed in with it
         form.setValue('phoneNumber', user.phoneNumber);
     }
   }, [searchParams, form, user]);
@@ -142,9 +139,7 @@ export default function CreateProfilePage() {
         if (data.role === 'helper') {
             if (!defaultHelperAvatar) throw new Error("Default avatar not found");
 
-            // Calculate profile completion
             const missing: Array<'profilePhoto' | 'serviceCategories' | 'serviceAreas' | 'aboutMe'> = [];
-            // We assume a photo is always available for now, but this shows how to check
             if (!data.serviceCategories || data.serviceCategories.length === 0) missing.push('serviceCategories');
             if (!data.serviceAreas || data.serviceAreas.trim().length < 3) missing.push('serviceAreas');
             if (!data.aboutMe || data.aboutMe.trim().length < 10) missing.push('aboutMe');
@@ -160,10 +155,8 @@ export default function CreateProfilePage() {
                 serviceCategories: data.serviceCategories || [],
                 serviceAreas: data.serviceAreas?.split(',').map(s => s.trim()) || [],
                 aboutMe: data.aboutMe || '',
-                isAvailable: true, // Default to available
+                isAvailable: true,
                 memberSince: serverTimestamp() as Timestamp,
-                
-                // Lifecycle fields
                 verificationStatus: 'PENDING',
                 lifecycleStage: completionPercent < 100 ? 'PROFILE_INCOMPLETE' : 'PENDING_VERIFICATION',
                 profileCompletion: {
@@ -176,8 +169,6 @@ export default function CreateProfilePage() {
                   ratingAvg: 0,
                   reliabilityLevel: 'GREEN',
                 },
-
-                // Legacy fields (set to default/empty)
                 reliabilityIndicator: 'Good',
                 rating: 0,
                 completedTasks: 0,
@@ -185,14 +176,15 @@ export default function CreateProfilePage() {
             await setDoc(doc(firestore, 'helpers', user.uid), helperData, { merge: true });
         } else {
             if (!defaultAvatar) throw new Error("Default avatar not found");
-            const customerData = {
+            const customerData: Customer = {
                 id: user.uid,
                 email: user.email,
                 phoneNumber: data.phoneNumber,
+                phoneVerified: false, // Phone needs to be verified
                 fullName: data.fullName,
                 profilePhotoUrl: defaultAvatar.imageUrl,
                 rating: 4.0,
-                memberSince: serverTimestamp(),
+                memberSince: serverTimestamp() as Timestamp,
             };
             await setDoc(doc(firestore, 'customers', user.uid), customerData, { merge: true });
         }
@@ -394,5 +386,3 @@ export default function CreateProfilePage() {
     </div>
   );
 }
-
-    
