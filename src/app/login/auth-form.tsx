@@ -156,7 +156,7 @@ export default function AuthForm() {
         setIsSubmitting(true);
 
         const actionCodeSettings = {
-            url: window.location.href.split('?')[0], // URL to redirect back to
+            url: window.location.origin + '/login', // URL to redirect back to
             handleCodeInApp: true,
         };
 

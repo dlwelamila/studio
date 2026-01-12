@@ -73,7 +73,14 @@ export default function AppHeader() {
     const roleRoutes = breadcrumbMap[role] || {};
     // Find a matching route, including dynamic ones
     const matchingRoute = Object.keys(roleRoutes).find(route => pathname.startsWith(route) && (pathname.length === route.length || pathname[route.length] === '/'));
-    return matchingRoute ? roleRoutes[matchingRoute] : 'Dashboard';
+    if (matchingRoute) {
+        return roleRoutes[matchingRoute];
+    }
+    // Handle dynamic task routes
+    if (pathname.startsWith('/dashboard/tasks/')) {
+        return 'Task Details';
+    }
+    return 'Dashboard';
   };
 
   const breadcrumbText = getBreadcrumbText();
@@ -126,11 +133,11 @@ export default function AppHeader() {
                 Profile
               </Link>
               <Link
-                href="#"
+                href="/support"
                 className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
               >
-                <Settings className="h-5 w-5" />
-                Settings
+                <LifeBuoy className="h-5 w-5" />
+                Support
               </Link>
             </nav>
           </SheetContent>
