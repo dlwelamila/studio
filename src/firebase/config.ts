@@ -1,8 +1,9 @@
 export const firebaseConfig = {
-  "projectId": "studio-5033465422-2cfe5",
+  "projectId": "taskey-dl",
   "appId": "1:628973658368:web:3a09155a070dc02ab493e5",
   "apiKey": "AIzaSyDRaoNPlu15RwFdurNWodOQ-VutsgpijZo",
-  "authDomain": "studio-5033465422-2cfe5.firebaseapp.com",
-  "measurementId": "",
-  "messagingSenderId": "628973658368"
+  "authDomain": "taskey-dl.firebaseapp.com",
+  "measurementId": "G-5YJ122QP2R",
+  "messagingSenderId": "628973658368",
+  "storageBucket": "taskey-dl.appspot.com"
 };
