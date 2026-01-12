@@ -11,15 +11,16 @@ import { useUserRole } from '@/context/user-role-context';
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Star, Briefcase, MapPin, Calendar, BadgeCheckIcon, MessageSquare, Shield, Phone } from 'lucide-react';
+import { Star, Briefcase, MapPin, Calendar, BadgeCheckIcon, MessageSquare, Shield, Phone, KeyRound } from 'lucide-react';
 import { format } from 'date-fns';
 import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, query, collection, where } from 'firebase/firestore';
-import type { Helper, Customer, Feedback } from '@/lib/data';
+import type { Helper, Customer } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ReviewCard } from './review-card';
 import { HelperJourneyBanner } from '../helper-journey-banner';
 import { PhoneVerificationDialog } from './phone-verification-dialog';
+import { MfaEnrollmentDialog } from './mfa-enrollment-dialog';
 
 export default function ProfilePage() {
   const { role, isRoleLoading } = useUserRole();
@@ -45,7 +46,7 @@ export default function ProfilePage() {
   const helperProfile = role === 'helper' ? (userProfile as Helper) : null;
   const customerProfile = role === 'customer' ? (userProfile as Customer) : null;
   
-  const isPhoneVerified = role === 'customer' ? customerProfile?.phoneVerified : true; // Assume helpers are verified for now
+  const isPhoneVerified = role === 'customer' ? customerProfile?.phoneVerified : true;
 
   if (isLoading || !userProfile) {
     return <ProfileSkeleton />;
@@ -91,11 +92,11 @@ export default function ProfilePage() {
                             ) : (
                                 <div className="flex items-center gap-2">
                                   <Badge variant="destructive">Unverified</Badge>
-                                  <PhoneVerificationDialog 
+                                  {userRef && <PhoneVerificationDialog 
                                     phoneNumber={userProfile.phoneNumber} 
                                     userDocRef={userRef}
                                     onSuccess={mutateProfile}
-                                  />
+                                  />}
                                 </div>
                             )}
                           </div>
@@ -175,29 +176,41 @@ export default function ProfilePage() {
         </div>
 
         <div className="grid auto-rows-max items-start gap-4">
-          {helperProfile && (
-              <Card>
-                  <CardHeader>
-                      <CardTitle className="font-headline flex items-center gap-2">
-                          <MessageSquare className="h-5 w-5" />
-                          Reviews ({feedbacks?.length ?? 0})
-                      </CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid gap-4">
-                      {areFeedbacksLoading && Array.from({length: 2}).map((_, i) => <ReviewCardSkeleton key={i} />)}
-                      
-                      {!areFeedbacksLoading && feedbacks && feedbacks.length > 0 ? (
-                          feedbacks.map(review => <ReviewCard key={review.id} review={review} />)
-                      ) : (
-                          !areFeedbacksLoading && (
-                              <div className="text-center text-sm text-muted-foreground py-8">
-                                  No reviews yet. Complete more tasks to get feedback!
-                              </div>
-                          )
-                      )}
-                  </CardContent>
-              </Card>
-          )}
+             <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline flex items-center gap-2">
+                        <KeyRound className="h-5 w-5" />
+                        <span>Security</span>
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <MfaEnrollmentDialog />
+                </CardContent>
+            </Card>
+
+            {helperProfile && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="font-headline flex items-center gap-2">
+                            <MessageSquare className="h-5 w-5" />
+                            Reviews ({feedbacks?.length ?? 0})
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid gap-4">
+                        {areFeedbacksLoading && Array.from({length: 2}).map((_, i) => <ReviewCardSkeleton key={i} />)}
+                        
+                        {!areFeedbacksLoading && feedbacks && feedbacks.length > 0 ? (
+                            feedbacks.map(review => <ReviewCard key={review.id} review={review} />)
+                        ) : (
+                            !areFeedbacksLoading && (
+                                <div className="text-center text-sm text-muted-foreground py-8">
+                                    No reviews yet. Complete more tasks to get feedback!
+                                </div>
+                            )
+                        )}
+                    </CardContent>
+                </Card>
+            )}
         </div>
       </div>
     </div>

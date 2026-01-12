@@ -19,8 +19,13 @@ import {
     ConfirmationResult,
     sendSignInLinkToEmail,
     isSignInWithEmailLink,
-    signInWithEmailLink
+    signInWithEmailLink,
+    getMultiFactorResolver,
+    PhoneAuthProvider,
+    PhoneMultiFactorGenerator,
 } from 'firebase/auth';
+import { MfaDialog } from './mfa-dialog';
+import type { MultiFactorResolver, MultiFactorError } from 'firebase/auth';
 
 const testAccounts = [
   { role: 'Customer', email: 'customer@taskey.app', password: 'password123' },
@@ -38,6 +43,9 @@ export default function AuthForm() {
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [emailForLink, setEmailForLink] = useState('');
   const [emailLinkSent, setEmailLinkSent] = useState(false);
+
+  // MFA State
+  const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
 
 
   const router = useRouter();
@@ -94,14 +102,11 @@ export default function AuthForm() {
   // Setup reCAPTCHA for phone authentication
   useEffect(() => {
     if (!auth) return;
-    // The reCAPTCHA verifier is commented out as requested.
-    // For production, you would need to re-enable this and ensure
-    // test numbers are whitelisted in the Firebase console for development.
-    // if (!(window as any).recaptchaVerifier) {
-    //     (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-    //     'size': 'invisible',
-    //     });
-    // }
+    if (!(window as any).recaptchaVerifier) {
+        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        'size': 'invisible',
+        });
+    }
   }, [auth]);
 
   const handleEmailPasswordAuth = async () => {
@@ -118,7 +123,12 @@ export default function AuthForm() {
         await createUserWithEmailAndPassword(auth, email, password);
       }
     } catch (error: any) {
-        toast({ variant: "destructive", title: "Authentication Failed", description: error.message });
+        if (error.code === 'auth/multi-factor-auth-required') {
+            const resolver = getMultiFactorResolver(auth, error as MultiFactorError);
+            setMfaResolver(resolver);
+        } else {
+            toast({ variant: "destructive", title: "Authentication Failed", description: error.message });
+        }
     } finally {
       setIsSubmitting(false);
     }
@@ -128,14 +138,17 @@ export default function AuthForm() {
       if (!auth || !phoneNumber) return;
       setIsSubmitting(true);
       try {
-          // Temporarily bypass reCAPTCHA for testing.
-          // In a real app, this would need a proper RecaptchaVerifier instance.
-          const appVerifier = (window as any).recaptchaVerifier || new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+          const appVerifier = (window as any).recaptchaVerifier;
           const result = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
           setConfirmationResult(result);
           toast({ title: "OTP Sent", description: `A code has been sent to ${phoneNumber}.` });
       } catch (error: any) {
           toast({ variant: "destructive", title: "Phone Sign-in Failed", description: error.message });
+           if ((window as any).recaptchaVerifier) {
+            (window as any).recaptchaVerifier.render().then((widgetId: any) => {
+              grecaptcha.reset(widgetId);
+            });
+          }
       } finally {
           setIsSubmitting(false);
       }
@@ -189,9 +202,14 @@ export default function AuthForm() {
         </div>
     );
   }
+  
+  if (mfaResolver) {
+    return <MfaDialog resolver={mfaResolver} />;
+  }
 
   return (
     <div className="w-full max-w-sm">
+        <div id="recaptcha-container" className="hidden" />
         <Tabs defaultValue="email-password" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="email-password">Email</TabsTrigger>
@@ -266,7 +284,7 @@ export default function AuthForm() {
                 </Card>
             </TabsContent>
         </Tabs>
-         <div id="recaptcha-container" className="hidden"></div>
+        
         <Card className="mt-4">
             <CardHeader>
                 <CardTitle className="text-sm">Test Accounts</CardTitle>
