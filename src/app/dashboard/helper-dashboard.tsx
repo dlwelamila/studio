@@ -12,6 +12,7 @@ import {
   Briefcase,
   Wrench,
   Wallet,
+  Percent,
 } from 'lucide-react';
 import { formatDistanceToNow, isToday, isWeekend, subDays } from 'date-fns';
 
@@ -21,6 +22,7 @@ import { collection, query, where, doc, Timestamp } from 'firebase/firestore';
 import type { Task, Helper } from '@/lib/data';
 import { taskCategories } from '@/lib/data';
 import { cn } from '@/lib/utils';
+import { useHelperJourney } from '@/hooks/use-helper-journey';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -67,6 +69,7 @@ export default function HelperDashboard() {
 
   const helperRef = useMemoFirebase(() => authUser && firestore ? doc(firestore, 'helpers', authUser.uid) : null, [authUser, firestore]);
   const { data: helper, isLoading: isHelperLoading, mutate: mutateHelper } = useDoc<Helper>(helperRef);
+  const journey = useHelperJourney(helper);
 
   const openTasksQuery = useMemoFirebase(() => firestore && authUser ? query(collection(firestore, 'tasks'), where('status', '==', 'OPEN')) : null, [firestore, authUser]);
   const { data: openTasks, isLoading: areOpenTasksLoading } = useCollection<Task>(openTasksQuery);
@@ -131,8 +134,6 @@ export default function HelperDashboard() {
       
       const timeMatch = (() => {
         if (timeFilter === 'all') return true;
-        // This is a simplification. A real implementation would need to parse task.timeWindow
-        // For now, we filter based on creation date.
         const createdAt = task.createdAt instanceof Timestamp ? task.createdAt.toDate() : new Date();
         if (timeFilter === 'today') return isToday(createdAt);
         if (timeFilter === 'weekend') return isWeekend(createdAt);
@@ -152,7 +153,7 @@ export default function HelperDashboard() {
       <div className="grid gap-4 md:grid-cols-[250px_1fr] lg:grid-cols-[300px_1fr] lg:gap-8">
         <div className="grid auto-rows-max items-start gap-4 lg:gap-6">
           <Card>
-            {isAuthLoading || isHelperLoading ? (
+            {isAuthLoading || isHelperLoading || !journey ? (
               <CardHeader>
                 <Skeleton className="h-6 w-3/4" />
                 <Skeleton className="h-4 w-1/2" />
@@ -188,21 +189,33 @@ export default function HelperDashboard() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2"><Shield className="h-4 w-4" /> Reliability</span>
-                    <Badge variant="outline">{helper.stats.reliabilityLevel}</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Rating</span>
-                    <div className="flex items-center gap-1">
-                      <Star className="h-4 w-4 fill-primary text-primary" />
-                      <span>{helper.stats.ratingAvg?.toFixed(1) || 'N/A'}</span>
+                <div className="grid gap-4 text-sm">
+                    <Separator />
+                    <CardTitle className='font-headline text-base'>Stats At-a-Glance</CardTitle>
+                     <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-2 text-muted-foreground"><Star className="h-4 w-4" /> Rating</span>
+                        <span className="font-semibold">{journey.stats.ratingAvg?.toFixed(1) || 'N/A'} / 5.0</span>
                     </div>
+                    <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-2 text-muted-foreground"><Shield className="h-4 w-4" /> Reliability</span>
+                        <Badge 
+                            variant="outline"
+                            className={cn(
+                                journey.stats.reliabilityLevel === 'GREEN' && "text-green-700 border-green-700/50",
+                                journey.stats.reliabilityLevel === 'YELLOW' && "text-yellow-600 border-yellow-600/50",
+                                journey.stats.reliabilityLevel === 'RED' && "text-destructive border-destructive/50",
+                            )}
+                        >
+                            {journey.stats.reliabilityLevel}
+                        </Badge>
                   </div>
+                   <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-2 text-muted-foreground"><Percent className="h-4 w-4" /> Completion Rate</span>
+                        <span className="font-semibold">{(journey.stats.completionRate * 100).toFixed(0)}%</span>
+                    </div>
                   <div className="flex items-center justify-between">
-                    <span>Completed Gigs</span>
-                    <span>{helper.stats.jobsCompleted || 0}</span>
+                    <span className="flex items-center gap-2 text-muted-foreground"><Briefcase className="h-4 w-4" /> Completed Gigs</span>
+                    <span className="font-semibold">{journey.stats.jobsCompleted || 0}</span>
                   </div>
                 </div>
               </CardContent>
@@ -218,7 +231,7 @@ export default function HelperDashboard() {
             )}
             <CardFooter>
               <Button className="w-full" asChild>
-                  <Link href="/dashboard/profile">View Profile</Link>
+                  <Link href="/dashboard/profile">View Full Profile</Link>
               </Button>
             </CardFooter>
           </Card>
