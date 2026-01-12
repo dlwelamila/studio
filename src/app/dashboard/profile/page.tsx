@@ -11,7 +11,7 @@ import { useUserRole } from '@/context/user-role-context';
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Star, Briefcase, MapPin, Calendar, BadgeCheckIcon, MessageSquare, Shield, Phone, KeyRound } from 'lucide-react';
+import { Star, Briefcase, MapPin, Calendar, BadgeCheckIcon, MessageSquare, Shield, Phone, KeyRound, Percent, Target } from 'lucide-react';
 import { format } from 'date-fns';
 import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, query, collection, where } from 'firebase/firestore';
@@ -20,6 +20,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ReviewCard } from './review-card';
 import { HelperJourneyBanner } from '../helper-journey-banner';
 import { MfaEnrollmentDialog } from './mfa-enrollment-dialog';
+import { useHelperJourney } from '@/hooks/use-helper-journey';
+import { cn } from '@/lib/utils';
+
 
 export default function ProfilePage() {
   const { role, isRoleLoading } = useUserRole();
@@ -40,12 +43,14 @@ export default function ProfilePage() {
   }, [firestore, authUser, role]);
 
   const { data: feedbacks, isLoading: areFeedbacksLoading } = useCollection<Feedback>(feedbacksQuery);
-
-  const isLoading = isAuthLoading || isRoleLoading || isProfileLoading;
+  
   const helperProfile = role === 'helper' ? (userProfile as Helper) : null;
   const customerProfile = role === 'customer' ? (userProfile as Customer) : null;
   
+  const journey = useHelperJourney(helperProfile);
   const isPhoneVerified = role === 'customer' ? customerProfile?.phoneVerified : true; // Assume helpers are always phone verified for now
+  
+  const isLoading = isAuthLoading || isRoleLoading || isProfileLoading;
 
   if (isLoading || !userProfile) {
     return <ProfileSkeleton />;
@@ -102,7 +107,7 @@ export default function ProfilePage() {
                           <p className="font-semibold mt-1">{userProfile?.memberSince ? format(userProfile.memberSince.toDate(), 'MMMM yyyy') : 'N/A'}</p>
                       </div>
                   </div>
-                  {helperProfile && (
+                  {helperProfile && journey && (
                       <>
                           <div className="flex items-start gap-3">
                             <MapPin className="h-5 w-5 mt-0.5 text-muted-foreground shrink-0" />
@@ -131,21 +136,42 @@ export default function ProfilePage() {
                               <Star className="h-5 w-5 mt-0.5 text-muted-foreground shrink-0" />
                               <div>
                                   <p className="text-muted-foreground">Rating</p>
-                                  <p className="font-semibold mt-1">{helperProfile.stats.ratingAvg ? `${helperProfile.stats.ratingAvg.toFixed(1)} / 5.0` : 'No ratings yet'}</p>
+                                  <p className="font-semibold mt-1">{journey.stats.ratingAvg ? `${journey.stats.ratingAvg.toFixed(1)} / 5.0` : 'No ratings yet'}</p>
                               </div>
                           </div>
                           <div className="flex items-start gap-3">
                               <Briefcase className="h-5 w-5 mt-0.5 text-muted-foreground shrink-0" />
                               <div>
                                   <p className="text-muted-foreground">Completed Gigs</p>
-                                  <p className="font-semibold mt-1">{helperProfile.stats.jobsCompleted || 0}</p>
+                                  <p className="font-semibold mt-1">{journey.stats.jobsCompleted || 0}</p>
                               </div>
                           </div>
-                          <div className="flex items-start gap-3">
+                           <div className="flex items-start gap-3">
+                              <Target className="h-5 w-5 mt-0.5 text-muted-foreground shrink-0" />
+                              <div>
+                                  <p className="text-muted-foreground">Total Tasks</p>
+                                  <p className="font-semibold mt-1">{journey.stats.totalAttempted || 0}</p>
+                              </div>
+                          </div>
+                           <div className="flex items-start gap-3">
+                              <Percent className="h-5 w-5 mt-0.5 text-muted-foreground shrink-0" />
+                              <div>
+                                  <p className="text-muted-foreground">Completion Rate</p>
+                                  <p className={cn("font-semibold mt-1", journey.stats.completionRate < 0.8 && "text-destructive")}>
+                                    {(journey.stats.completionRate * 100).toFixed(0)}%
+                                  </p>
+                              </div>
+                          </div>
+                          <div className="flex items-start gap-3 md:col-span-2">
                               <Shield className="h-5 w-5 mt-0.5 text-muted-foreground shrink-0" />
                               <div>
-                                  <p className="text-muted-foreground">Reliability</p>
-                                  <p className="font-semibold mt-1">{helperProfile.stats.reliabilityLevel || 'Not Yet Rated'}</p>
+                                  <p className="text-muted-foreground">Reliability Score</p>
+                                  <p className={cn(
+                                    "font-semibold mt-1",
+                                     journey.stats.reliabilityLevel === 'GREEN' && "text-green-700",
+                                     journey.stats.reliabilityLevel === 'YELLOW' && "text-yellow-600",
+                                     journey.stats.reliabilityLevel === 'RED' && "text-destructive"
+                                  )}>{journey.stats.reliabilityLevel}</p>
                               </div>
                           </div>
                           <div className="flex items-start gap-3 md:col-span-2">

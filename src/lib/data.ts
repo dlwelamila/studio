@@ -26,11 +26,17 @@ export type Helper = {
   };
   lifecycleStage: 'REGISTERED' | 'PROFILE_INCOMPLETE' | 'PENDING_VERIFICATION' | 'VERIFIED_READY' | 'ACTIVE' | 'GROWING' | 'SUSPENDED';
   stats: {
+    totalAttempted: number;
     jobsCompleted: number;
     jobsCancelled: number;
+    completionRate: number; // 0-1
     ratingAvg: number;
     reliabilityLevel: 'GREEN' | 'YELLOW' | 'RED';
   };
+  walletSummary: {
+    lifetimeEarnings: number;
+    currency: 'TZS';
+  },
   
   // Legacy fields (set to default/empty)
   references?: string;

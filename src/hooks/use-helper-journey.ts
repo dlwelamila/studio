@@ -5,12 +5,22 @@ import type { Helper } from '@/lib/data';
 
 export type HelperCapability = 'canBrowseTasks' | 'canSendOffers' | 'canReceiveAssignments' | 'canUpdateTaskStatus';
 
+export type HelperStats = {
+    totalAttempted: number;
+    jobsCompleted: number;
+    jobsCancelled: number;
+    completionRate: number;
+    ratingAvg: number;
+    reliabilityLevel: 'GREEN' | 'YELLOW' | 'RED';
+}
+
 export type HelperJourney = {
   lifecycleStage: Helper['lifecycleStage'];
   profileCompletion: Helper['profileCompletion'];
   verificationStatus: Helper['verificationStatus'];
   capabilities: Record<HelperCapability, boolean>;
   nextActions: { id: string; label: string; required: boolean; href?: string }[];
+  stats: HelperStats;
 };
 
 /**
@@ -88,6 +98,18 @@ export function useHelperJourney(helper: Helper | null | undefined): HelperJourn
         break;
     }
 
+    // 4. Calculate stats
+    const totalAttempted = (stats?.jobsCompleted || 0) + (stats?.jobsCancelled || 0);
+    const completionRate = totalAttempted > 0 ? ((stats?.jobsCompleted || 0) / totalAttempted) : 1; // Default to 100% if no tasks
+
+    const calculatedStats: HelperStats = {
+        jobsCompleted: stats?.jobsCompleted || 0,
+        jobsCancelled: stats?.jobsCancelled || 0,
+        ratingAvg: stats?.ratingAvg || 0,
+        reliabilityLevel: stats?.reliabilityLevel || 'GREEN',
+        totalAttempted,
+        completionRate,
+    };
 
     return {
       lifecycleStage,
@@ -95,6 +117,7 @@ export function useHelperJourney(helper: Helper | null | undefined): HelperJourn
       verificationStatus,
       capabilities,
       nextActions,
+      stats: calculatedStats,
     };
   }, [helper]);
 

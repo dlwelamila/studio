@@ -166,8 +166,10 @@ export default function CreateProfilePage() {
                   missing: missing,
                 },
                 stats: {
+                  totalAttempted: 0,
                   jobsCompleted: 0,
                   jobsCancelled: 0,
+                  completionRate: 1,
                   ratingAvg: 0,
                   reliabilityLevel: 'GREEN',
                 },
