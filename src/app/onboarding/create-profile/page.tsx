@@ -37,12 +37,15 @@ import { useToast } from '@/hooks/use-toast';
 
 const testAccounts = {
   'customer@taskey.app': {
-    role: 'customer',
+    role: 'customer' as const,
     fullName: 'Aisha Customer',
     phoneNumber: '+255712345678',
+    serviceCategories: [],
+    serviceAreas: '',
+    aboutMe: '',
   },
   'helper@taskey.app': {
-    role: 'helper',
+    role: 'helper' as const,
     fullName: 'Baraka Helper',
     phoneNumber: '+255787654321',
     serviceCategories: ['Cleaning', 'Laundry'],
