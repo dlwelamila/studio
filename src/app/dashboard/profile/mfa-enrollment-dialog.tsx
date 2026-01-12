@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth, useUser } from '@/firebase';
-import { multiFactor, PhoneAuthProvider, PhoneMultiFactorGenerator, RecaptchaVerifier } from 'firebase/auth';
+import { multiFactor, PhoneAuthProvider, PhoneMultiFactorGenerator } from 'firebase/auth'; // RecaptchaVerifier removed
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -27,38 +27,42 @@ export function MfaEnrollmentDialog() {
       setIsEnrolled(isMfaEnrolled);
     }
 
-    if (!auth) return;
-    if (!(window as any).recaptchaVerifier) {
-      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible',
-      });
-    }
+    // Temporarily removing reCAPTCHA initialization
+    // if (!auth) return;
+    // if (!(window as any).recaptchaVerifier) {
+    //   (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+    //     size: 'invisible',
+    //   });
+    // }
   }, [user, auth]);
 
   const handleEnroll = async () => {
-    if (!user) return;
-    setIsSubmitting(true);
-    try {
-      const session = await multiFactor(user).getSession();
-      const phoneInfoOptions = {
-        phoneNumber: user.phoneNumber,
-        session,
-      };
-      const phoneAuthProvider = new PhoneAuthProvider(auth!);
-      const appVerifier = (window as any).recaptchaVerifier;
-      const verId = await phoneAuthProvider.verifyPhoneNumber(phoneInfoOptions, appVerifier);
-      setVerificationId(verId);
-      toast({ title: 'Verification code sent', description: 'Enter the code to complete enrollment.' });
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Enrollment Failed', description: error.message });
-      if ((window as any).recaptchaVerifier) {
-        (window as any).recaptchaVerifier.render().then((widgetId: any) => {
-          grecaptcha.reset(widgetId);
-        });
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
+     if (!user) return;
+     toast({ variant: 'destructive', title: 'Temporarily Disabled', description: 'MFA enrollment is currently unavailable.' });
+     return; // Temporarily disable MFA enrollment
+
+    // setIsSubmitting(true);
+    // try {
+    //   const session = await multiFactor(user).getSession();
+    //   const phoneInfoOptions = {
+    //     phoneNumber: user.phoneNumber,
+    //     session,
+    //   };
+    //   const phoneAuthProvider = new PhoneAuthProvider(auth!);
+    //   const appVerifier = (window as any).recaptchaVerifier;
+    //   const verId = await phoneAuthProvider.verifyPhoneNumber(phoneInfoOptions, appVerifier);
+    //   setVerificationId(verId);
+    //   toast({ title: 'Verification code sent', description: 'Enter the code to complete enrollment.' });
+    // } catch (error: any) {
+    //   toast({ variant: 'destructive', title: 'Enrollment Failed', description: error.message });
+    //   if ((window as any).recaptchaVerifier) {
+    //     (window as any).recaptchaVerifier.render().then((widgetId: any) => {
+    //       grecaptcha.reset(widgetId);
+    //     });
+    //   }
+    // } finally {
+    //   setIsSubmitting(false);
+    // }
   };
 
   const handleVerifyOtpAndEnroll = async () => {

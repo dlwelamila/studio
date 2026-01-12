@@ -14,7 +14,7 @@ import {
     User, 
     signInWithEmailAndPassword, 
     createUserWithEmailAndPassword,
-    RecaptchaVerifier,
+    // RecaptchaVerifier,
     signInWithPhoneNumber,
     type ConfirmationResult,
     sendSignInLinkToEmail,
@@ -99,21 +99,23 @@ export default function AuthForm() {
     }
   }, [user, isUserLoading, router, auth, toast]);
 
-  // Setup reCAPTCHA for phone authentication.
-  // This runs only once on the client after the component mounts.
-  useEffect(() => {
-    if (!auth) return;
+  // useEffect(() => {
+  //   if (!auth) return;
+  //   // This effect ensures the reCAPTCHA verifier is created only on the client
+  //   // side, after the component has mounted.
+  //   const ensureRecaptcha = () => {
+  //     if (!(window as any).recaptchaVerifier) {
+  //       // The 'recaptcha-container' must exist in the DOM before this is called.
+  //       // This is why we have it inside a useEffect.
+  //       (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+  //         size: 'invisible',
+  //       });
+  //       (window as any).recaptchaVerifier.render();
+  //     }
+  //   };
+  //   ensureRecaptcha();
+  // }, [auth]);
 
-    // Ensure this only runs once and that the container element exists.
-    if (!(window as any).recaptchaVerifier) {
-      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible',
-      });
-      (window as any).recaptchaVerifier.render();
-    }
-    
-    // No cleanup function needed as we want it to persist for the component's lifetime.
-  }, [auth]);
 
   const handleEmailPasswordAuth = async () => {
     if (!auth) return;
@@ -142,22 +144,25 @@ export default function AuthForm() {
 
   const handlePhoneAuth = async () => {
       if (!auth || !phoneNumber) return;
-      setIsSubmitting(true);
-      try {
-          const appVerifier = (window as any).recaptchaVerifier;
-          const result = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
-          setConfirmationResult(result);
-          toast({ title: "OTP Sent", description: `A code has been sent to ${phoneNumber}.` });
-      } catch (error: any) {
-          toast({ variant: "destructive", title: "Phone Sign-in Failed", description: error.message });
-           if ((window as any).recaptchaVerifier) {
-            (window as any).recaptchaVerifier.render().then((widgetId: any) => {
-              grecaptcha.reset(widgetId);
-            });
-          }
-      } finally {
-          setIsSubmitting(false);
-      }
+      toast({ variant: 'destructive', title: 'Temporarily Disabled', description: 'Phone sign-in is currently unavailable.' });
+      return; // Temporarily disable phone auth
+
+    //   setIsSubmitting(true);
+    //   try {
+    //       const appVerifier = (window as any).recaptchaVerifier;
+    //       const result = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+    //       setConfirmationResult(result);
+    //       toast({ title: "OTP Sent", description: `A code has been sent to ${phoneNumber}.` });
+    //   } catch (error: any) {
+    //       toast({ variant: "destructive", title: "Phone Sign-in Failed", description: error.message });
+    //        if ((window as any).recaptchaVerifier) {
+    //         (window as any).recaptchaVerifier.render().then((widgetId: any) => {
+    //           grecaptcha.reset(widgetId);
+    //         });
+    //       }
+    //   } finally {
+    //       setIsSubmitting(false);
+    //   }
   }
 
   const handleOtpConfirm = async () => {
@@ -306,7 +311,7 @@ export default function AuthForm() {
             </CardFooter>
         </Card>
         {/* This div is the target for the invisible reCAPTCHA */}
-        <div id="recaptcha-container" />
+        {/* <div id="recaptcha-container" /> */}
     </div>
   );
 }
