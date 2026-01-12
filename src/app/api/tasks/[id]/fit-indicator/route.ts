@@ -1,3 +1,4 @@
+
 // /src/app/api/tasks/[id]/fit-indicator/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirestore, doc, getDoc, GeoPoint } from 'firebase/firestore';
