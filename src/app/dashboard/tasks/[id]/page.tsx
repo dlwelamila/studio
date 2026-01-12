@@ -41,9 +41,10 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { OfferCard } from './offer-card';
 import { RecommendedHelpers } from './recommended-helpers';
-import type { Task, Offer, Customer, Helper } from '@/lib/data';
+import type { Task, Offer, Customer, Helper, Review } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { ReviewForm } from './review-form';
 
 const offerFormSchema = z.object({
     price: z.coerce.number().positive({ message: "Please enter a valid price." }),
@@ -73,9 +74,14 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const offersQuery = useMemoFirebase(() => firestore && query(collection(firestore, 'tasks', id, 'offers')), [firestore, id]);
   const { data: offers, isLoading: isOffersLoading, error: offersError } = useCollection<Offer>(offersQuery);
 
+  const reviewsQuery = useMemoFirebase(() => firestore && task ? query(collection(firestore, 'reviews'), where('taskId', '==', task.id)) : null, [firestore, task]);
+  const { data: reviews, isLoading: areReviewsLoading } = useCollection<Review>(reviewsQuery);
+
+
   const isCustomerView = role === 'customer';
   const isAssignedHelperView = currentUser?.uid === task?.assignedHelperId;
   const hasMadeOffer = !!offers?.some(o => o.helperId === currentUser?.uid);
+  const hasReviewed = (reviews?.length ?? 0) > 0;
 
   const form = useForm<OfferFormValues>({
     resolver: zodResolver(offerFormSchema),
@@ -213,6 +219,20 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
           
           {isCustomerView ? (
             <>
+                {task.status === 'COMPLETED' && !hasReviewed && assignedHelper && !areReviewsLoading && (
+                    <ReviewForm task={task} helper={assignedHelper} />
+                )}
+                 {task.status === 'COMPLETED' && hasReviewed && !areReviewsLoading && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className='font-headline'>Review Submitted</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-center py-8 text-muted-foreground">Thank you for leaving a review!</p>
+                        </CardContent>
+                    </Card>
+                 )}
+
                 <Card>
                     <CardHeader>
                         <CardTitle className="font-headline">Offers ({offers?.length || 0})</CardTitle>
@@ -384,7 +404,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                  </div>
             </CardContent>
           </Card>
-          { isAssignedHelperView && assignedHelper && (
+          { assignedHelper && (
             <Card>
                 <CardHeader>
                     <CardTitle className="font-headline">Assigned Helper</CardTitle>
