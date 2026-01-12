@@ -5,9 +5,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronLeft, Star } from 'lucide-react';
 import { format } from 'date-fns';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
 
 import { useUserRole } from '@/context/user-role-context';
-import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { useDoc, useCollection, useMemoFirebase, addDoc, serverTimestamp } from '@/firebase';
 
 import { doc, collection, query, where } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
@@ -18,9 +22,18 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -29,12 +42,23 @@ import { OfferCard } from './offer-card';
 import { RecommendedHelpers } from './recommended-helpers';
 import type { Task, Offer, Customer } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
+
+const offerFormSchema = z.object({
+    price: z.coerce.number().positive({ message: "Please enter a valid price." }),
+    eta: z.string().min(3, { message: "Please provide an ETA." }),
+    message: z.string().min(10, { message: "Message must be at least 10 characters long."})
+});
+
+type OfferFormValues = z.infer<typeof offerFormSchema>;
+
 
 export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const { id } = params;
   const { role } = useUserRole();
-  const { user: currentUser } = useUser();
+  const { user: currentUser, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const { toast } = useToast();
 
   const taskRef = useMemoFirebase(() => firestore && doc(firestore, 'tasks', id), [firestore, id]);
   const { data: task, isLoading: isTaskLoading } = useDoc<Task>(taskRef);
@@ -43,12 +67,48 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const { data: customer, isLoading: isCustomerLoading } = useDoc<Customer>(customerRef);
 
   const offersQuery = useMemoFirebase(() => firestore && query(collection(firestore, 'tasks', id, 'offers')), [firestore, id]);
-  const { data: offers, isLoading: isOffersLoading } = useCollection<Offer>(offersQuery);
+  const { data: offers, isLoading: isOffersLoading, error: offersError } = useCollection<Offer>(offersQuery);
 
   const isCustomerView = role === 'customer';
   const hasMadeOffer = !!offers?.some(o => o.helperId === currentUser?.uid);
+
+  const form = useForm<OfferFormValues>({
+    resolver: zodResolver(offerFormSchema),
+    defaultValues: {
+        price: 0,
+        eta: '',
+        message: '',
+    }
+  });
   
-  if (isTaskLoading) {
+  const handleMakeOffer = async (data: OfferFormValues) => {
+    if (!currentUser || !firestore || !task) {
+        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to make an offer.' });
+        return;
+    }
+
+    const offerData = {
+        taskId: task.id,
+        helperId: currentUser.uid,
+        price: data.price,
+        eta: data.eta,
+        message: data.message,
+        status: 'ACTIVE',
+        createdAt: serverTimestamp(),
+    };
+
+    try {
+        const offersCollection = collection(firestore, 'tasks', task.id, 'offers');
+        await addDoc(offersCollection, offerData);
+        toast({ title: 'Offer Submitted!', description: 'The customer has been notified of your offer.' });
+        // No need to manually update state, useCollection will do it.
+    } catch (error: any) {
+        console.error("Error submitting offer:", error);
+        toast({ variant: 'destructive', title: 'Failed to Submit Offer', description: error.message });
+    }
+  }
+  
+  if (isTaskLoading || isUserLoading) {
     return <TaskDetailSkeleton />;
   }
 
@@ -133,10 +193,13 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                     </CardHeader>
                     <CardContent className="grid gap-4">
                         {isOffersLoading && <Skeleton className="h-24 w-full" />}
-                        {!isOffersLoading && offers && offers.length > 0 ? offers.map(offer => (
+                        {!isOffersLoading && offersError && (
+                             <div className="text-center py-8 text-destructive">Could not load offers. You may not have permission.</div>
+                        )}
+                        {!isOffersLoading && !offersError && offers && offers.length > 0 ? offers.map(offer => (
                             <OfferCard key={offer.id} offer={offer} />
                         )) : (
-                            <div className="text-center py-8 text-muted-foreground">No offers received yet.</div>
+                           !isOffersLoading &&  <div className="text-center py-8 text-muted-foreground">No offers received yet.</div>
                         )}
                     </CardContent>
                 </Card>
@@ -146,31 +209,62 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
             <>
                 {task.status === 'OPEN' && !hasMadeOffer && (
                     <Card>
-                        <CardHeader>
-                        <CardTitle className="font-headline">Make an Offer</CardTitle>
-                        <CardDescription>
-                            Submit your price and a message to the customer.
-                        </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid gap-4">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="price">Your Price (TZS)</Label>
-                                    <Input id="price" type="number" placeholder="e.g., 25,000" />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="eta">Availability / ETA</Label>
-                                    <Input id="eta" type="text" placeholder="e.g., Tomorrow afternoon" />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="message">Message to Customer</Label>
-                                    <Textarea id="message" placeholder="Introduce yourself and explain why you're a good fit for this task." className="min-h-24" />
-                                </div>
-                            </div>
-                        </CardContent>
-                        <CardFooter>
-                            <Button className="ml-auto">Submit Offer</Button>
-                        </CardFooter>
+                         <Form {...form}>
+                            <form onSubmit={form.handleSubmit(handleMakeOffer)}>
+                                <CardHeader>
+                                <CardTitle className="font-headline">Make an Offer</CardTitle>
+                                <CardDescription>
+                                    Submit your price and a message to the customer.
+                                </CardDescription>
+                                </CardHeader>
+                                <CardContent className="grid gap-6">
+                                    <FormField
+                                        control={form.control}
+                                        name="price"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Your Price (TZS)</FormLabel>
+                                            <FormControl>
+                                                <Input type="number" placeholder="e.g., 25,000" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                     <FormField
+                                        control={form.control}
+                                        name="eta"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Availability / ETA</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="e.g., Tomorrow afternoon" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="message"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Message to Customer</FormLabel>
+                                            <FormControl>
+                                                <Textarea placeholder="Introduce yourself and explain why you're a good fit for this task." className="min-h-24" {...field}/>
+                                            </FormControl>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </CardContent>
+                                <CardFooter>
+                                    <Button type="submit" className="ml-auto" disabled={form.formState.isSubmitting}>
+                                        {form.formState.isSubmitting ? 'Submitting...' : 'Submit Offer'}
+                                    </Button>
+                                </CardFooter>
+                            </form>
+                        </Form>
                     </Card>
                 )}
                 {task.status === 'OPEN' && hasMadeOffer && (
@@ -310,3 +404,5 @@ function TaskDetailSkeleton() {
     </div>
   )
 }
+
+    
