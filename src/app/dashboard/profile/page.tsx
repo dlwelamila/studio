@@ -34,7 +34,7 @@ export default function ProfilePage() {
 
   const reviewsQuery = useMemoFirebase(() => {
     if (!firestore || !authUser || role !== 'helper') return null;
-    return query(collection(firestore, 'reviews'), where('helperId', '==', authUser.uid));
+    return query(collection(firestore, 'feedbacks'), where('helperId', '==', authUser.uid));
   }, [firestore, authUser, role]);
 
   const { data: reviews, isLoading: areReviewsLoading } = useCollection<Review>(reviewsQuery);
@@ -219,5 +219,3 @@ function ProfileSkeleton() {
     </div>
   )
 }
-
-    

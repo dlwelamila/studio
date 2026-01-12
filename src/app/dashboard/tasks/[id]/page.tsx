@@ -11,8 +11,9 @@ import { z } from 'zod';
 
 
 import { useUserRole } from '@/context/user-role-context';
-import { useDoc, useCollection, useMemoFirebase, addDoc, serverTimestamp } from '@/firebase';
+import { useDoc, useCollection, useMemoFirebase, serverTimestamp } from '@/firebase';
 import { updateDocument } from '@/firebase/firestore';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 import { doc, collection, query, where } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
@@ -74,7 +75,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const { toast } = useToast();
 
   const taskRef = useMemoFirebase(() => firestore && doc(firestore, 'tasks', id), [firestore, id]);
-  const { data: task, isLoading: isTaskLoading, mutate: mutateTask } = useDoc<Task>(taskRef);
+  const { data: task, isLoading: isTaskLoading, error, mutate: mutateTask } = useDoc<Task>(taskRef);
 
   const customerRef = useMemoFirebase(() => firestore && task && doc(firestore, 'customers', task.customerId), [firestore, task]);
   const { data: customer, isLoading: isCustomerLoading } = useDoc<Customer>(customerRef);
@@ -85,7 +86,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const offersQuery = useMemoFirebase(() => firestore && query(collection(firestore, 'tasks', id, 'offers')), [firestore, id]);
   const { data: offers, isLoading: isOffersLoading, error: offersError } = useCollection<Offer>(offersQuery);
 
-  const reviewsQuery = useMemoFirebase(() => firestore && task ? query(collection(firestore, 'reviews'), where('taskId', '==', task.id)) : null, [firestore, task]);
+  const reviewsQuery = useMemoFirebase(() => firestore && task ? query(collection(firestore, 'feedbacks'), where('taskId', '==', task.id)) : null, [firestore, task]);
   const { data: reviews, isLoading: areReviewsLoading } = useCollection<Review>(reviewsQuery);
 
 
@@ -119,14 +120,9 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
         createdAt: serverTimestamp(),
     };
 
-    try {
-        const offersCollection = collection(firestore, 'tasks', task.id, 'offers');
-        await addDoc(offersCollection, offerData);
-        toast({ title: 'Offer Submitted!', description: 'The customer has been notified of your offer.' });
-    } catch (error: any) {
-        console.error("Error submitting offer:", error);
-        toast({ variant: 'destructive', title: 'Failed to Submit Offer', description: error.message });
-    }
+    const offersCollection = collection(firestore, 'tasks', task.id, 'offers');
+    addDocumentNonBlocking(offersCollection, offerData);
+    toast({ title: 'Offer Submitted!', description: 'The customer has been notified of your offer.' });
   }
 
   const handleAcceptSuccess = () => {
@@ -167,10 +163,11 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
     return <TaskDetailSkeleton />;
   }
 
-  if (!task) {
+  if (!task || error) {
     return (
       <div>
         <h1 className="font-headline text-2xl font-bold">Task not found</h1>
+        <p className="text-muted-foreground my-4">This task may have been removed or you do not have permission to view it.</p>
         <Button variant="outline" asChild>
           <Link href="/dashboard">
             <ChevronLeft className="mr-2 h-4 w-4" /> Go Back

@@ -7,7 +7,8 @@ import { z } from 'zod';
 import { Star } from 'lucide-react';
 import { collection } from 'firebase/firestore';
 
-import { useFirestore, useUser, addDoc, serverTimestamp } from '@/firebase';
+import { useFirestore, useUser, serverTimestamp } from '@/firebase';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { Task, Helper } from '@/lib/data';
 import { cn } from '@/lib/utils';
 
@@ -57,18 +58,14 @@ export function ReviewForm({ task, helper }: ReviewFormProps) {
       feedback: data.feedback,
       createdAt: serverTimestamp(),
     };
-
-    try {
-      const reviewsCollection = collection(firestore, 'reviews');
-      await addDoc(reviewsCollection, reviewData);
-      toast({ title: 'Review Submitted', description: 'Thank you for your feedback!' });
-      form.reset();
-      // In a real app, you'd likely trigger a re-fetch of the parent component's data
-      // to hide this form. For now, the parent's logic handles this.
-    } catch (error: any) {
-      console.error('Error submitting review:', error);
-      toast({ variant: 'destructive', title: 'Failed to Submit Review', description: error.message });
-    }
+    
+    const reviewsCollection = collection(firestore, 'feedbacks');
+    addDocumentNonBlocking(reviewsCollection, reviewData);
+    
+    toast({ title: 'Review Submitted', description: 'Thank you for your feedback!' });
+    form.reset();
+    // In a real app, you'd likely trigger a re-fetch of the parent component's data
+    // to hide this form. For now, the parent's logic handles this.
   };
 
   return (
