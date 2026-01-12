@@ -17,8 +17,12 @@ service cloud.firestore {
     // Collection: helpers
     // --------------------------------------------------------------------------------
     match /helpers/{helperId} {
-      // A helper can read and update their own profile.
-      allow read, update: if isOwner(helperId);
+      // Any authenticated user can view a helper's public profile.
+      allow get: if isSignedIn();
+      // Helpers cannot list other helpers.
+      allow list: if false;
+      // A helper can update their own profile.
+      allow update: if isOwner(helperId);
       // A helper can create their own profile, ensuring the ID matches their auth UID.
       allow create: if isOwner(helperId) && request.resource.data.id == helperId;
     }
