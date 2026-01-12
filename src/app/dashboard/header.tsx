@@ -5,8 +5,9 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 import { useUserRole } from '@/context/user-role-context';
-import { useUser, useDoc, useFirestore, useMemoFirebase, signOut, useAuth } from '@/firebase';
+import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth } from '@/firebase';
 import { doc } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
 import type { Helper, Customer } from '@/lib/data';
 
 import {
