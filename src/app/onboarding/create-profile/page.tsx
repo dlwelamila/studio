@@ -180,7 +180,7 @@ export default function CreateProfilePage() {
                 id: user.uid,
                 email: user.email,
                 phoneNumber: data.phoneNumber,
-                phoneVerified: false, // Phone needs to be verified
+                phoneVerified: false,
                 fullName: data.fullName,
                 profilePhotoUrl: defaultAvatar.imageUrl,
                 rating: 4.0,

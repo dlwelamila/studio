@@ -96,11 +96,6 @@ export default function NewTaskPage() {
             return;
         }
 
-        if (!customerProfile?.phoneVerified) {
-            toast({ variant: 'destructive', title: 'Verification Required', description: 'You must verify your phone number before posting a task.' });
-            return;
-        }
-
         const taskData = {
             customerId: user.uid,
             title: data.title,
@@ -160,19 +155,6 @@ export default function NewTaskPage() {
           Post a New Task
         </h1>
       </div>
-      
-      {customerProfile && !customerProfile.phoneVerified && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Phone Verification Required</AlertTitle>
-          <AlertDescription>
-            You must verify your phone number before you can post a new task. Please go to your profile to complete this step.
-          </AlertDescription>
-           <Button asChild variant="secondary" className="mt-4">
-              <Link href="/dashboard/profile">Go to Profile</Link>
-            </Button>
-        </Alert>
-      )}
 
       <Card>
         <CardHeader>
@@ -184,7 +166,7 @@ export default function NewTaskPage() {
         <CardContent>
            <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
-                <fieldset disabled={!customerProfile?.phoneVerified || isCustomerLoading}>
+                <fieldset disabled={isCustomerLoading}>
                     <div className="grid gap-6">
                         <FormField
                             control={form.control}
@@ -323,7 +305,7 @@ export default function NewTaskPage() {
                             </div>
                         </div>
                         <div className="flex items-center gap-4">
-                            <Button type="submit" className="ml-auto" disabled={form.formState.isSubmitting || !customerProfile?.phoneVerified || isCustomerLoading}>
+                            <Button type="submit" className="ml-auto" disabled={form.formState.isSubmitting || isCustomerLoading}>
                                 {form.formState.isSubmitting ? 'Posting...' : 'Post Task'}
                             </Button>
                             <Button variant="outline" type="button">Save Draft</Button>

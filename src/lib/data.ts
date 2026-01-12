@@ -44,7 +44,7 @@ export type Customer = {
   id: string; // Corresponds to Firebase Auth UID
   fullName: string;
   phoneNumber: string;
-  phoneVerified: boolean;
+  phoneVerified?: boolean; // Made optional for grace period
   email?: string | null;
   rating?: number;
   profilePhotoUrl: string;

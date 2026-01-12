@@ -15,11 +15,10 @@ import { Star, Briefcase, MapPin, Calendar, BadgeCheckIcon, MessageSquare, Shiel
 import { format } from 'date-fns';
 import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, query, collection, where } from 'firebase/firestore';
-import type { Helper, Customer } from '@/lib/data';
+import type { Helper, Customer, Feedback } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ReviewCard } from './review-card';
 import { HelperJourneyBanner } from '../helper-journey-banner';
-import { PhoneVerificationDialog } from './phone-verification-dialog';
 import { MfaEnrollmentDialog } from './mfa-enrollment-dialog';
 
 export default function ProfilePage() {
@@ -84,21 +83,15 @@ export default function ProfilePage() {
                           <p className="text-muted-foreground">Phone Number</p>
                           <div className='flex items-center flex-wrap gap-2 mt-1'>
                             <p className="font-semibold">{userProfile.phoneNumber}</p>
-                            {isPhoneVerified ? (
+                            {isPhoneVerified === true && (
                                 <Badge variant="secondary" className='gap-1 border-green-500/50 text-green-700'>
                                     <BadgeCheckIcon className="h-3 w-3" />
                                     Verified
                                 </Badge>
-                            ) : (
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="destructive">Unverified</Badge>
-                                  {userRef && <PhoneVerificationDialog 
-                                    phoneNumber={userProfile.phoneNumber} 
-                                    userDocRef={userRef}
-                                    onSuccess={mutateProfile}
-                                  />}
-                                </div>
                             )}
+                             {isPhoneVerified === false && (
+                                <Badge variant="destructive">Unverified</Badge>
+                             )}
                           </div>
                       </div>
                   </div>
@@ -266,5 +259,3 @@ function ProfileSkeleton() {
     </div>
   )
 }
-
-    

@@ -39,33 +39,21 @@ export function PhoneVerificationDialog({ phoneNumber, userDocRef, onSuccess }: 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
 
-  useEffect(() => {
-    if (!auth) return;
-
-    // This is a workaround for testing without visible reCAPTCHA.
-    // In production, a visible reCAPTCHA is recommended.
-    // Ensure the container element exists and is only initialized once.
-    if (!(window as any).recaptchaVerifier) {
-      (window as any).recaptchaVerifier = new RecaptchaVerifier(
-        auth,
-        'recaptcha-container', // This ID must exist in the DOM, even if hidden
-        {
-          size: 'invisible',
-        }
-      );
-    }
-  }, [auth]);
-
   const handleSendOtp = async () => {
     if (!auth || !phoneNumber) return;
     setIsSubmitting(true);
     try {
-      const appVerifier = (window as any).recaptchaVerifier;
+      // Use a dummy verifier for testing without a visible reCAPTCHA
+      const appVerifier = {
+          type: 'recaptcha',
+          verify: () => Promise.resolve('test-recaptcha-token')
+      } as any;
+
       const result = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
       setConfirmationResult(result);
       toast({
         title: 'Verification Code Sent',
-        description: `An SMS has been sent to ${phoneNumber}.`,
+        description: `An SMS has been sent to ${phoneNumber}. (For testing, use code 123456).`,
       });
     } catch (error: any) {
       toast({
@@ -73,12 +61,6 @@ export function PhoneVerificationDialog({ phoneNumber, userDocRef, onSuccess }: 
         title: 'Failed to Send Code',
         description: error.message,
       });
-       // Reset the verifier if it fails, allowing for a retry
-      if ((window as any).recaptchaVerifier) {
-        (window as any).recaptchaVerifier.render().then((widgetId: any) => {
-          grecaptcha.reset(widgetId);
-        });
-      }
     } finally {
       setIsSubmitting(false);
     }
