@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { PlaceHolderImages } from '@/lib/placeholder-images';

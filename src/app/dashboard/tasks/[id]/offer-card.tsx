@@ -1,7 +1,8 @@
+
 'use client';
 import Image from 'next/image';
 import { Star } from 'lucide-react';
-import { doc } from 'firebase/firestore';
+import { doc, serverTimestamp } from 'firebase/firestore';
 
 import type { Offer, Helper, Task } from '@/lib/data';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
