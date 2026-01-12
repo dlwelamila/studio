@@ -10,7 +10,7 @@ import { doc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { taskCategories } from '@/lib/data';
-import type { Helper, Customer } from '@/lib/data';
+import type { Helper } from '@/lib/data';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -37,17 +37,12 @@ import { useToast } from '@/hooks/use-toast';
 
 const testAccounts = {
   'customer@taskey.app': {
-    role: 'customer' as const,
+    role: 'customer',
     fullName: 'Aisha Customer',
-    phoneNumber: '+255712345678',
-    serviceCategories: [],
-    serviceAreas: '',
-    aboutMe: '',
   },
   'helper@taskey.app': {
-    role: 'helper' as const,
+    role: 'helper',
     fullName: 'Baraka Helper',
-    phoneNumber: '+255787654321',
     serviceCategories: ['Cleaning', 'Laundry'],
     serviceAreas: 'Masaki, Msasani',
     aboutMe: 'Reliable and detail-oriented helper with 3+ years of experience in home cleaning and laundry services. I take pride in my work and always ensure customer satisfaction.',
@@ -58,7 +53,6 @@ const testAccounts = {
 const profileFormSchema = z.object({
   role: z.enum(['helper', 'customer'], { required_error: 'You must select a role.' }),
   fullName: z.string().min(3, { message: 'Full name must be at least 3 characters.' }),
-  phoneNumber: z.string().regex(/^\+255[0-9]{9}$/, { message: 'Please enter a valid Tanzanian phone number starting with +255.'}),
   serviceCategories: z.array(z.string()).optional(),
   serviceAreas: z.string().optional(),
   aboutMe: z.string().optional(),
@@ -106,7 +100,6 @@ export default function CreateProfilePage() {
     defaultValues: {
         role: 'customer',
         fullName: '',
-        phoneNumber: '',
         serviceCategories: [],
         serviceAreas: '',
         aboutMe: '',
@@ -116,16 +109,16 @@ export default function CreateProfilePage() {
   const selectedRole = form.watch('role');
 
   useEffect(() => {
+    // Set role from query param
     const roleFromQuery = searchParams.get('role');
     if (roleFromQuery === 'helper' || roleFromQuery === 'customer') {
       form.setValue('role', roleFromQuery);
     }
     
+    // Pre-fill form if it's a test user
     if (user?.email && user.email in testAccounts) {
       const testData = testAccounts[user.email as keyof typeof testAccounts];
       form.reset(testData);
-    } else if (user?.phoneNumber) {
-        form.setValue('phoneNumber', user.phoneNumber);
     }
   }, [searchParams, form, user]);
 
@@ -142,7 +135,9 @@ export default function CreateProfilePage() {
         if (data.role === 'helper') {
             if (!defaultHelperAvatar) throw new Error("Default avatar not found");
 
+            // Calculate profile completion
             const missing: Array<'profilePhoto' | 'serviceCategories' | 'serviceAreas' | 'aboutMe'> = [];
+            // We assume a photo is always available for now, but this shows how to check
             if (!data.serviceCategories || data.serviceCategories.length === 0) missing.push('serviceCategories');
             if (!data.serviceAreas || data.serviceAreas.trim().length < 3) missing.push('serviceAreas');
             if (!data.aboutMe || data.aboutMe.trim().length < 10) missing.push('aboutMe');
@@ -152,14 +147,16 @@ export default function CreateProfilePage() {
             const helperData: Helper = {
                 id: user.uid,
                 email: user.email,
-                phoneNumber: data.phoneNumber,
+                phoneNumber: user.phoneNumber || '',
                 fullName: data.fullName,
                 profilePhotoUrl: defaultHelperAvatar.imageUrl,
                 serviceCategories: data.serviceCategories || [],
                 serviceAreas: data.serviceAreas?.split(',').map(s => s.trim()) || [],
                 aboutMe: data.aboutMe || '',
-                isAvailable: true,
+                isAvailable: true, // Default to available
                 memberSince: serverTimestamp() as Timestamp,
+                
+                // Lifecycle fields
                 verificationStatus: 'PENDING',
                 lifecycleStage: completionPercent < 100 ? 'PROFILE_INCOMPLETE' : 'PENDING_VERIFICATION',
                 profileCompletion: {
@@ -172,29 +169,30 @@ export default function CreateProfilePage() {
                   ratingAvg: 0,
                   reliabilityLevel: 'GREEN',
                 },
+
+                // Legacy fields (set to default/empty)
                 reliabilityIndicator: 'Good',
             };
-            await setDoc(doc(firestore, 'helpers', user.uid), helperData, { merge: true });
+            await setDoc(doc(firestore, 'helpers', user.uid), helperData);
         } else {
             if (!defaultAvatar) throw new Error("Default avatar not found");
-            const customerData: Customer = {
+            const customerData = {
                 id: user.uid,
                 email: user.email,
-                phoneNumber: data.phoneNumber,
-                phoneVerified: false,
+                phoneNumber: user.phoneNumber || '',
                 fullName: data.fullName,
                 profilePhotoUrl: defaultAvatar.imageUrl,
                 rating: 4.0,
-                memberSince: serverTimestamp() as Timestamp,
+                memberSince: serverTimestamp(),
             };
-            await setDoc(doc(firestore, 'customers', user.uid), customerData, { merge: true });
+            await setDoc(doc(firestore, 'customers', user.uid), customerData);
         }
 
         toast({ title: 'Profile Created!', description: "Welcome to tasKey. You're all set up." });
         router.push('/dashboard');
     } catch (error: any) {
         console.error("Error creating profile: ", error);
-        toast({ variant: 'destructive', title: 'Profile Creation Failed', description: "This phone number might already be in use for this role. Please use a different number or contact support." });
+        toast({ variant: 'destructive', title: 'Profile Creation Failed', description: error.message });
         setIsSubmitting(false);
     }
   };
@@ -214,7 +212,7 @@ export default function CreateProfilePage() {
         <CardHeader>
           <CardTitle className="font-headline text-2xl">Create Your Profile</CardTitle>
           <CardDescription>
-            Tell us who you are and how you'd like to use tasKey.
+            Complete these last few steps to get started with tasKey. Your information has been pre-filled for this test.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -265,23 +263,6 @@ export default function CreateProfilePage() {
                         <FormControl>
                             <Input placeholder="e.g., Juma Hamisi" {...field} />
                         </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
-                <FormField
-                    control={form.control}
-                    name="phoneNumber"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Phone Number</FormLabel>
-                        <FormControl>
-                            <Input placeholder="+255712345678" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                            Your phone number will be used for verification and communication. It cannot be changed later.
-                        </FormDescription>
                         <FormMessage />
                         </FormItem>
                     )}
@@ -387,3 +368,4 @@ export default function CreateProfilePage() {
     </div>
   );
 }
+    

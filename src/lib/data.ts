@@ -9,7 +9,7 @@ const avatars = PlaceHolderImages.filter(img => img.id.startsWith('avatar-'));
 export type Helper = {
   id: string; // Corresponds to Firebase Auth UID
   fullName: string;
-  email?: string | null;
+  email?: string;
   phoneNumber: string;
   profilePhotoUrl: string;
   serviceCategories: string[];
@@ -32,20 +32,17 @@ export type Helper = {
     reliabilityLevel: 'GREEN' | 'YELLOW' | 'RED';
   };
   
-  // Legacy fields to be deprecated or merged into stats
+  // Legacy fields (set to default/empty)
   references?: string;
   additionalSkills?: string;
   reliabilityIndicator: 'Good' | 'Average' | 'Poor';
-  rating?: number; // to be deprecated
-  completedTasks?: number; // to be deprecated
 };
 
 export type Customer = {
   id: string; // Corresponds to Firebase Auth UID
   fullName: string;
   phoneNumber: string;
-  phoneVerified?: boolean; 
-  email?: string | null;
+  email?: string;
   rating?: number;
   profilePhotoUrl: string;
   memberSince: Timestamp;
@@ -115,3 +112,4 @@ export const taskCategories = [
     'Shopping',
     'Other'
 ];
+    

@@ -22,10 +22,6 @@
         "phoneNumber": {
           "type": "string",
           "description": "The unique, verified phone number of the customer."
-        },
-        "phoneVerified": {
-          "type": "boolean",
-          "description": "Indicates if the customer's phone number has been verified via OTP."
         }
       },
       "required": [
@@ -315,8 +311,7 @@
   "auth": {
     "providers": [
       "password",
-      "anonymous",
-      "phone"
+      "anonymous"
     ]
   },
   "firestore": {
