@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronLeft, Star, AlertTriangle, Briefcase, Wrench, CircleX, UserCheck, Clock, CheckCircle } from 'lucide-react';
@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { serverTimestamp } from 'firebase/firestore';
+import { serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
 
 
 import { useUserRole } from '@/context/user-role-context';
@@ -63,6 +63,7 @@ import { useHelperJourney } from '@/hooks/use-helper-journey';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { TaskEvidence } from './task-evidence';
 import { ArrivalCheckIn } from './arrival-check-in';
+import { Progress } from '@/components/ui/progress';
 
 
 const offerFormSchema = z.object({
@@ -102,7 +103,10 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const feedbacksQuery = useMemoFirebase(() => firestore && task ? query(collection(firestore, 'feedbacks'), where('taskId', '==', task.id)) : null, [firestore, task]);
   const { data: feedbacks, isLoading: areFeedbacksLoading } = useCollection<Feedback>(feedbacksQuery);
 
-  const taskChecklist = task?.description.split('\n').filter(line => line.trim() !== '') || [];
+  const taskChecklist = useMemo(() => task?.description.split('\n').filter(line => line.trim() !== '') || [], [task?.description]);
+  const completedItems = useMemo(() => task?.completedItems || [], [task?.completedItems]);
+  const isChecklistComplete = useMemo(() => taskChecklist.length > 0 && completedItems.length === taskChecklist.length, [taskChecklist, completedItems]);
+  const checklistProgress = useMemo(() => taskChecklist.length > 0 ? (completedItems.length / taskChecklist.length) * 100 : 0, [taskChecklist, completedItems]);
 
 
   const isCustomerView = role === 'customer';
@@ -149,6 +153,15 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   }
 
   const handleAcceptSuccess = () => {
+    mutateTask();
+  };
+  
+  const handleChecklistItemToggle = (item: string, isChecked: boolean) => {
+    if (!taskRef) return;
+    const updateData = {
+        completedItems: isChecked ? arrayUnion(item) : arrayRemove(item)
+    };
+    updateDocumentNonBlocking(taskRef, updateData);
     mutateTask();
   };
 
@@ -264,10 +277,21 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
             <CardContent>
               <div className="space-y-4">
                 <h3 className="font-headline text-base font-semibold">Task Checklist</h3>
+                 {taskChecklist.length > 0 && isAssignedHelperView && (
+                    <div className="space-y-2">
+                        <Progress value={checklistProgress} className="h-2" />
+                        <p className="text-xs text-muted-foreground text-right">{completedItems.length} of {taskChecklist.length} items completed</p>
+                    </div>
+                )}
                 <div className="grid gap-2">
                     {taskChecklist.map((item, index) => (
                         <div key={index} className="flex items-center gap-3">
-                            <Checkbox id={`check-${index}`} disabled />
+                            <Checkbox 
+                                id={`check-${index}`} 
+                                disabled={!isAssignedHelperView || task.status !== 'ACTIVE'}
+                                checked={completedItems.includes(item)}
+                                onCheckedChange={(checked) => handleChecklistItemToggle(item, !!checked)}
+                            />
                             <Label htmlFor={`check-${index}`} className="text-sm text-muted-foreground">
                                 {item}
                             </Label>
@@ -422,10 +446,13 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                         <p className="text-center text-sm text-muted-foreground">Check-in upon arrival to begin the task.</p>
                     )}
                     {task.status === 'ACTIVE' && (
-                         <Button className="w-full" onClick={() => handleStatusUpdate('COMPLETED')}>
+                         <Button className="w-full" onClick={() => handleStatusUpdate('COMPLETED')} disabled={!isChecklistComplete}>
                             Mark as Complete
                         </Button>
                     )}
+                     {!isChecklistComplete && task.status === 'ACTIVE' && (
+                        <p className="text-xs text-center text-muted-foreground mt-2">You must complete all checklist items before marking the task as complete.</p>
+                     )}
                     {task.status === 'COMPLETED' && (
                         <p className="text-center text-sm text-muted-foreground">This task is complete. Awaiting customer review.</p>
                     )}

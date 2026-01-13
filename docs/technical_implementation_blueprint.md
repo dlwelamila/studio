@@ -218,7 +218,7 @@ All Phase 2 features MUST preserve Phase 1 guardrails and must not introduce pre
 
 ---
 
-## ✅ 5. Safety & Protection Features
+## 🚧 5. Safety & Protection Features
 
 ### Objective
 Protect Helpers during real-world task execution and provide safe escalation paths without drama.
@@ -298,14 +298,14 @@ Protect Helpers during real-world task execution and provide safe escalation pat
 
 ---
 
-## 6. Stress Reduction Features
+## ✅ 6. Stress Reduction Features
 
 ### Objective
 Reduce cognitive load and disputes by guiding Helpers step-by-step.
 
 ---
 
-### 6.1 Task Checklists
+### 🚧 6.1 Task Checklists
 
 #### Backend
 - Checklist templates per task category
