@@ -2,42 +2,39 @@
 
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { useForm } from "react-hook-form"
+import dynamic from "next/dynamic"
+import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { ChevronLeft } from "lucide-react"
+import { GeoPoint, Timestamp, collection, serverTimestamp } from "firebase/firestore"
 
 import { useUser, useFirestore } from "@/firebase"
-import { collection, serverTimestamp, GeoPoint, Timestamp } from "firebase/firestore"
 import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates"
-
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { DateTimePicker } from "@/components/ui/datetime-picker"
 import { taskCategories } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { useUserRole } from "@/context/user-role-context"
-import { DateTimePicker } from "@/components/ui/datetime-picker"
+
+const LocationPicker = dynamic(() => import('@/components/ui/location-picker'), {
+  ssr: false,
+  loading: () => <p>Loading map...</p>,
+});
 
 const taskFormSchema = z
   .object({
     title: z.string().min(5, { message: "Title must be at least 5 characters." }),
     description: z.string().min(20, { message: "Description must be at least 20 characters." }),
     category: z.string({ required_error: "Please select a category." }),
-    area: z.string().min(3, { message: "Please enter a location." }),
+    location: z.instanceof(GeoPoint, { message: "Please select a location on the map." }),
+    area: z.string().min(3, "Please provide a general area name."),
     budget: z.object({
       min: z.coerce.number().nonnegative({ message: "Minimum budget must be 0 or more." }),
       max: z.coerce.number().positive({ message: "Maximum budget must be greater than 0." }),
@@ -71,7 +68,8 @@ export default function NewTaskPage() {
     defaultValues: {
       title: "",
       description: "",
-      category: undefined, // ensures Select placeholder shows
+      category: undefined,
+      location: undefined,
       area: "",
       effort: undefined,
       budget: {
@@ -79,12 +77,11 @@ export default function NewTaskPage() {
         max: 20000,
       },
       toolsRequired: "",
-      dueDate: undefined as unknown as Date, // DateTimePicker will set it
+      dueDate: undefined as unknown as Date,
     },
     mode: "onSubmit",
   })
 
-  // Safer gating: only customers can post tasks
   if (role && role !== "customer") {
     return (
       <div className="mx-auto grid max-w-4xl flex-1 auto-rows-max gap-4">
@@ -125,11 +122,7 @@ export default function NewTaskPage() {
       description: data.description.trim(),
       category: data.category,
       area: data.area.trim(),
-
-      // NOTE: Placeholder location (consider adding locationSource)
-      location: new GeoPoint(-6.792354, 39.208328),
-      locationSource: "PLACEHOLDER",
-
+      location: data.location,
       budget: {
         min: data.budget.min,
         max: data.budget.max,
@@ -137,7 +130,7 @@ export default function NewTaskPage() {
       effort: data.effort,
       toolsRequired: tools,
       dueDate: Timestamp.fromDate(data.dueDate),
-      timeWindow: 'Flexible', // This field is now derived or deprecated
+      timeWindow: 'Flexible',
       status: "OPEN" as const,
       createdAt: serverTimestamp(),
     }
@@ -213,6 +206,41 @@ export default function NewTaskPage() {
                   </FormItem>
                 )}
               />
+              
+              <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Task Location</FormLabel>
+                        <FormControl>
+                            <LocationPicker
+                                onLocationChange={(lat, lng) => {
+                                    field.onChange(new GeoPoint(lat, lng));
+                                }}
+                            />
+                        </FormControl>
+                        <FormDescription>Drag the marker to the exact task location.</FormDescription>
+                        <FormMessage />
+                    </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="area"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>General Area Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Masaki, Dar es Salaam" {...field} />
+                    </FormControl>
+                    <FormDescription>This helps helpers quickly identify tasks in their zone.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <FormField
@@ -243,23 +271,6 @@ export default function NewTaskPage() {
 
                 <FormField
                   control={form.control}
-                  name="area"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Location</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., Masaki, Dar es Salaam" {...field} />
-                      </FormControl>
-                      <FormDescription>Where does this task need to be done? Be specific.</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <FormField
-                  control={form.control}
                   name="effort"
                   render={({ field }) => (
                     <FormItem>
@@ -281,8 +292,9 @@ export default function NewTaskPage() {
                     </FormItem>
                   )}
                 />
+              </div>
 
-                <FormField
+               <FormField
                   control={form.control}
                   name="toolsRequired"
                   render={({ field }) => (
@@ -296,7 +308,6 @@ export default function NewTaskPage() {
                     </FormItem>
                   )}
                 />
-              </div>
 
               <FormField
                 control={form.control}
