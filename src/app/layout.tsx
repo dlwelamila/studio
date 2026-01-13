@@ -1,21 +1,19 @@
-import type { Metadata } from "next"
-import "react-day-picker/style.css"
-import "./globals.css"
-
-import { Toaster } from "@/components/ui/toaster"
-import { cn } from "@/lib/utils"
-import { FirebaseClientProvider } from "@/firebase/client-provider"
+import type { Metadata } from 'next';
+import './globals.css';
+import { Toaster } from '@/components/ui/toaster';
+import { cn } from '@/lib/utils';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
-  title: "tasKey: On-Demand Assistance",
+  title: 'tasKey: On-Demand Assistance',
   description:
-    "A Tanzanian-built, digital on-demand assistance platform designed to help people manage everyday life tasks.",
-}
+    'A Tanzanian-built, digital on-demand assistance platform designed to help people manage everyday life tasks.',
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
@@ -31,10 +29,10 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className={cn("font-body antialiased", "min-h-screen bg-background")}>
+      <body className={cn('font-body antialiased', 'min-h-screen bg-background')}>
         <FirebaseClientProvider>{children}</FirebaseClientProvider>
         <Toaster />
       </body>
     </html>
-  )
+  );
 }
