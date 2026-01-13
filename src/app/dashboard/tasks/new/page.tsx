@@ -5,12 +5,14 @@ import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
 
 import { useUser, useFirestore } from '@/firebase';
-import { collection, serverTimestamp, GeoPoint } from 'firebase/firestore';
+import { collection, serverTimestamp, GeoPoint, Timestamp } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -38,6 +40,12 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { taskCategories } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { useUserRole } from '@/context/user-role-context';
@@ -55,6 +63,7 @@ const taskFormSchema = z.object({
   effort: z.enum(['light', 'medium', 'heavy'], { required_error: "Please estimate the effort level."}),
   toolsRequired: z.string().optional(),
   timeWindow: z.string().min(3, { message: "Please provide a time window." }),
+  dueDate: z.date().optional(),
 });
 
 type TaskFormValues = z.infer<typeof taskFormSchema>;
@@ -102,6 +111,7 @@ export default function NewTaskPage() {
             effort: data.effort,
             toolsRequired: data.toolsRequired?.split(',').map(t => t.trim()).filter(Boolean) || [],
             timeWindow: data.timeWindow,
+            dueDate: data.dueDate ? Timestamp.fromDate(data.dueDate) : null,
             status: 'OPEN',
             createdAt: serverTimestamp(),
         };
@@ -251,18 +261,62 @@ export default function NewTaskPage() {
                         name="timeWindow"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Time Window</FormLabel>
+                            <FormLabel>Time Window Description</FormLabel>
                             <FormControl>
                                 <Input placeholder="e.g., Flexible, This Saturday" {...field} />
                             </FormControl>
                              <FormDescription>
-                                When do you want this task done?
+                                Describe when you want this task done.
                              </FormDescription>
                             <FormMessage />
                             </FormItem>
                         )}
                     />
                 </div>
+                <FormField
+                  control={form.control}
+                  name="dueDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Due Date (Optional)</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-[240px] pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) =>
+                              date < new Date(new Date().setHours(0,0,0,0))
+                            }
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormDescription>
+                        The final date by which this task must be completed.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                     control={form.control}
                     name="toolsRequired"

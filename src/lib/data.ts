@@ -68,6 +68,7 @@ export type Task = {
   effort: 'light' | 'medium' | 'heavy';
   toolsRequired: string[];
   timeWindow: string; // e.g. "Tomorrow afternoon", "Flexible"
+  dueDate?: Timestamp; // Specific deadline for the task
   status: 'OPEN' | 'ASSIGNED' | 'ACTIVE' | 'COMPLETED' | 'IN_DISPUTE' | 'REASSIGNED' | 'CANCELLED';
   assignedHelperId?: string;
   createdAt: Timestamp;
@@ -119,5 +120,3 @@ export const taskCategories = [
     'Shopping',
     'Other'
 ];
-
-    
