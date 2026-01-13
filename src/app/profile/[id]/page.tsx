@@ -1,4 +1,3 @@
-
 'use client';
 
 import { use } from 'react';
@@ -105,7 +104,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                                 <div>
                                     <p className="text-muted-foreground">Verification</p>
                                     <div className="font-semibold">
-                                        {helperProfile.verificationStatus === 'Verified' ? (
+                                        {helperProfile.verificationStatus === 'APPROVED' ? (
                                             <Badge variant="secondary">Verified</Badge>
                                         ) : (
                                             <Badge variant="destructive">Pending Verification</Badge>
@@ -117,14 +116,14 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                                 <Star className="h-5 w-5 text-muted-foreground" />
                                 <div>
                                     <p className="text-muted-foreground">Rating</p>
-                                    <p className="font-semibold">{helperProfile.rating ? `${helperProfile.rating.toFixed(1)} / 5.0` : 'No ratings yet'}</p>
+                                    <p className="font-semibold">{helperProfile.stats.ratingAvg ? `${helperProfile.stats.ratingAvg.toFixed(1)} / 5.0` : 'No ratings yet'}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
                                 <Briefcase className="h-5 w-5 text-muted-foreground" />
                                 <div>
                                     <p className="text-muted-foreground">Completed Gigs</p>
-                                    <p className="font-semibold">{helperProfile.completedTasks || 0}</p>
+                                    <p className="font-semibold">{helperProfile.stats.jobsCompleted || 0}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">

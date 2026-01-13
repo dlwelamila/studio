@@ -37,6 +37,11 @@ export type Helper = {
     lifetimeEarnings: number;
     currency: 'TZS';
   };
+  
+  // Legacy fields to be deprecated or merged into stats
+  references?: string;
+  additionalSkills?: string;
+  reliabilityIndicator: 'Good' | 'Average' | 'Poor';
 };
 
 export type Customer = {
@@ -117,5 +122,3 @@ export const taskCategories = [
     'Shopping',
     'Other'
 ];
-
-    

@@ -338,7 +338,7 @@ Reduce cognitive load and disputes by guiding Helpers step-by-step.
 
 ---
 
-## 🚧 7. Growth & Motivation Features
+## ✅ 7. Growth & Motivation Features
 
 ### Objective
 Encourage quality work and long-term engagement through transparency and progression.
@@ -369,7 +369,7 @@ Encourage quality work and long-term engagement through transparency and progres
 
 ---
 
-### 🚧 7.2 Skill Suggestions
+### ✅ 7.2 Skill Suggestions
 
 #### Backend
 - Analyze helper history
@@ -418,14 +418,14 @@ Phase 3 ensures **fairness, transparency, resilience, and low-tech accessibility
 
 ---
 
-## 9. Fairness & Transparency
+## 🚧 9. Fairness & Transparency
 
 ### Objective
 Ensure Helpers understand how scores change and can appeal unfair outcomes.
 
 ---
 
-### 9.1 Reliability Impact Transparency
+### 🚧 9.1 Reliability Impact Transparency
 
 #### Backend
 - Log every reliability score change:
