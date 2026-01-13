@@ -76,7 +76,7 @@ type OfferFormValues = z.infer<typeof offerFormSchema>;
 
 
 export default function TaskDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+  const { id } = use(params);
   const { role } = useUserRole();
   const { user: currentUser, isUserLoading } = useUser();
   const firestore = useFirestore();
