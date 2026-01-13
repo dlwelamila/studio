@@ -241,7 +241,7 @@ Protect both helper and customer through clarity and proof.
 
 ---
 
-## 7. Page G — Completion & Feedback - ✅ IN PROGRESS
+## 7. Page G — Completion & Feedback - ✅ COMPLETE
 
 ### Goal
 Close the loop fairly and calmly.
@@ -259,7 +259,7 @@ Close the loop fairly and calmly.
 
 ---
 
-## 8. Page H — Performance & Growth
+## 8. Page H — Performance & Growth - ✅ IN PROGRESS
 
 ### Goal
 Motivate long-term engagement.
@@ -315,5 +315,3 @@ The Helper side is complete only if:
 ---
 
 End of blueprint.
-
-    

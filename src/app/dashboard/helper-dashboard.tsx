@@ -104,7 +104,7 @@ export default function HelperDashboard() {
   const { data: completedTasks, isLoading: areCompletedTasksLoading } = useCollection<Task>(completedTasksQuery);
   
   useEffect(() => {
-    if (completedTasks) {
+    if (completedTasks && helper) {
         const now = new Date();
         const oneWeekAgo = sub(now, {days: 7});
         const oneMonthAgo = sub(now, {months: 1});
@@ -112,12 +112,11 @@ export default function HelperDashboard() {
         const newEarnings: CalculatedEarnings = {
             thisWeek: 0,
             thisMonth: 0,
-            lifetime: 0,
+            lifetime: helper.walletSummary?.lifetimeEarnings ?? 0,
         };
 
         completedTasks.forEach(task => {
             const price = task.acceptedOfferPrice ?? 0;
-            newEarnings.lifetime += price;
             
             if (task.completedAt && task.completedAt.toDate() > oneMonthAgo) {
                 newEarnings.thisMonth += price;
@@ -129,7 +128,7 @@ export default function HelperDashboard() {
 
         setEarnings(newEarnings);
     }
-  }, [completedTasks]);
+  }, [completedTasks, helper]);
 
   const isLoading = isAuthLoading || isHelperLoading || areOpenTasksLoading || areCompletedTasksLoading;
 
@@ -166,6 +165,7 @@ export default function HelperDashboard() {
             
             const timeMatch = (() => {
                 if (timeFilter === 'all') return true;
+                if (!task.createdAt) return true;
                 const createdAt = task.createdAt instanceof Timestamp ? task.createdAt.toDate() : new Date();
                 if (timeFilter === 'today') return isToday(createdAt);
                 if (timeFilter === 'weekend') return isWeekend(createdAt);
