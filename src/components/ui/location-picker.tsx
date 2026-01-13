@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import type { LatLngExpression, LatLng, Map } from 'leaflet';
 import { Skeleton } from './skeleton';
@@ -32,7 +32,7 @@ const DraggableMarker = ({ onLocationChange }: LocationPickerProps) => {
         }
       },
     }),
-    [onLocationChange],
+    [onLocationChange]
   );
 
   return (
@@ -46,16 +46,12 @@ const DraggableMarker = ({ onLocationChange }: LocationPickerProps) => {
 };
 
 export default function LocationPicker({ onLocationChange }: LocationPickerProps) {
-  const [map, setMap] = useState<Map | null>(null);
-
-  const displayMap = useMemo(
-    () => (
+    return (
         <MapContainer
             center={[-6.792354, 39.208328]}
             zoom={13}
             scrollWheelZoom={false}
             style={{ height: '400px', width: '100%', borderRadius: 'var(--radius)' }}
-            whenCreated={setMap}
             placeholder={<Skeleton className="h-full w-full" />}
         >
             <TileLayer
@@ -64,7 +60,5 @@ export default function LocationPicker({ onLocationChange }: LocationPickerProps
             />
             <DraggableMarker onLocationChange={onLocationChange} />
         </MapContainer>
-    ), [onLocationChange]);
-
-  return <div>{displayMap}</div>;
+    );
 }
