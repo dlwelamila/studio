@@ -26,6 +26,7 @@ import { PhoneVerificationDialog } from './phone-verification-dialog';
 import { JourneyChecklist } from './journey-checklist';
 import { TierProgressCard } from './tier-progress-card';
 import { SkillSuggestions } from './skill-suggestions';
+import { ReliabilityLog } from './reliability-log';
 
 
 export default function ProfilePage() {
@@ -173,12 +174,15 @@ export default function ProfilePage() {
                               <Shield className="h-5 w-5 mt-0.5 text-muted-foreground shrink-0" />
                               <div>
                                   <p className="text-muted-foreground">Reliability Score</p>
-                                  <p className={cn(
-                                    "font-semibold mt-1",
-                                     journey.stats.reliabilityLevel === 'GREEN' && "text-green-700",
-                                     journey.stats.reliabilityLevel === 'YELLOW' && "text-yellow-600",
-                                     journey.stats.reliabilityLevel === 'RED' && "text-destructive"
-                                  )}>{journey.stats.reliabilityLevel}</p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <p className={cn(
+                                        "font-semibold",
+                                        journey.stats.reliabilityLevel === 'GREEN' && "text-green-700",
+                                        journey.stats.reliabilityLevel === 'YELLOW' && "text-yellow-600",
+                                        journey.stats.reliabilityLevel === 'RED' && "text-destructive"
+                                    )}>{journey.stats.reliabilityLevel}</p>
+                                    <ReliabilityLog />
+                                  </div>
                               </div>
                           </div>
                           <div className="flex items-start gap-3 md:col-span-2">

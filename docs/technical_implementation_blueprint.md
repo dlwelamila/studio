@@ -425,7 +425,7 @@ Ensure Helpers understand how scores change and can appeal unfair outcomes.
 
 ---
 
-### 🚧 9.1 Reliability Impact Transparency
+### ✅ 9.1 Reliability Impact Transparency
 
 #### Backend
 - Log every reliability score change:
@@ -505,7 +505,7 @@ Make tasKey usable in low connectivity environments common in Tanzania.
 
 ---
 
-## Phase 2 & 3 Acceptance Criteria
+# Phase 2 & 3 Acceptance Criteria
 
 Phase 2 and 3 are complete only if:
 - No Phase 1 guardrails are violated
