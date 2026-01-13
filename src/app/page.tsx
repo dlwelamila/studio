@@ -5,6 +5,7 @@ import { Logo } from '@/components/logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { RuntimeDateViewer } from '@/components/runtime-date-viewer';
 
 export default function LandingPage() {
   const heroImage = PlaceHolderImages.find((img) => img.id === 'hero-image');
@@ -70,6 +71,10 @@ export default function LandingPage() {
       </header>
 
       <main className="flex-grow">
+        <section className="container mx-auto px-4">
+            <RuntimeDateViewer />
+        </section>
+
         <section className="container mx-auto grid grid-cols-1 items-center gap-12 px-4 py-16 md:grid-cols-2 md:py-24">
           <div className="space-y-6">
             <h1 className="font-headline text-4xl font-bold tracking-tighter text-accent md:text-5xl lg:text-6xl">
