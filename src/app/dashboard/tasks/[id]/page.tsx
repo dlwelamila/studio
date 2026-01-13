@@ -3,7 +3,7 @@
 import { use, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronLeft, Star, AlertTriangle, Briefcase, Wrench, CircleX, UserCheck, Clock, Calendar } from 'lucide-react';
+import { ChevronLeft, Star, AlertTriangle, Briefcase, Wrench, CircleX, UserCheck, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';

@@ -6,13 +6,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ChevronLeft } from 'lucide-react';
-import { format } from 'date-fns';
 
 import { useUser, useFirestore } from '@/firebase';
-import { collection, serverTimestamp, GeoPoint, Timestamp } from 'firebase/firestore';
+import { collection, serverTimestamp, GeoPoint } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   Card,
