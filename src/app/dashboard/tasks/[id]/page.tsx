@@ -3,7 +3,7 @@
 import { use, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronLeft, Star, AlertTriangle, Briefcase, Wrench, CircleX, UserCheck, Clock } from 'lucide-react';
+import { ChevronLeft, Star, AlertTriangle, Briefcase, Wrench, CircleX, UserCheck, Clock, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -59,6 +59,8 @@ import { useToast } from '@/hooks/use-toast';
 import { ReviewForm } from './review-form';
 import { FitIndicator } from './fit-indicator';
 import { useHelperJourney } from '@/hooks/use-helper-journey';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
 
 const offerFormSchema = z.object({
     price: z.coerce.number().positive({ message: "Please enter a valid price." }),
@@ -216,6 +218,16 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
           
           {canShowFitIndicator && task && <FitIndicator task={task} />}
+          
+          {isAssignedHelperView && task.status === 'ASSIGNED' && (
+            <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertTitle className="font-headline">You're Assigned!</AlertTitle>
+                <AlertDescription>
+                   You are responsible for this task. Please coordinate with the customer to begin.
+                </AlertDescription>
+            </Alert>
+          )}
 
           <Card>
             <CardHeader className="flex flex-row items-start justify-between">

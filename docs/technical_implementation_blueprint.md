@@ -61,30 +61,6 @@ Provide a calm, one-glance control center showing:
 - Single primary action per section
 - No clutter
 
-### Layout Structure
-**Top Section**
-- Availability toggle (Available / Not available)
-- Verification badge:
-  - Pending
-  - Verified
-  - Suspended
-- Reliability indicator:
-  - GREEN / YELLOW / RED
-  - Short label (e.g., “Highly Reliable”)
-
-**Middle Section**
-- “Tasks Near You”
-- Short subtitle: “Based on your skills and area”
-- Up to 3 task preview cards
-
-**Bottom Section**
-- “My Active Tasks”
-- Earnings summary:
-  - This week
-  - This month
-  - Currency: TZS
-  - Informational only (no payment pressure)
-
 ### Backend Requirements
 - Read from `workers/{uid}`:
   - `availability`
@@ -217,7 +193,7 @@ Protect helpers from chaotic negotiation and pressure.
 
 ---
 
-## 5. Page E — Assigned Task (Responsibility View)
+## 5. Page E — Assigned Task (Responsibility View) - ✅ IN PROGRESS
 
 ### Goal
 Make responsibility clear and undeniable.

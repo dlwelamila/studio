@@ -71,8 +71,16 @@ service cloud.firestore {
     }
 
     match /tasks/{taskId} {
-      allow get: if isSignedIn(); // Let client logic handle what to show
+      // Allow list for all signed-in users (feed), but get is restricted.
       allow list: if isSignedIn();
+      
+      // Get is allowed if task is OPEN, or if user is owner/assigned helper.
+      allow get: if isSignedIn() && (
+        resource.data.status == 'OPEN' || 
+        isResourceOwner(resource, 'customerId') || 
+        isAssignedHelper(resource.data)
+      );
+
       allow create: if isCreatingOwnResource('customerId') && exists(/databases/$(database)/documents/customers/$(request.auth.uid));
       
       allow update: if isSignedIn() && (
