@@ -1,3 +1,5 @@
+'use client';
+
 import type { ImagePlaceholder } from '@/lib/placeholder-images';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Timestamp, GeoPoint } from 'firebase/firestore';
@@ -9,7 +11,6 @@ export type Helper = {
   fullName: string;
   email?: string;
   phoneNumber: string;
-  phoneVerified?: boolean;
   profilePhotoUrl: string;
   serviceCategories: string[];
   serviceAreas: string[];
@@ -25,30 +26,26 @@ export type Helper = {
   };
   lifecycleStage: 'REGISTERED' | 'PROFILE_INCOMPLETE' | 'PENDING_VERIFICATION' | 'VERIFIED_READY' | 'ACTIVE' | 'GROWING' | 'SUSPENDED';
   stats: {
-    totalAttempted: number;
     jobsCompleted: number;
     jobsCancelled: number;
-    completionRate: number; // 0-1
     ratingAvg: number;
     reliabilityLevel: 'GREEN' | 'YELLOW' | 'RED';
-  };
-  walletSummary: {
-    lifetimeEarnings: number;
-    currency: 'TZS';
   };
   
   // Legacy fields to be deprecated or merged into stats
   references?: string;
   additionalSkills?: string;
   reliabilityIndicator: 'Good' | 'Average' | 'Poor';
+  rating?: number;
+  completedTasks?: number;
 };
 
 export type Customer = {
   id: string; // Corresponds to Firebase Auth UID
   fullName: string;
   phoneNumber: string;
-  phoneVerified?: boolean;
   email?: string;
+  rating?: number;
   profilePhotoUrl: string;
   memberSince: Timestamp;
 };
@@ -69,9 +66,7 @@ export type Task = {
   status: 'OPEN' | 'ASSIGNED' | 'ACTIVE' | 'COMPLETED' | 'IN_DISPUTE' | 'REASSIGNED' | 'CANCELLED';
   assignedHelperId?: string;
   createdAt: Timestamp;
-  dueDate?: Timestamp;
   assignedAt?: Timestamp;
-  arrivedAt?: Timestamp;
   startedAt?: Timestamp;
   completedAt?: Timestamp;
   disputedAt?: Timestamp;

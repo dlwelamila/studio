@@ -6,9 +6,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ChevronLeft } from 'lucide-react';
-
+import dynamic from 'next/dynamic';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, serverTimestamp } from 'firebase/firestore';
+import { collection, serverTimestamp, GeoPoint } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 import { Button } from '@/components/ui/button';
@@ -42,12 +42,16 @@ import { taskCategories } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { useUserRole } from '@/context/user-role-context';
 
+const LocationPicker = dynamic(() => import('@/components/ui/location-picker'), { ssr: false });
 
 const taskFormSchema = z.object({
   title: z.string().min(5, { message: "Title must be at least 5 characters." }),
   description: z.string().min(20, { message: "Description must be at least 20 characters." }),
   category: z.string({ required_error: "Please select a category." }),
-  area: z.string().min(3, { message: "Please enter a location." }),
+  location: z.object({
+    lat: z.number(),
+    lng: z.number(),
+  }),
   budget: z.object({
     min: z.coerce.number().positive(),
     max: z.coerce.number().positive(),
@@ -71,12 +75,12 @@ export default function NewTaskPage() {
         defaultValues: {
             title: '',
             description: '',
-            area: '',
             budget: {
                 min: 0,
                 max: 0,
             },
             toolsRequired: '',
+            location: { lat: -6.792354, lng: 39.208328 }, // Default to Dar es Salaam
         }
     });
 
@@ -91,14 +95,15 @@ export default function NewTaskPage() {
             title: data.title,
             description: data.description,
             category: data.category,
-            area: data.area,
+            // For now, area can be a placeholder. A real app would reverse-geocode the lat/lng.
+            area: 'Selected on map', 
+            location: new GeoPoint(data.location.lat, data.location.lng),
             budget: {
                 min: data.budget.min,
                 max: data.budget.max,
             },
             effort: data.effort,
             toolsRequired: data.toolsRequired?.split(',').map(t => t.trim()).filter(Boolean) || [],
-            // Default values for fields not in the form
             timeWindow: 'Flexible',
             status: 'OPEN',
             createdAt: serverTimestamp(),
@@ -207,20 +212,21 @@ export default function NewTaskPage() {
                             </FormItem>
                         )}
                     />
-                     <FormField
-                        control={form.control}
-                        name="area"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Location</FormLabel>
+                </div>
+                 <FormField
+                    control={form.control}
+                    name="location"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Task Location</FormLabel>
+                            <FormDescription>Click or drag the marker to set the precise task location.</FormDescription>
                             <FormControl>
-                                <Input placeholder="e.g., Masaki, Dar es Salaam" {...field} />
+                                <LocationPicker onLocationChange={(lat, lng) => field.onChange({ lat, lng })} />
                             </FormControl>
                             <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </div>
+                        </FormItem>
+                    )}
+                />
                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                      <FormField
                         control={form.control}
