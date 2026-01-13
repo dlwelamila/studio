@@ -69,6 +69,7 @@ export type Task = {
   status: 'OPEN' | 'ASSIGNED' | 'ACTIVE' | 'COMPLETED' | 'IN_DISPUTE' | 'REASSIGNED' | 'CANCELLED';
   assignedHelperId?: string;
   createdAt: Timestamp;
+  dueDate?: Timestamp;
   assignedAt?: Timestamp;
   startedAt?: Timestamp;
   completedAt?: Timestamp;

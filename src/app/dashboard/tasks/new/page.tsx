@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { ChevronLeft } from 'lucide-react';
 
 import { useUser, useFirestore } from '@/firebase';
-import { collection, serverTimestamp, GeoPoint } from 'firebase/firestore';
+import { collection, serverTimestamp, GeoPoint, Timestamp } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,7 @@ import {
 import { taskCategories } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { useUserRole } from '@/context/user-role-context';
+import { DateTimePicker } from '@/components/ui/datetime-picker';
 
 
 const taskFormSchema = z.object({
@@ -54,7 +55,7 @@ const taskFormSchema = z.object({
   }),
   effort: z.enum(['light', 'medium', 'heavy'], { required_error: "Please estimate the effort level."}),
   toolsRequired: z.string().optional(),
-  timeWindow: z.string().min(3, { message: "Please provide a time window." }),
+  dueDate: z.date({ required_error: "Please select a due date and time." }),
 });
 
 type TaskFormValues = z.infer<typeof taskFormSchema>;
@@ -78,7 +79,6 @@ export default function NewTaskPage() {
                 max: 0,
             },
             toolsRequired: '',
-            timeWindow: 'Flexible',
         }
     });
 
@@ -101,7 +101,8 @@ export default function NewTaskPage() {
             },
             effort: data.effort,
             toolsRequired: data.toolsRequired?.split(',').map(t => t.trim()).filter(Boolean) || [],
-            timeWindow: data.timeWindow,
+            dueDate: Timestamp.fromDate(data.dueDate),
+            timeWindow: 'Flexible', // This field is now redundant but kept for data model consistency
             status: 'OPEN',
             createdAt: serverTimestamp(),
         };
@@ -246,39 +247,38 @@ export default function NewTaskPage() {
                             </FormItem>
                         )}
                     />
-                    <FormField
+                     <FormField
                         control={form.control}
-                        name="timeWindow"
+                        name="toolsRequired"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Time Window Description</FormLabel>
+                            <FormLabel>Tools Expected (optional)</FormLabel>
                             <FormControl>
-                                <Input placeholder="e.g., Flexible, This Saturday" {...field} />
+                                <Input placeholder="e.g., Bucket, soap, iron" {...field} />
                             </FormControl>
                              <FormDescription>
-                                Describe when you want this task done.
+                                List any tools the helper is expected to have, separated by commas.
                              </FormDescription>
                             <FormMessage />
                             </FormItem>
                         )}
                     />
                 </div>
-                <FormField
+                 <FormField
                     control={form.control}
-                    name="toolsRequired"
+                    name="dueDate"
                     render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Tools Expected from Helper (optional)</FormLabel>
-                        <FormControl>
-                            <Input placeholder="e.g., Bucket, soap, iron" {...field} />
-                        </FormControl>
-                            <FormDescription>
-                            List any tools the helper is expected to have, separated by commas.
-                            </FormDescription>
+                        <FormItem className="flex flex-col">
+                        <FormLabel>Due Date & Time</FormLabel>
+                        <DateTimePicker
+                            date={field.value}
+                            setDate={field.onChange}
+                        />
                         <FormMessage />
                         </FormItem>
                     )}
-                />
+                 />
+
                  <div className="grid gap-3">
                     <Label>Budget Range (TZS)</Label>
                     <div className="grid grid-cols-2 gap-4">

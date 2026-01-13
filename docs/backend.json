@@ -147,6 +147,7 @@
           "description": "Reference to Helper. (Relationship: Helper 1:N Task). Nullable if task is not assigned."
         },
         "createdAt": { "type": "string", "format": "date-time" },
+        "dueDate": { "type": "string", "format": "date-time" },
         "assignedAt": { "type": "string", "format": "date-time" },
         "startedAt": { "type": "string", "format": "date-time" },
         "completedAt": { "type": "string", "format": "date-time" },
@@ -161,7 +162,8 @@
         "location",
         "budget",
         "status",
-        "createdAt"
+        "createdAt",
+        "dueDate"
       ]
     },
     "Offer": {

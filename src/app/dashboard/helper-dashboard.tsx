@@ -157,6 +157,10 @@ export default function HelperDashboard() {
     
     return openTasks
         .filter(task => {
+            // Task is not expired
+            const isExpired = task.dueDate ? isAfter(new Date(), task.dueDate.toDate()) : false;
+            if (isExpired) return false;
+
             const categoryMatch = selectedCategories.length === 0 || selectedCategories.includes(task.category);
             const areaMatch = areaSearch === '' || task.area.toLowerCase().includes(areaSearch.toLowerCase());
             

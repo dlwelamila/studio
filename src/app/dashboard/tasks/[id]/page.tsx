@@ -254,8 +254,8 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                  <div className="flex items-start gap-2">
                     <Clock className="h-5 w-5 mt-0.5 text-muted-foreground"/>
                     <div>
-                        <p className="font-semibold text-foreground">Time Window</p>
-                        <p className="capitalize text-muted-foreground">{task.timeWindow}</p>
+                        <p className="font-semibold text-foreground">Due Date</p>
+                        <p className="capitalize text-muted-foreground">{task.dueDate ? format(task.dueDate.toDate(), 'PPP, p') : 'Flexible'}</p>
                     </div>
                  </div>
                   <div className="flex items-start gap-2">
