@@ -39,8 +39,6 @@ export type Helper = {
   },
   
   // Legacy fields (set to default/empty)
-  references?: string;
-  additionalSkills?: string;
   reliabilityIndicator: 'Good' | 'Average' | 'Poor';
 };
 
