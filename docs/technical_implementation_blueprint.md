@@ -218,7 +218,7 @@ All Phase 2 features MUST preserve Phase 1 guardrails and must not introduce pre
 
 ---
 
-## 5. Safety & Protection Features
+## ✅ 5. Safety & Protection Features
 
 ### Objective
 Protect Helpers during real-world task execution and provide safe escalation paths without drama.
@@ -258,7 +258,7 @@ Protect Helpers during real-world task execution and provide safe escalation pat
 
 ---
 
-### 5.2 Incident Reporting
+### ✅ 5.2 Incident Reporting
 
 #### Backend
 - Incident model:

@@ -34,7 +34,7 @@ service cloud.firestore {
     function ownerFieldIsImmutable(key) {
       return request.resource.data[key] == resource.data[key];
     }
-
+    
     function hasRequiredFields(role) {
       let fields = ['id', 'fullName', 'phoneNumber'];
       if (role == 'helper') {
@@ -91,7 +91,7 @@ service cloud.firestore {
         )) ||
         // Helper can update status (ASSIGNED -> ACTIVE -> COMPLETED)
         (isAssignedHelper(resource.data) && canUpdateTaskStatus(resource.data.status, request.resource.data.status) && ownerFieldIsImmutable('customerId') && ownerFieldIsImmutable('assignedHelperId')) ||
-        // Helper can check in (add arrivedAt)
+        // Helper can check in (add arrivedAt and update status)
         (isAssignedHelper(resource.data) && resource.data.status == 'ASSIGNED' && request.resource.data.keys().hasAll(['arrivedAt', 'status']))
       );
       

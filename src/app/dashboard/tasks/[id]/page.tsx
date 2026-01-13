@@ -80,6 +80,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const { user: currentUser, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const [reportMessage, setReportMessage] = useState('');
 
   const taskRef = useMemoFirebase(() => firestore && doc(firestore, 'tasks', id), [firestore, id]);
   const { data: task, isLoading: isTaskLoading, error, mutate: mutateTask } = useDoc<Task>(taskRef);
@@ -175,12 +176,29 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   };
 
   const handleReportSubmit = () => {
-    // In a real app, this would submit the report to a backend service.
-    // For now, we just show a toast notification.
-    toast({
-      title: "Report Submitted",
-      description: "Thank you for your feedback. Our support team will review the issue.",
-    });
+    if (!currentUser || !firestore || !task) {
+      toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to submit a ticket.' });
+      return;
+    }
+    if (reportMessage.length < 20) {
+        toast({ variant: 'destructive', title: 'Message too short', description: 'Please provide more details about the issue.' });
+        return;
+    }
+
+    const ticketData = {
+      userId: currentUser.uid,
+      userEmail: currentUser.email,
+      subject: `Issue with Task: ${task.title} (${task.id})`,
+      message: reportMessage,
+      status: 'NEW',
+      createdAt: serverTimestamp(),
+    };
+
+    const ticketsCollection = collection(firestore, 'support_tickets');
+    addDocumentNonBlocking(ticketsCollection, ticketData);
+    
+    toast({ title: 'Support Ticket Submitted', description: "We've received your report and will look into it." });
+    setReportMessage('');
   };
   
   if (isTaskLoading || isUserLoading) {
@@ -600,7 +618,12 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <div className="grid gap-4 py-4">
-                    <Textarea placeholder="Please provide as much detail as possible..." className="min-h-[120px]" />
+                    <Textarea 
+                      placeholder="Please provide as much detail as possible..." 
+                      className="min-h-[120px]" 
+                      value={reportMessage}
+                      onChange={(e) => setReportMessage(e.target.value)}
+                    />
                   </div>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
