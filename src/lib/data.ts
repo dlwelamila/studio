@@ -11,6 +11,7 @@ export type Helper = {
   fullName: string;
   email?: string;
   phoneNumber: string;
+  phoneVerified?: boolean;
   profilePhotoUrl: string;
   serviceCategories: string[];
   serviceAreas: string[];
@@ -50,7 +51,6 @@ export type Customer = {
   phoneNumber: string;
   phoneVerified?: boolean;
   email?: string;
-  rating?: number;
   profilePhotoUrl: string;
   memberSince: Timestamp;
 };

@@ -130,7 +130,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                                 <Shield className="h-5 w-5 text-muted-foreground" />
                                 <div>
                                     <p className="text-muted-foreground">Reliability</p>
-                                    <p className="font-semibold">{helperProfile.reliabilityIndicator || 'Not Yet Rated'}</p>
+                                    <p className="font-semibold">{helperProfile.stats.reliabilityLevel || 'Not Yet Rated'}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3 md:col-span-2">

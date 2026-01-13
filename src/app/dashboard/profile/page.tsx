@@ -53,7 +53,7 @@ export default function ProfilePage() {
   const customerProfile = role === 'customer' ? (userProfile as Customer) : null;
   
   const journey = useHelperJourney(helperProfile);
-  const isPhoneVerified = role === 'customer' ? customerProfile?.phoneVerified : true; // Assume helpers are always phone verified for now
+  const isPhoneVerified = role === 'customer' ? customerProfile?.phoneVerified : helperProfile?.phoneVerified;
   
   const isLoading = isAuthLoading || isRoleLoading || isProfileLoading;
 
