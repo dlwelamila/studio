@@ -265,15 +265,6 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                         <p className="capitalize text-muted-foreground">{task.toolsRequired?.join(', ') || 'None'}</p>
                     </div>
                  </div>
-                 {task.dueDate && (
-                    <div className="flex items-start gap-2">
-                        <Calendar className="h-5 w-5 mt-0.5 text-muted-foreground"/>
-                        <div>
-                            <p className="font-semibold text-foreground">Must be completed by</p>
-                            <p className="capitalize text-muted-foreground">{format(task.dueDate.toDate(), 'PPP')}</p>
-                        </div>
-                    </div>
-                 )}
                </div>
                <Separator className="my-6" />
                 <div>
