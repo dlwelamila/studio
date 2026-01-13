@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { PhoneVerificationDialog } from './phone-verification-dialog';
 import { JourneyChecklist } from './journey-checklist';
 import { TierProgressCard } from './tier-progress-card';
+import { SkillSuggestions } from './skill-suggestions';
 
 
 export default function ProfilePage() {
@@ -214,6 +215,7 @@ export default function ProfilePage() {
             </Card>
 
             {helperProfile && journey && <TierProgressCard journey={journey} />}
+            {helperProfile && journey && <SkillSuggestions helper={helperProfile} />}
             {helperProfile && journey && <JourneyChecklist journey={journey} />}
 
             {helperProfile && (

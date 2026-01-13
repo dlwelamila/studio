@@ -345,7 +345,7 @@ Encourage quality work and long-term engagement through transparency and progres
 
 ---
 
-### 🚧 7.1 Tier System
+### ✅ 7.1 Tier System
 
 #### Backend
 - Define tiers:
@@ -369,7 +369,7 @@ Encourage quality work and long-term engagement through transparency and progres
 
 ---
 
-### 7.2 Skill Suggestions
+### 🚧 7.2 Skill Suggestions
 
 #### Backend
 - Analyze helper history
