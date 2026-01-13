@@ -9,8 +9,7 @@ type ClientOnlyProps = {
 /**
  * A component that ensures its children are only rendered on the client side.
  * This is useful for preventing React hydration errors when a component
- * generates content (like random IDs) that would differ between the server
- * and the client.
+ * generates content that would differ between the server and the client.
  */
 export function ClientOnly({ children }: ClientOnlyProps) {
   const [hasMounted, setHasMounted] = useState(false);

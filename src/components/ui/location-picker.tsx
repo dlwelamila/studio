@@ -2,8 +2,9 @@
 
 import { useState, useRef, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
-import type { LatLngExpression, LatLng, Map } from 'leaflet';
+import type { LatLngExpression, LatLng } from 'leaflet';
 import { Skeleton } from './skeleton';
+import { ClientOnly } from '../client-only';
 
 interface LocationPickerProps {
   onLocationChange: (lat: number, lng: number) => void;
@@ -47,6 +48,7 @@ const DraggableMarker = ({ onLocationChange }: LocationPickerProps) => {
 
 export default function LocationPicker({ onLocationChange }: LocationPickerProps) {
     return (
+      <ClientOnly>
         <MapContainer
             center={[-6.792354, 39.208328]}
             zoom={13}
@@ -60,5 +62,6 @@ export default function LocationPicker({ onLocationChange }: LocationPickerProps
             />
             <DraggableMarker onLocationChange={onLocationChange} />
         </MapContainer>
+      </ClientOnly>
     );
 }
