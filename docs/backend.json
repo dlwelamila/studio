@@ -91,7 +91,8 @@
         },
         "verificationStatus": {
             "type": "string",
-            "enum": ["PENDING", "APPROVED", "SUSPENDED"]
+            "enum": ["PENDING", "APPROVED", "SUSPENDED"],
+            "description": "The verification status of the helper, managed by admins."
         }
       },
       "required": [
