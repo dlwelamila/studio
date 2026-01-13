@@ -219,7 +219,7 @@ export default function HelperDashboard() {
                     htmlFor="availability-toggle" 
                     className={cn(
                         "text-sm",
-                        !helper.isAvailable ? "text-destructive font-bold" : "text-muted-foreground"
+                        !helper.isAvailable && "text-muted-foreground"
                     )}
                   >
                     {helper.isAvailable ? 'Available for tasks' : 'Not available'}
