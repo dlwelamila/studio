@@ -24,6 +24,7 @@ import { useHelperJourney } from '@/hooks/use-helper-journey';
 import { cn } from '@/lib/utils';
 import { PhoneVerificationDialog } from './phone-verification-dialog';
 import { JourneyChecklist } from './journey-checklist';
+import { TierProgressCard } from './tier-progress-card';
 
 
 export default function ProfilePage() {
@@ -212,6 +213,7 @@ export default function ProfilePage() {
                 </CardContent>
             </Card>
 
+            {helperProfile && journey && <TierProgressCard journey={journey} />}
             {helperProfile && journey && <JourneyChecklist journey={journey} />}
 
             {helperProfile && (

@@ -14,6 +14,19 @@ export type HelperStats = {
     reliabilityLevel: 'GREEN' | 'YELLOW' | 'RED';
 }
 
+const TIERS = [
+  { name: 'Bronze', jobsRequired: 0 },
+  { name: 'Silver', jobsRequired: 5 },
+  { name: 'Gold', jobsRequired: 20 },
+];
+
+
+export type HelperTier = {
+    current: { name: string; jobsCompleted: number; };
+    next: { name: string; jobsRequired: number; } | null;
+    progress: number;
+}
+
 export type HelperJourney = {
   lifecycleStage: Helper['lifecycleStage'];
   profileCompletion: Helper['profileCompletion'];
@@ -21,6 +34,7 @@ export type HelperJourney = {
   capabilities: Record<HelperCapability, boolean>;
   nextActions: { id: string; label: string; required: boolean; href?: string }[];
   stats: HelperStats;
+  tier: HelperTier | null;
 };
 
 /**
@@ -110,6 +124,30 @@ export function useHelperJourney(helper: Helper | null | undefined): HelperJourn
         totalAttempted,
         completionRate,
     };
+    
+    // 5. Calculate Tier
+    let tier: HelperTier | null = null;
+    const jobsCompleted = calculatedStats.jobsCompleted;
+    const currentTierIndex = TIERS.slice().reverse().findIndex(t => jobsCompleted >= t.jobsRequired);
+
+    if (currentTierIndex !== -1) {
+        const currentTierInfo = TIERS[TIERS.length - 1 - currentTierIndex];
+        const nextTierInfo = TIERS.length - 1 - currentTierIndex + 1 < TIERS.length ? TIERS[TIERS.length - currentTierIndex] : null;
+
+        let progress = 100;
+        if (nextTierInfo) {
+            const jobsForCurrentTier = currentTierInfo.jobsRequired;
+            const jobsForNextTier = nextTierInfo.jobsRequired;
+            progress = ((jobsCompleted - jobsForCurrentTier) / (jobsForNextTier - jobsForCurrentTier)) * 100;
+        }
+
+        tier = {
+            current: { ...currentTierInfo, jobsCompleted },
+            next: nextTierInfo,
+            progress: Math.min(progress, 100),
+        };
+    }
+
 
     return {
       lifecycleStage,
@@ -118,6 +156,7 @@ export function useHelperJourney(helper: Helper | null | undefined): HelperJourn
       capabilities,
       nextActions,
       stats: calculatedStats,
+      tier,
     };
   }, [helper]);
 

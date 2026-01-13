@@ -218,7 +218,7 @@ All Phase 2 features MUST preserve Phase 1 guardrails and must not introduce pre
 
 ---
 
-## 🚧 5. Safety & Protection Features
+## ✅ 5. Safety & Protection Features
 
 ### Objective
 Protect Helpers during real-world task execution and provide safe escalation paths without drama.
@@ -305,7 +305,7 @@ Reduce cognitive load and disputes by guiding Helpers step-by-step.
 
 ---
 
-### 🚧 6.1 Task Checklists
+### ✅ 6.1 Task Checklists
 
 #### Backend
 - Checklist templates per task category
@@ -326,7 +326,7 @@ Reduce cognitive load and disputes by guiding Helpers step-by-step.
 
 ---
 
-### 6.2 Progress Tracking
+### ✅ 6.2 Progress Tracking
 
 #### Backend
 - Track checklist progress events
@@ -338,14 +338,14 @@ Reduce cognitive load and disputes by guiding Helpers step-by-step.
 
 ---
 
-## 7. Growth & Motivation Features
+## 🚧 7. Growth & Motivation Features
 
 ### Objective
 Encourage quality work and long-term engagement through transparency and progression.
 
 ---
 
-### 7.1 Tier System
+### 🚧 7.1 Tier System
 
 #### Backend
 - Define tiers:
