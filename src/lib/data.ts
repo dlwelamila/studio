@@ -1,5 +1,3 @@
-'use client';
-
 import type { ImagePlaceholder } from '@/lib/placeholder-images';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Timestamp, GeoPoint } from 'firebase/firestore';
