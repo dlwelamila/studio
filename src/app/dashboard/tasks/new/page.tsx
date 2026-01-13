@@ -206,6 +206,7 @@ export default function NewTaskPage() {
                                     {taskCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
+                                <FormDescription>Choose the best category for your task.</FormDescription>
                                 <FormMessage />
                             </FormItem>
                         )}
@@ -219,6 +220,7 @@ export default function NewTaskPage() {
                             <FormControl>
                                 <Input placeholder="e.g., Masaki, Dar es Salaam" {...field} />
                             </FormControl>
+                            <FormDescription>Where does this task need to be done? Be specific.</FormDescription>
                             <FormMessage />
                             </FormItem>
                         )}
@@ -243,6 +245,7 @@ export default function NewTaskPage() {
                                         <SelectItem value="heavy">Heavy (4+ hours, demanding task)</SelectItem>
                                     </SelectContent>
                                 </Select>
+                                <FormDescription>This helps helpers estimate the time and effort involved.</FormDescription>
                                 <FormMessage />
                             </FormItem>
                         )}
@@ -274,6 +277,7 @@ export default function NewTaskPage() {
                             date={field.value}
                             setDate={field.onChange}
                         />
+                        <FormDescription>When does this task need to be completed by?</FormDescription>
                         <FormMessage />
                         </FormItem>
                     )}
@@ -281,6 +285,7 @@ export default function NewTaskPage() {
 
                  <div className="grid gap-3">
                     <Label>Budget Range (TZS)</Label>
+                    <FormDescription>Provide a fair price range for the work to attract the right helpers.</FormDescription>
                     <div className="grid grid-cols-2 gap-4">
                        <FormField
                             control={form.control}
