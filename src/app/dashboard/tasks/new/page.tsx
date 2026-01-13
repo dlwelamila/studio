@@ -137,6 +137,7 @@ export default function NewTaskPage() {
       effort: data.effort,
       toolsRequired: tools,
       dueDate: Timestamp.fromDate(data.dueDate),
+      timeWindow: 'Flexible', // This field is now derived or deprecated
       status: "OPEN" as const,
       createdAt: serverTimestamp(),
     }
