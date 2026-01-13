@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
-import type { LatLngExpression, LatLng } from 'leaflet';
+import type { LatLngExpression, LatLng, Icon } from 'leaflet';
+import 'leaflet-defaulticon-compatibility';
+
 
 interface MapWithMarkerProps {
   onLocationChange: (lat: number, lng: number) => void;
@@ -11,6 +13,11 @@ interface MapWithMarkerProps {
 const DraggableMarker = ({ onLocationChange }: MapWithMarkerProps) => {
   const [position, setPosition] = useState<LatLngExpression>([-6.792354, 39.208328]);
   const markerRef = useRef<any>(null);
+
+   useEffect(() => {
+    // Set initial location
+    onLocationChange(-6.792354, 39.208328);
+  }, []);
 
   const map = useMapEvents({
     click(e) {
@@ -61,3 +68,4 @@ export default function MapWithMarker({ onLocationChange }: MapWithMarkerProps) 
         </MapContainer>
     );
 }
+    

@@ -141,6 +141,7 @@
           "description": "Reference to Helper. (Relationship: Helper 1:N Task). Nullable if task is not assigned."
         },
         "createdAt": { "type": "string", "format": "date-time" },
+        "dueDate": { "type": "string", "format": "date-time" },
         "assignedAt": { "type": "string", "format": "date-time" },
         "startedAt": { "type": "string", "format": "date-time" },
         "completedAt": { "type": "string", "format": "date-time" },
@@ -439,3 +440,4 @@
     "reasoning": "The Firestore structure is designed to support the tasKey application, focusing on task management, user roles (Customers, Helpers, Admins), and efficient data access with robust security rules.  The key principle is Authorization Independence, achieved through denormalization. For example, tasks denormalize customerId, and offers denormalize helperId and taskId, allowing rules to validate access without needing to `get()` parent documents. \n\n*   **Customers:** `/customers/{userId}` stores customer profiles.\n*   **Helpers:** `/helpers/{userId}` stores helper profiles.\n*   **Tasks:** `/tasks/{taskId}` stores task documents. Tasks denormalize `customerId` to ensure Authorization Independence.\n*   **Offers:** `/tasks/{taskId}/offers/{offerId}` is a subcollection within each task. This simplifies security rules as access to offers can be inherited from the parent task.\n*   **Ratings:** Ratings are stored in `/ratings/{ratingId}`. They denormalize `taskId`, `customerId`, and `helperId` for authorization independence and simpler querying.\n*   **Admins:** Admin status is managed via document existence in `/roles_admin/{userId}`.  This leverages the \"existence over content\" pattern for global role management.\n\n\n**QAPs (Rules are not Filters):**\n\n*   The structure supports secure `list` operations.\n*   Helpers can list all documents in the `/tasks` collection, but rules on `get` will prevent them from reading full details of tasks they are not involved in.\n\nThis structure adheres to all core design principles and strategy mandates, ensuring a secure, scalable, and debuggable Firestore database for the tasKey application."
   }
 }
+    
