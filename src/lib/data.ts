@@ -36,10 +36,7 @@ export type Helper = {
   walletSummary: {
     lifetimeEarnings: number;
     currency: 'TZS';
-  },
-  
-  // Legacy fields (set to default/empty)
-  reliabilityIndicator: 'Good' | 'Average' | 'Poor';
+  };
 };
 
 export type Customer = {
@@ -118,3 +115,5 @@ export const taskCategories = [
     'Shopping',
     'Other'
 ];
+
+    

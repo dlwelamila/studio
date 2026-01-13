@@ -217,7 +217,7 @@ Make responsibility clear and undeniable.
 
 ---
 
-## 6. Page F — Task Execution (Evidence-Based) - ✅ IN PROGRESS
+## 6. Page F — Task Execution (Evidence-Based) - ✅ COMPLETE
 
 ### Goal
 Protect both helper and customer through clarity and proof.
@@ -241,7 +241,7 @@ Protect both helper and customer through clarity and proof.
 
 ---
 
-## 7. Page G — Completion & Feedback
+## 7. Page G — Completion & Feedback - ✅ IN PROGRESS
 
 ### Goal
 Close the loop fairly and calmly.
@@ -315,3 +315,5 @@ The Helper side is complete only if:
 ---
 
 End of blueprint.
+
+    

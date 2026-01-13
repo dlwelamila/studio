@@ -103,18 +103,11 @@ service cloud.firestore {
         allow delete: if isResourceOwner(resource, 'helperId');
       }
     }
-
-    match /ratings/{ratingId} {
-      allow get, list: if true;
-      allow create: if isCreatingOwnResource('customerId');
-      allow update: if false;
-      allow delete: if false;
-    }
     
     match /feedbacks/{feedbackId} {
        allow get, list: if true;
        allow create: if isCreatingOwnResource('customerId');
-       allow update, delete: if false;
+       allow update, delete: if false; // Feedback is immutable
     }
 
     match /support_tickets/{ticketId} {
@@ -128,4 +121,6 @@ service cloud.firestore {
     }
   }
 }
+    
+
     
