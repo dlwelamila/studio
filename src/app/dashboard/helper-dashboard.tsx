@@ -14,7 +14,7 @@ import {
   Wallet,
   Percent,
 } from 'lucide-react';
-import { formatDistanceToNow, isToday, isWeekend, subDays } from 'date-fns';
+import { formatDistanceToNow, isToday, isWeekend, sub, isAfter } from 'date-fns';
 
 import { useCollection, useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -57,6 +57,32 @@ type CalculatedEarnings = {
     lifetime: number;
 }
 
+const calculateTaskScore = (task: Task, helper: Helper | null): number => {
+    if (!helper) return 0;
+
+    let score = 0;
+    const twoHoursAgo = sub(new Date(), { hours: 2 });
+
+    // +30 if task category matches helper skills
+    if (helper.serviceCategories.includes(task.category)) {
+        score += 30;
+    }
+
+    // +20 if task area is one the helper services
+    if (helper.serviceAreas.some(area => task.area.toLowerCase().includes(area.toLowerCase()))) {
+        score += 20;
+    }
+    
+    // +10 if task is recent (< 2 hrs)
+    if (task.createdAt && isAfter(task.createdAt.toDate(), twoHoursAgo)) {
+        score += 10;
+    }
+
+    // Other scoring logic like availability can be added here
+    return score;
+}
+
+
 export default function HelperDashboard() {
   const { user: authUser, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
@@ -80,8 +106,8 @@ export default function HelperDashboard() {
   useEffect(() => {
     if (completedTasks) {
         const now = new Date();
-        const oneWeekAgo = subDays(now, 7);
-        const oneMonthAgo = subDays(now, 30);
+        const oneWeekAgo = sub(now, {days: 7});
+        const oneMonthAgo = sub(now, {months: 1});
 
         const newEarnings: CalculatedEarnings = {
             thisWeek: 0,
@@ -126,23 +152,31 @@ export default function HelperDashboard() {
     return formatDistanceToNow(date.toDate(), { addSuffix: true });
   }
 
-  const filteredTasks = useMemo(() => {
+  const filteredAndScoredTasks = useMemo(() => {
     if (!openTasks) return [];
-    return openTasks.filter(task => {
-      const categoryMatch = selectedCategories.length === 0 || selectedCategories.includes(task.category);
-      const areaMatch = areaSearch === '' || task.area.toLowerCase().includes(areaSearch.toLowerCase());
-      
-      const timeMatch = (() => {
-        if (timeFilter === 'all') return true;
-        const createdAt = task.createdAt instanceof Timestamp ? task.createdAt.toDate() : new Date();
-        if (timeFilter === 'today') return isToday(createdAt);
-        if (timeFilter === 'weekend') return isWeekend(createdAt);
-        return true;
-      })();
+    
+    return openTasks
+        .filter(task => {
+            const categoryMatch = selectedCategories.length === 0 || selectedCategories.includes(task.category);
+            const areaMatch = areaSearch === '' || task.area.toLowerCase().includes(areaSearch.toLowerCase());
+            
+            const timeMatch = (() => {
+                if (timeFilter === 'all') return true;
+                const createdAt = task.createdAt instanceof Timestamp ? task.createdAt.toDate() : new Date();
+                if (timeFilter === 'today') return isToday(createdAt);
+                if (timeFilter === 'weekend') return isWeekend(createdAt);
+                return true;
+            })();
 
-      return categoryMatch && areaMatch && timeMatch;
-    });
-  }, [openTasks, selectedCategories, areaSearch, timeFilter]);
+            return categoryMatch && areaMatch && timeMatch;
+        })
+        .map(task => ({
+            ...task,
+            score: calculateTaskScore(task, helper)
+        }))
+        .sort((a, b) => b.score - a.score); // Sort by score descending
+
+  }, [openTasks, selectedCategories, areaSearch, timeFilter, helper]);
 
 
   return (
@@ -231,7 +265,7 @@ export default function HelperDashboard() {
             )}
             <CardFooter>
               <Button className="w-full" asChild>
-                  <Link href="/dashboard/profile">View Full Profile</Link>
+                  <Link href="/dashboard/profile">View Profile</Link>
               </Button>
             </CardFooter>
           </Card>
@@ -323,7 +357,7 @@ export default function HelperDashboard() {
 
           <div className="grid gap-4 md:grid-cols-2">
               {isLoading && Array.from({length: 2}).map((_, i) => <TaskCardSkeleton key={i} />)}
-              {filteredTasks && filteredTasks.map(task => {
+              {filteredAndScoredTasks && filteredAndScoredTasks.map(task => {
                   return (
                       <Card key={task.id} className="flex flex-col">
                           <CardHeader>
@@ -373,7 +407,7 @@ export default function HelperDashboard() {
                   )
               })}
           </div>
-          {filteredTasks?.length === 0 && !isLoading && authUser && (
+          {filteredAndScoredTasks?.length === 0 && !isLoading && authUser && (
               <Card className="md:col-span-2">
                   <CardContent className="p-12 text-center">
                       <p className="text-muted-foreground">No open tasks match your filters. Try widening your search!</p>
@@ -421,3 +455,4 @@ function TaskCardSkeleton() {
         </Card>
     )
 }
+    
