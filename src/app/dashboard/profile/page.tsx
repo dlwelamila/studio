@@ -23,6 +23,7 @@ import { MfaEnrollmentDialog } from './mfa-enrollment-dialog';
 import { useHelperJourney } from '@/hooks/use-helper-journey';
 import { cn } from '@/lib/utils';
 import { PhoneVerificationDialog } from './phone-verification-dialog';
+import { JourneyChecklist } from './journey-checklist';
 
 
 export default function ProfilePage() {
@@ -210,6 +211,8 @@ export default function ProfilePage() {
                     <MfaEnrollmentDialog />
                 </CardContent>
             </Card>
+
+            {helperProfile && journey && <JourneyChecklist journey={journey} />}
 
             {helperProfile && (
                 <Card>

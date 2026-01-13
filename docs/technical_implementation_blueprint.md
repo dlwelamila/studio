@@ -259,7 +259,7 @@ Close the loop fairly and calmly.
 
 ---
 
-## 8. Page H — Performance & Growth - ✅ IN PROGRESS
+## 8. Page H — Performance & Growth - ✅ COMPLETE
 
 ### Goal
 Motivate long-term engagement.
@@ -280,7 +280,7 @@ Motivate long-term engagement.
 
 ---
 
-## 9. Page I — Profile & Journey
+## 9. Page I — Profile & Journey - ✅ COMPLETE
 
 ### Goal
 Make helper lifecycle transparent.
