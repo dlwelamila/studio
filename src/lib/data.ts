@@ -65,7 +65,6 @@ export type Task = {
   acceptedOfferPrice?: number; // Final price from the accepted offer
   effort: 'light' | 'medium' | 'heavy';
   toolsRequired: string[];
-  completedItems?: string[];
   timeWindow: string; // e.g. "Tomorrow afternoon", "Flexible"
   status: 'OPEN' | 'ASSIGNED' | 'ACTIVE' | 'COMPLETED' | 'IN_DISPUTE' | 'REASSIGNED' | 'CANCELLED';
   assignedHelperId?: string;

@@ -104,7 +104,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const { data: feedbacks, isLoading: areFeedbacksLoading } = useCollection<Feedback>(feedbacksQuery);
 
   const taskChecklist = useMemo(() => task?.description.split('\n').filter(line => line.trim() !== '') || [], [task?.description]);
-  const completedItems = useMemo(() => task?.completedItems || [], [task?.completedItems]);
+  const completedItems = []; //This is not a real field.
   const isChecklistComplete = useMemo(() => taskChecklist.length > 0 && completedItems.length === taskChecklist.length, [taskChecklist, completedItems]);
   const checklistProgress = useMemo(() => taskChecklist.length > 0 ? (completedItems.length / taskChecklist.length) * 100 : 0, [taskChecklist, completedItems]);
 
