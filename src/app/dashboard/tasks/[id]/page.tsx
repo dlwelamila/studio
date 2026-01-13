@@ -62,6 +62,7 @@ import { FitIndicator } from './fit-indicator';
 import { useHelperJourney } from '@/hooks/use-helper-journey';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { TaskEvidence } from './task-evidence';
+import { ArrivalCheckIn } from './arrival-check-in';
 
 
 const offerFormSchema = z.object({
@@ -224,13 +225,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
           {canShowFitIndicator && task && <FitIndicator task={task} />}
           
           {isAssignedHelperView && task.status === 'ASSIGNED' && (
-            <Alert>
-                <CheckCircle className="h-4 w-4" />
-                <AlertTitle className="font-headline">You're Assigned!</AlertTitle>
-                <AlertDescription>
-                   You are responsible for this task. Please coordinate with the customer to begin.
-                </AlertDescription>
-            </Alert>
+             <ArrivalCheckIn task={task} taskRef={taskRef} mutateTask={mutateTask} />
           )}
 
           <Card>
@@ -406,9 +401,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                 </CardHeader>
                 <CardContent>
                     {task.status === 'ASSIGNED' && (
-                        <Button className="w-full" onClick={() => handleStatusUpdate('ACTIVE')}>
-                            Start Task
-                        </Button>
+                        <p className="text-center text-sm text-muted-foreground">Check-in upon arrival to begin the task.</p>
                     )}
                     {task.status === 'ACTIVE' && (
                          <Button className="w-full" onClick={() => handleStatusUpdate('COMPLETED')}>
@@ -691,5 +684,3 @@ function TaskDetailSkeleton() {
     </div>
   )
 }
-
-    

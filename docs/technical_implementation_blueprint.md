@@ -1,226 +1,133 @@
-# tasKey — FULL HELPER APP (Page-by-Page Experience)
-## Technical Implementation Blueprint (Mobile-First, Production-Grade)
+---
+# Phase 1 — Core Helper Experience (MVP)
 
-This document defines the **authoritative implementation contract** for the tasKey Helper side.
-All instructions must be implemented **end-to-end**:
-- Frontend (UI/UX)
-- Backend (Firestore + Cloud Functions)
-- Security rules
-- Performance constraints
-- Tests and QA checks
+This phase establishes the foundational journey for a Helper, from discovery to their first successful task completion. The primary goal is to create a **safe, low-pressure, and transparent** environment.
 
-This is not a design suggestion.  
-This is the **required system behavior**.
+**Guardrails:**
+- **No Bidding Wars:** Helpers propose a price; they don't see others' offers.
+- **No Race-to-the-Bottom:** The customer's budget range is visible, setting a fair expectation.
+- **Privacy by Default:** Exact locations are revealed only after a task is assigned.
+- **Opt-In Communication:** No unsolicited contact outside the platform's messaging system.
 
 ---
 
-## 0. Global Guardrails (Non-Negotiable)
-
-Every implementation MUST preserve the following principles:
-
-1. **Dignity First**
-   - Helpers are professionals.
-   - UI copy must be respectful and calm.
-   - No language implying desperation, rush, or subordination.
-
-2. **Clarity Over Pressure**
-   - No forced calls.
-   - No countdown timers.
-   - No dark patterns.
-   - Every action must clearly explain its outcome.
-
-3. **Predictable Income**
-   - Helpers must see effort, approximate area, time window, and tools **before** sending an offer.
-
-4. **Fair Visibility**
-   - Task visibility is influenced by skills, area match, availability, and reliability.
-   - No unexplained randomness.
-
-5. **Safety for Both Sides**
-   - No customer phone number or exact address before assignment.
-   - All task state changes must be auditable.
-   - Evidence-friendly execution flow.
-
-If any requested change violates these guardrails, implementation must stop and propose a compliant alternative.
-
----
-
-## 1. Page A — Helper Dashboard (Home) - ✅ COMPLETE
-
-### Goal
-Provide a calm, one-glance control center showing:
-- Availability
-- Trust status
-- Nearby opportunities
-- Current commitments
-- Earnings summary (informational)
-
-### UI Requirements
-- Mobile-first (target width: 360–390px)
-- Light theme
-- Single primary action per section
-- No clutter
-
-### Backend Requirements
-- Read from `workers/{uid}`:
-  - `availability`
-  - `verificationStatus`
-  - `reliability.level`
-  - `stats`
-- Read sanitized OPEN tasks only
-- Active tasks query:
-  - `assignedWorkerId == uid`
-  - `status in [ASSIGNED, IN_PROGRESS]`
-
-### Security
-- Helper may read only their own worker document
-- Sensitive task data excluded unless assigned
-
-### Tests
-- Availability toggle updates worker document
-- Suspended helpers see locked dashboard
-- Pending helpers see guidance banner
-- Dashboard renders correctly on small screens
-
----
-
-## 2. Page B — Task Feed (Opportunity Without Pressure) - ✅ COMPLETE
-
-### Goal
-Allow helpers to browse opportunities calmly, safely, and fairly.
-
-### Task Card Fields (OPEN only)
-- Task category
-- Approximate area (areaName / ward)
-- Estimated effort: LIGHT | MEDIUM | HEAVY
-- Preferred time window (if available)
-- Optional customer rating (aggregated)
-- Visibility tags (e.g., “Matches your skills”)
-
-### Explicitly Forbidden
-- Customer phone number
-- Exact address
-- Countdown timers
-- “Hurry” or scarcity language
-
-### Filters
-- Category
-- Area
-- Time window (Today / Evening / Weekend)
-
-### Backend Logic
-- Query `tasks` where `status == OPEN`
-- Filter by helper service areas
-- Rank by:
-  - Skill match
-  - Area match
-  - Availability fit
-  - Reliability (minor weight)
-
-### Performance
-- Pagination (limit 20)
-- No realtime listener on feed
-- Pull-to-refresh or periodic refresh
-
-### Tests
-- Feed never exposes private data
-- Filters work correctly
-- Pagination stable on low bandwidth
-- Pending helpers can browse but not offer
-
----
-
-## 3. Page C — Task Detail (Decision Screen) - ✅ COMPLETE
-
-### Goal
-Ensure helpers understand the task fully before sending an offer.
-
-### Required Fields
-- Full task description
-- Approximate area (still no exact address)
-- Estimated effort explanation
-- Required tools list
-- Preferred time window
-- Fit Indicator:
-  - Skill match
-  - Distance band
-  - Time fit
-
-### CTA Logic
-- If helper can send offers:
-  - Show “Send Offer”
-- Otherwise:
-  - Show guidance CTA (e.g., “Complete verification to send offers”)
-
-### Backend
-- `/fit-indicator` endpoint or equivalent logic
-- Response time p95 < 500ms
-
-### Tests
-- Fit indicator accuracy
-- CTA gating based on helper capability
-- No sensitive fields leaked
-
----
-
-## 4. Page D — Send Offer (Structured & Professional) - ✅ COMPLETE
-
-### Goal
-Protect helpers from chaotic negotiation and pressure.
-
-### Form Fields
-- Price (TZS)
-- Availability / ETA
-- Short message (max length enforced)
-
-### Rules
-- Structured fields only
-- No phone calls
-- Rate limit offer submissions
-
-### Backend
-- `offers/{offerId}`:
-  - workerId
-  - price
-  - eta
-  - message
-  - status
-
-### Tests
-- Offer blocked if not verified
-- Offer rate limiting enforced
-- Offer lifecycle transitions valid
-
----
-
-## 5. Page E — Assigned Task (Responsibility View) - ✅ COMPLETE
-
-### Goal
-Make responsibility clear and undeniable.
+## ✅ 1. Page A — Helper Dashboard (Home)
+*The helper's mission control. What they see when they log in.*
 
 ### UI
-- Status badge: ASSIGNED
-- Banner: “You are responsible for this task.”
-- Contact details unlocked
-- Exact location revealed
+- At-a-glance performance stats:
+  - Reliability score (e.g., "GREEN")
+  - Completion rate (%)
+  - Average rating
+  - Total earnings (lifetime)
+- Prominent "Availability" toggle
+- Main content: Curated task feed ("Tasks Near You")
 
 ### Backend
-- Transactional assignment:
-  - Task status update
-  - Offer acceptance
-  - Other offers rejected
-  - Audit event written
+- `Helper` model includes:
+  - `isAvailable` (boolean)
+  - `stats` object (reliability, completionRate, ratingAvg)
+  - `walletSummary` object (lifetimeEarnings)
+- Task feed algorithm:
+  - Sorts open tasks by a **relevance score**, not just time.
+  - Score = (skill match) + (location proximity) + (recency)
 
 ### Tests
-- Only assigned helper can see private task data
-- Only assigned helper can update status
+- Toggling availability updates `isAvailable` in Firestore.
+- Feed correctly prioritizes tasks that match the helper's skills and service area.
 
 ---
 
-## 6. Page F — Task Execution (Evidence-Based) - ✅ COMPLETE
+## ✅ 2. Page B — Task Feed (Opportunity Without Pressure)
+*The scrollable list of available jobs, surfaced on the Helper Dashboard.*
 
-### Goal
-Protect both helper and customer through clarity and proof.
+### UI
+- Task Cards:
+  - Clear title, category, budget range, and location (area, not exact address).
+  - "Time Posted" (e.g., "2 hours ago").
+- Filtering controls:
+  - By category
+  - By location/area
+  - By time window (e.g., "Today", "This Weekend")
+- No "number of offers" displayed on cards.
+
+### Backend
+- `Task` model includes `dueDate`.
+- Firestore queries support filtering by category, area, and `createdAt` timestamp.
+
+### Tests
+- Filters work independently and in combination.
+- Expired tasks (past `dueDate`) are not shown in the feed.
+
+---
+
+## ✅ 3. Page C — Task Detail (Decision Screen)
+*What a helper sees when they click on a Task Card.*
+
+### UI
+- All details from the Task Card, plus:
+  - Full, unabridged task description.
+  - Customer's first name and profile picture.
+  - Customer's rating/review history.
+  - Required tools/skills listed clearly.
+  - **Due date and time**.
+- A "Task Fit Indicator" that shows how well the task matches the helper's skills, location, and availability (High/Medium/Low).
+- A clear call-to-action: "Make Offer".
+
+### Backend
+- Firestore rules: Any signed-in user can `get` a task if its status is `OPEN`.
+
+### Tests
+- "Task Fit Indicator" correctly assesses skill and location match.
+- All required data is present and correctly formatted.
+
+---
+
+## ✅ 4. Page D — Send Offer (Structured & Professional)
+*The form a helper uses to propose their service for a task.*
+
+### UI
+- Simple, structured form:
+  - Price (single input, pre-filled with budget minimum).
+  - ETA / Availability (e.g., "Tomorrow afternoon").
+  - A short, professional message to the customer.
+- Form is disabled if helper is not verified.
+
+### Backend
+- On submit, creates a document in `tasks/{taskId}/offers/{offerId}`.
+- `Offer` model includes `helperId`, `price`, `eta`, `message`, `status: 'ACTIVE'`.
+- Firestore rules:
+  - Only verified helpers (`helpers/{uid}.verificationStatus == 'APPROVED'`) can create offers.
+  - Helpers can only create offers for themselves (`request.auth.uid == resource.data.helperId`).
+
+### Tests
+- Unverified helpers cannot submit the form.
+- Offer document is created with the correct data structure.
+
+---
+
+## ✅ 5. Page E — Assigned Task (Responsibility View)
+*What the helper sees after a customer accepts their offer.*
+
+### UI
+- A clear, prominent banner: "You've been assigned! The customer is expecting you."
+- Exact task location is now visible.
+- Customer's contact information (phone number) is revealed.
+- Action buttons: "Start Task", "Report a Problem".
+
+### Backend
+- When customer accepts, `Task` status becomes `ASSIGNED`.
+- `Task.assignedHelperId` is set to the helper's UID.
+- Firestore rules: Only the `customerId` or `assignedHelperId` can `get` a task once its status is `ASSIGNED` or later.
+
+### Tests
+- Non-assigned helpers can no longer view the task detail page.
+- Assigned helper can see the exact location.
+
+---
+
+## ✅ 6. Task Execution (Evidence-Based)
+*The UI and logic for while the task is being performed.*
 
 ### UI
 - Status buttons:
@@ -231,87 +138,383 @@ Protect both helper and customer through clarity and proof.
 - Optional before/after photos
 
 ### Backend
-- Status transitions validated server-side
-- Events logged to `tasks/{id}/events`
+- Task status transitions: `ASSIGNED` -> `ACTIVE` -> `COMPLETED`.
+- Evidence (photos) stored in Cloud Storage, linked to the task.
+- Checklist completion state is persisted.
 
 ### Tests
-- Invalid state jumps rejected
-- Timestamps recorded correctly
-- Photos stored securely
+- Status transitions are atomic and logged.
+- Photo uploads are correctly associated with the task and user.
 
 ---
 
-## 7. Page G — Completion & Feedback - ✅ COMPLETE
-
-### Goal
-Close the loop fairly and calmly.
-
-### Flow
-- Helper marks completed
-- Customer confirms
-- Rating + feedback recorded
-- Reliability updated automatically
-
-### Tests
-- Helper cannot self-confirm
-- Reliability updates correctly
-- Feedback stored immutably
-
----
-
-## 8. Page H — Performance & Growth - ✅ COMPLETE
-
-### Goal
-Motivate long-term engagement.
+## ✅ 7. Completion & Feedback (Closing the Loop)
+*The process for confirming completion and leaving reviews.*
 
 ### UI
-- Reliability status
-- Completed tasks count
-- Tier progress (Bronze → Silver → Gold)
-- Clear explanation of what improves visibility
+- Customer View:
+  - "Confirm Completion" button.
+  - Optional rating (1-5 stars) and a short feedback comment.
+- Helper View:
+  - "Awaiting Customer Confirmation" status.
 
 ### Backend
-- Reliability computed via Cloud Functions
-- Tier thresholds configurable
+- `Feedback` model: `taskId`, `customerId`, `helperId`, `rating`, `comment`.
+- Firestore rules:
+  - Feedback is immutable (cannot be edited or deleted after creation).
+  - Only the `customerId` of the completed task can create feedback.
+- (Optional, Advanced) A Cloud Function calculates and updates the helper's `stats` upon new feedback submission.
 
 ### Tests
-- Tier progression logic
-- Visibility weighting updates
+- Customer can only review a task once.
+- Helper cannot modify feedback left for them.
 
 ---
 
-## 9. Page I — Profile & Journey - ✅ COMPLETE
-
-### Goal
-Make helper lifecycle transparent.
+## ✅ 8. Performance & Growth (Transparency)
+*A dedicated page for the helper to see their own stats.*
 
 ### UI
-- Profile preview (as customers see it)
-- Verification badge
-- Skills and areas
-- Journey checklist:
-  - Registered
-  - Profile complete
-  - Verified
-  - Active
-  - Growing
+- Clear display of all `stats` from the Helper model.
+- Explanation of how reliability is calculated (e.g., "Based on cancellations and disputes").
+- Visual tier system (e.g., Bronze, Silver, Gold) with progress to the next tier.
+
+### Backend
+- (Assumes a scheduled function or trigger updates stats periodically).
+- `Helper` model contains `currentTier` and `progressToNextTier` fields.
 
 ### Tests
-- Lifecycle stage accurate
-- Checklist updates automatically
+- UI correctly reflects all fields in the `stats` object.
 
 ---
 
-## Final Acceptance Criteria (Mandatory)
+## ✅ 9. Profile & Journey (Lifecycle View)
+*The helper's main profile page.*
 
-The Helper side is complete only if:
-- All guardrails are preserved
-- No sensitive data leaks pre-assignment
-- All task states are server-enforced
-- UI remains calm and mobile-first
-- Tests cover rules, functions, and core flows
-- Manual QA passes on low bandwidth
+### UI
+- Displays all public-facing helper info (name, skills, bio, rating).
+- A "Your Journey" checklist showing completed milestones:
+  - [x] Account Registered
+  - [x] Profile Complete
+  - [ ] Identity Verified
+  - [ ] First Gig Completed
+  - [ ] Become a Top Rated Helper
+
+### Backend
+- `useHelperJourney` hook or similar logic derives the checklist state from the `Helper` document.
+
+### Tests
+- Checklist accurately reflects the helper's current lifecycle stage.
+
+---
+---
+
+# Phase 2 — Advanced Features (Helper Side)
+
+Phase 2 focuses on **safety, stress reduction, growth, and community**.
+These features deepen trust, reduce disputes, and improve long-term helper retention.
+
+All Phase 2 features MUST preserve Phase 1 guardrails and must not introduce pressure patterns.
 
 ---
 
-End of blueprint.
+## 5. Safety & Protection Features
+
+### Objective
+Protect Helpers during real-world task execution and provide safe escalation paths without drama.
+
+---
+
+### ✅ 5.1 Arrival Check-In (Geofenced)
+
+#### Backend
+- Implement `/api/tasks/{id}/check-in`
+- Validate:
+  - Caller is assigned Helper
+  - Task status is ASSIGNED
+- Capture:
+  - Timestamp
+  - Helper GPS coordinates
+- Validate location within **100m radius** of task location
+- Write audit event:
+  - `ARRIVED`
+  - location hash (not raw coordinates in logs)
+
+#### Frontend
+- “Arrived” button visible only for ASSIGNED tasks
+- Handle location permission states:
+  - Granted → proceed
+  - Denied → show guidance message
+- Visual confirmation after successful check-in
+
+#### Security
+- Only assigned Helper may check in
+- Customer cannot spoof arrival
+
+#### Tests
+- Reject check-in outside radius
+- Reject check-in by non-assigned Helper
+- Arrival event written exactly once
+
+---
+
+### 5.2 Incident Reporting
+
+#### Backend
+- Incident model:
+  - `taskId`
+  - `helperId`
+  - `type` (abuse, unsafe_location, payment_issue, other)
+  - `description`
+  - `createdAt`
+- Endpoint:
+  - `/api/incidents/report`
+- Notify admins (dashboard + email/Slack optional)
+
+#### Frontend
+- “Report Issue” action available during IN_PROGRESS
+- Simple form (type + short description)
+- Confirmation screen after submission
+
+#### Security
+- Incidents visible only to admins
+- Customers cannot see reports directly
+
+#### Tests
+- Incident submission by assigned Helper only
+- Admin visibility enforced
+
+---
+
+### 5.3 Emergency Contact (Optional, Non-Intrusive)
+
+#### Backend
+- Store optional emergency contact per Helper
+- Admin-only visibility
+
+#### Frontend
+- Emergency contact setup in Profile
+- Shown only during active tasks (no panic UI)
+
+---
+
+## 6. Stress Reduction Features
+
+### Objective
+Reduce cognitive load and disputes by guiding Helpers step-by-step.
+
+---
+
+### 6.1 Task Checklists
+
+#### Backend
+- Checklist templates per task category
+- On task assignment:
+  - Generate task-instance checklist
+- Enforce completion:
+  - Task cannot be marked DONE unless all items checked
+
+#### Frontend
+- Checklist UI:
+  - Large tappable items
+  - Visual progress indicator
+- Completion confirmation modal
+
+#### Tests
+- Checklist auto-generated correctly
+- Completion blocked if checklist incomplete
+
+---
+
+### 6.2 Progress Tracking
+
+#### Backend
+- Track checklist progress events
+- Store completion timestamps
+
+#### Frontend
+- Visual progress bar
+- Clear “X of Y completed” text
+
+---
+
+## 7. Growth & Motivation Features
+
+### Objective
+Encourage quality work and long-term engagement through transparency and progression.
+
+---
+
+### 7.1 Tier System
+
+#### Backend
+- Define tiers:
+  - Bronze
+  - Silver
+  - Gold
+- Progression rules:
+  - Completed tasks
+  - Reliability threshold
+- Store:
+  - `currentTier`
+  - `nextTierRequirements`
+
+#### Frontend
+- Tier badge on dashboard
+- Progress bar with explanation
+
+#### Tests
+- Tier upgrades triggered correctly
+- Downgrades handled gracefully (no shaming)
+
+---
+
+### 7.2 Skill Suggestions
+
+#### Backend
+- Analyze helper history
+- Suggest additional skills that unlock more tasks
+- Endpoint:
+  - `/api/helpers/{id}/growth-suggestions`
+
+#### Frontend
+- Suggestion cards:
+  - “Add Deep Cleaning to access more tasks”
+- Dismissible (no pressure)
+
+---
+
+## 8. Community Features (Area Circles)
+
+### Objective
+Create local trust and relevance without turning the app into a social network.
+
+---
+
+### 8.1 Area Circles
+
+#### Backend
+- AreaCircle model:
+  - `areaId`
+  - `members`
+- Auto-assign Helpers based on service areas
+- Aggregate:
+  - demand trends
+  - peak times
+
+#### Frontend
+- Area Circle dashboard:
+  - Insights (busy times)
+  - Local tips (read-only initially)
+
+#### Security
+- Only Helpers in the area can view content
+
+---
+
+# Phase 3 — System-Wide Features
+
+Phase 3 ensures **fairness, transparency, resilience, and low-tech accessibility** across the entire system.
+
+---
+
+## 9. Fairness & Transparency
+
+### Objective
+Ensure Helpers understand how scores change and can appeal unfair outcomes.
+
+---
+
+### 9.1 Reliability Impact Transparency
+
+#### Backend
+- Log every reliability score change:
+  - reason
+  - before / after
+- Store in transparency log
+
+#### Frontend
+- Reliability detail screen:
+  - “Why your score changed”
+- Simple explanations only
+
+---
+
+### 9.2 Appeals System
+
+#### Backend
+- Appeal model:
+  - `helperId`
+  - `taskId`
+  - `reason`
+  - `status`
+- Admin workflow:
+  - review
+  - approve / reject
+- Endpoint:
+  - `/api/appeals/submit`
+
+#### Frontend
+- Appeal submission form
+- Appeal status tracking
+
+#### Tests
+- Appeals create admin tickets
+- Helper cannot appeal same event twice
+
+---
+
+## 10. Low-Tech Friendly Features
+
+### Objective
+Make tasKey usable in low connectivity environments common in Tanzania.
+
+---
+
+### 10.1 Offline Mode (Lite)
+
+#### Backend
+- Support idempotent sync endpoints
+- Conflict resolution rules:
+  - Server state wins for task status
+  - Client state merged for notes/checklists
+
+#### Frontend
+- Detect offline state
+- Queue actions:
+  - checklist updates
+  - status changes
+- Sync status indicator
+
+#### Tests
+- Offline actions sync correctly
+- No duplicate events after reconnect
+
+---
+
+### 10.2 SMS Fallback (Phase-Gated)
+
+#### Backend
+- SMS gateway integration
+- Critical notifications only:
+  - assignment
+  - cancellation
+
+#### Frontend
+- SMS preference toggle (opt-in)
+
+---
+
+## Phase 2 & 3 Acceptance Criteria
+
+Phase 2 and 3 are complete only if:
+- No Phase 1 guardrails are violated
+- Safety flows work without exposing PII
+- Growth features do not pressure Helpers
+- Appeals and transparency are auditable
+- Offline mode does not corrupt task state
+- Admin visibility and controls are intact
+
+---
+
+End of Phase 2 & Phase 3 specification.

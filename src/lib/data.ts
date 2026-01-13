@@ -68,6 +68,7 @@ export type Task = {
   createdAt: Timestamp;
   dueDate?: Timestamp;
   assignedAt?: Timestamp;
+  arrivedAt?: Timestamp;
   startedAt?: Timestamp;
   completedAt?: Timestamp;
   disputedAt?: Timestamp;

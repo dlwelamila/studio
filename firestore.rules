@@ -89,8 +89,10 @@ service cloud.firestore {
             ownerFieldIsImmutable('customerId') || 
             customerCanDispute(resource.data.status, request.resource.data.status)
         )) ||
-        // Helper can update status from ASSIGNED -> ACTIVE -> COMPLETED
-        (isAssignedHelper(resource.data) && canUpdateTaskStatus(resource.data.status, request.resource.data.status) && ownerFieldIsImmutable('customerId') && ownerFieldIsImmutable('assignedHelperId'))
+        // Helper can update status (ASSIGNED -> ACTIVE -> COMPLETED)
+        (isAssignedHelper(resource.data) && canUpdateTaskStatus(resource.data.status, request.resource.data.status) && ownerFieldIsImmutable('customerId') && ownerFieldIsImmutable('assignedHelperId')) ||
+        // Helper can check in (add arrivedAt)
+        (isAssignedHelper(resource.data) && resource.data.status == 'ASSIGNED' && request.resource.data.keys().hasAll(['arrivedAt', 'status']))
       );
       
       allow delete: if isResourceOwner(resource, 'customerId');
