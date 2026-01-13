@@ -3,7 +3,7 @@
 import { use, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronLeft, Star, AlertTriangle, Briefcase, Wrench, CircleX, UserCheck } from 'lucide-react';
+import { ChevronLeft, Star, AlertTriangle, Briefcase, Wrench, CircleX, UserCheck, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -237,7 +237,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                 {task.description}
               </p>
               <Separator className="my-6" />
-               <div className="grid grid-cols-2 gap-4">
+               <div className="grid grid-cols-2 gap-y-6 gap-x-4">
                 <div>
                     <div className="font-semibold text-foreground">Budget</div>
                     <div className="text-primary font-bold text-lg">
@@ -249,6 +249,13 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                     <div>
                         <p className="font-semibold text-foreground">Effort</p>
                         <p className="capitalize text-muted-foreground">{task.effort}</p>
+                    </div>
+                 </div>
+                 <div className="flex items-start gap-2">
+                    <Clock className="h-5 w-5 mt-0.5 text-muted-foreground"/>
+                    <div>
+                        <p className="font-semibold text-foreground">Time Window</p>
+                        <p className="capitalize text-muted-foreground">{task.timeWindow}</p>
                     </div>
                  </div>
                   <div className="flex items-start gap-2">

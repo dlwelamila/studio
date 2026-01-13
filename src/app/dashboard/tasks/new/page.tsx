@@ -54,6 +54,7 @@ const taskFormSchema = z.object({
   }),
   effort: z.enum(['light', 'medium', 'heavy'], { required_error: "Please estimate the effort level."}),
   toolsRequired: z.string().optional(),
+  timeWindow: z.string().min(3, { message: "Please provide a time window." }),
 });
 
 type TaskFormValues = z.infer<typeof taskFormSchema>;
@@ -77,6 +78,7 @@ export default function NewTaskPage() {
                 max: 0,
             },
             toolsRequired: '',
+            timeWindow: 'Flexible',
         }
     });
 
@@ -99,8 +101,7 @@ export default function NewTaskPage() {
             },
             effort: data.effort,
             toolsRequired: data.toolsRequired?.split(',').map(t => t.trim()).filter(Boolean) || [],
-            // Default values for fields not in the form
-            timeWindow: 'Flexible',
+            timeWindow: data.timeWindow,
             status: 'OPEN',
             createdAt: serverTimestamp(),
         };
@@ -245,23 +246,39 @@ export default function NewTaskPage() {
                             </FormItem>
                         )}
                     />
-                     <FormField
+                    <FormField
                         control={form.control}
-                        name="toolsRequired"
+                        name="timeWindow"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Tools Expected (comma-separated)</FormLabel>
+                            <FormLabel>Time Window</FormLabel>
                             <FormControl>
-                                <Input placeholder="e.g., Bucket, soap, iron" {...field} />
+                                <Input placeholder="e.g., Flexible, This Saturday" {...field} />
                             </FormControl>
                              <FormDescription>
-                                List any tools the helper is expected to have. Leave blank if none.
+                                When do you want this task done?
                              </FormDescription>
                             <FormMessage />
                             </FormItem>
                         )}
                     />
                 </div>
+                <FormField
+                    control={form.control}
+                    name="toolsRequired"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Tools Expected from Helper (optional)</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g., Bucket, soap, iron" {...field} />
+                        </FormControl>
+                            <FormDescription>
+                            List any tools the helper is expected to have, separated by commas.
+                            </FormDescription>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
                  <div className="grid gap-3">
                     <Label>Budget Range (TZS)</Label>
                     <div className="grid grid-cols-2 gap-4">
@@ -306,4 +323,3 @@ export default function NewTaskPage() {
     </div>
   );
 }
-    
