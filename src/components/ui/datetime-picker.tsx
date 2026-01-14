@@ -16,9 +16,9 @@ interface DateTimePickerProps {
 }
 
 export function DateTimePicker({ date, setDate }: DateTimePickerProps) {
-  // ✅ Ensure the calendar always opens on a deterministic month:
-  // - If a date is selected, open to that date’s month
-  // - Otherwise open to the real current month
+  // Ensure the calendar always opens on a deterministic month to avoid hydration errors:
+  // - If a date is selected, open to that date’s month.
+  // - Otherwise, open to the real current month.
   const defaultMonth = React.useMemo(() => date ?? new Date(), [date]);
 
   return (
@@ -35,13 +35,12 @@ export function DateTimePicker({ date, setDate }: DateTimePickerProps) {
           {date ? format(date, "PPP HH:mm:ss") : <span>Pick a date</span>}
         </Button>
       </PopoverTrigger>
-
       <PopoverContent className="w-auto p-0">
         <Calendar
           mode="single"
           selected={date}
           onSelect={setDate}
-          defaultMonth={defaultMonth}   // ✅ documented prop to control the initial month
+          defaultMonth={defaultMonth}
           initialFocus
         />
         <div className="p-3 border-t border-border">
