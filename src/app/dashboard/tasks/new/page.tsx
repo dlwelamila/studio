@@ -244,7 +244,8 @@ export default function NewTaskPage() {
                             </FormItem>
                         )}
                     />
-
+                </div>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                     <FormField
                         control={form.control}
                         name="dueDate"
@@ -259,9 +260,7 @@ export default function NewTaskPage() {
                             </FormItem>
                         )}
                     />
-                </div>
 
-                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                      <FormField
                         control={form.control}
                         name="effort"
@@ -284,6 +283,8 @@ export default function NewTaskPage() {
                             </FormItem>
                         )}
                     />
+                </div>
+                <div className="grid grid-cols-1 gap-6">
                      <FormField
                         control={form.control}
                         name="toolsRequired"
