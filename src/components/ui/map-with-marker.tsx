@@ -96,13 +96,13 @@ const DraggableMarker = ({ onLocationChange }: MapWithMarkerProps) => {
 };
 
 export default function MapWithMarker({ onLocationChange }: MapWithMarkerProps) {
-  const mapInstanceRef = useRef<{ target: L.Map } | null>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
 
   // Cleanup effect to destroy the map instance on component unmount
   useEffect(() => {
     return () => {
-      if (mapInstanceRef.current && mapInstanceRef.current.target) {
-        mapInstanceRef.current.target.remove();
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
     };
@@ -115,7 +115,11 @@ export default function MapWithMarker({ onLocationChange }: MapWithMarkerProps) 
         zoom={13}
         scrollWheelZoom={false}
         style={{ height: '100%', width: '100%', zIndex: 1 }}
-        whenReady={(map) => { mapInstanceRef.current = map; }}
+        ref={(map) => {
+          if (map) {
+            mapInstanceRef.current = map;
+          }
+        }}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
