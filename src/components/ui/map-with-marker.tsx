@@ -42,8 +42,13 @@ export default function MapWithMarker({ onLocationChange, initialPosition }: Map
     
     initializedRef.current = true;
     
-    const map = L.map(mapContainerRef.current).setView([defaultPosition.lat, defaultPosition.lng], 13);
+    const map = L.map(mapContainerRef.current, {
+        zoomControl: false // Disable default zoom control
+    }).setView([defaultPosition.lat, defaultPosition.lng], 13);
     mapRef.current = map;
+
+    // Add zoom control to the bottom right
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
     
     const icon = new L.Icon({
         iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
