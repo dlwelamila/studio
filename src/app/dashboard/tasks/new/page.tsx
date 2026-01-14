@@ -6,10 +6,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ChevronLeft } from 'lucide-react';
-import { GeoPoint, serverTimestamp } from 'firebase/firestore';
 
 import { useUser, useFirestore } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, serverTimestamp, GeoPoint } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 import { Button } from '@/components/ui/button';
@@ -42,7 +41,6 @@ import {
 import { taskCategories } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { useUserRole } from '@/context/user-role-context';
-import LocationPicker from '@/components/ui/location-picker';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 
 
@@ -50,10 +48,6 @@ const taskFormSchema = z.object({
   title: z.string().min(5, { message: "Title must be at least 5 characters." }),
   description: z.string().min(20, { message: "Description must be at least 20 characters." }),
   category: z.string({ required_error: "Please select a category." }),
-  location: z.object({
-    lat: z.number(),
-    lng: z.number(),
-  }),
   area: z.string().min(3, { message: "Please enter a location area." }),
   dueDate: z.date().optional(),
   budget: z.object({
@@ -100,7 +94,7 @@ export default function NewTaskPage() {
             description: data.description,
             category: data.category,
             area: data.area,
-            location: new GeoPoint(data.location.lat, data.location.lng),
+            location: new GeoPoint(0, 0), // Default location
             dueDate: data.dueDate ? data.dueDate : null,
             budget: {
                 min: data.budget.min,
@@ -216,7 +210,7 @@ export default function NewTaskPage() {
                             </FormItem>
                         )}
                     />
-                    <FormField
+                     <FormField
                         control={form.control}
                         name="area"
                         render={({ field }) => (
@@ -231,21 +225,6 @@ export default function NewTaskPage() {
                         )}
                     />
                 </div>
-
-                <FormField
-                    control={form.control}
-                    name="location"
-                    render={({ field }) => (
-                        <FormItem>
-                             <FormLabel>Precise Task Location</FormLabel>
-                             <FormControl>
-                                <LocationPicker onLocationChange={(lat, lng) => field.onChange({ lat, lng })} />
-                             </FormControl>
-                              <FormDescription>Click or drag the marker to set the exact spot for the task.</FormDescription>
-                             <FormMessage />
-                        </FormItem>
-                    )}
-                />
 
                 <FormField
                     control={form.control}
