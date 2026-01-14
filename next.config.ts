@@ -1,11 +1,8 @@
-
-
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
-  reactStrictMode: false, // Add this line to fix double-mounting
-  
+  reactStrictMode: false,
   typescript: {
     ignoreBuildErrors: true,
   },

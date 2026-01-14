@@ -1,13 +1,40 @@
 "use client"
 
 import * as React from "react"
+import { useNavigation, DayPicker } from "react-day-picker"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { DayPicker } from "react-day-picker"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>
+
+function CustomNavigation() {
+  const { goToMonth, nextMonth, previousMonth } = useNavigation()
+  return (
+    <div className="flex items-center justify-between pt-1">
+      <Button
+        variant="outline"
+        className="h-7 w-7 bg-transparent p-0"
+        disabled={!previousMonth}
+        onClick={() => previousMonth && goToMonth(previousMonth)}
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+      <div className="flex-1 text-center text-sm font-medium">
+        {/* The month/year label is rendered by DayPicker itself */}
+      </div>
+      <Button
+        variant="outline"
+        className="h-7 w-7 bg-transparent p-0"
+        disabled={!nextMonth}
+        onClick={() => nextMonth && goToMonth(nextMonth)}
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+    </div>
+  )
+}
 
 function Calendar({
   className,
@@ -46,7 +73,7 @@ function Calendar({
           "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
         day_today: "bg-accent text-accent-foreground",
         day_outside:
-          "day-outside text-muted-foreground aria-selected:bg-accent/50 aria-selected:text-muted-foreground",
+          "day-outside text-muted-foreground opacity-50",
         day_disabled: "text-muted-foreground opacity-50",
         day_range_middle:
           "aria-selected:bg-accent aria-selected:text-accent-foreground",
@@ -54,8 +81,8 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        IconLeft: () => <ChevronLeft className="h-4 w-4" />,
-        IconRight: () => <ChevronRight className="h-4 w-4" />,
+        IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" />,
+        IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" />,
       }}
       {...props}
     />

@@ -6,6 +6,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ChevronLeft } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
 
 import { useUser, useFirestore } from '@/firebase';
 import { collection, serverTimestamp, GeoPoint } from 'firebase/firestore';
@@ -43,12 +45,14 @@ import { useToast } from '@/hooks/use-toast';
 import { useUserRole } from '@/context/user-role-context';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 
+const LocationPicker = dynamic(() => import('@/components/ui/location-picker').then(mod => mod.LocationPicker), { ssr: false });
 
 const taskFormSchema = z.object({
   title: z.string().min(5, { message: "Title must be at least 5 characters." }),
   description: z.string().min(20, { message: "Description must be at least 20 characters." }),
   category: z.string({ required_error: "Please select a category." }),
   area: z.string().min(3, { message: "Please enter a location area." }),
+  location: z.instanceof(GeoPoint).optional(),
   dueDate: z.date().optional(),
   budget: z.object({
     min: z.coerce.number().positive(),
@@ -94,7 +98,7 @@ export default function NewTaskPage() {
             description: data.description,
             category: data.category,
             area: data.area,
-            location: new GeoPoint(0, 0), // Default location
+            location: data.location || new GeoPoint(-6.792354, 39.208328), // Default location if none selected
             dueDate: data.dueDate ? data.dueDate : null,
             budget: {
                 min: data.budget.min,
@@ -225,6 +229,19 @@ export default function NewTaskPage() {
                         )}
                     />
                 </div>
+                 <FormField
+                    control={form.control}
+                    name="location"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Precise Location</FormLabel>
+                            <FormControl>
+                                <LocationPicker onLocationChange={field.onChange} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
 
                 <FormField
                     control={form.control}

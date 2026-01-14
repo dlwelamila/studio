@@ -120,9 +120,17 @@
           "type": "string",
           "description": "The category of the task (e.g., Cleaning, Laundry)."
         },
-        "area": {
-          "type": "string",
-          "description": "The area where the task needs to be performed."
+        "location": {
+          "type": "object",
+          "description": "The location where the task needs to be performed.",
+          "properties": {
+            "latitude": {
+              "type": "number"
+            },
+            "longitude": {
+              "type": "number"
+            }
+          }
         },
         "budget": {
           "type": "number",
@@ -137,7 +145,6 @@
           "description": "Reference to Helper. (Relationship: Helper 1:N Task). Nullable if task is not assigned."
         },
         "createdAt": { "type": "string", "format": "date-time" },
-        "dueDate": { "type": "string", "format": "date-time" },
         "assignedAt": { "type": "string", "format": "date-time" },
         "startedAt": { "type": "string", "format": "date-time" },
         "completedAt": { "type": "string", "format": "date-time" },
@@ -149,7 +156,7 @@
         "title",
         "description",
         "category",
-        "area",
+        "location",
         "budget",
         "status",
         "createdAt"
