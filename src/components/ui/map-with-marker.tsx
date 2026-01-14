@@ -2,7 +2,6 @@
 
 import { useRef, useMemo, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
-import type { LatLngExpression } from 'leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -25,8 +24,12 @@ const DraggableMarker = ({ onLocationChange }: MapWithMarkerProps) => {
 
   const map = useMapEvents({
     click(e) {
-      onLocationChange(e.latlng.lat, e.latlng.lng);
-      map.flyTo(e.latlng, map.getZoom());
+      const newPos = e.latlng;
+      if (markerRef.current) {
+        markerRef.current.setLatLng(newPos);
+      }
+      onLocationChange(newPos.lat, newPos.lng);
+      map.flyTo(newPos, map.getZoom());
     },
   });
 
@@ -47,30 +50,24 @@ const DraggableMarker = ({ onLocationChange }: MapWithMarkerProps) => {
     <Marker
       draggable={true}
       eventHandlers={eventHandlers}
-      position={[-6.792354, 39.208328]}
+      position={[-6.792354, 39.208328]} // Default to Dar es Salaam
       ref={markerRef}
     />
   );
 };
 
 export default function MapWithMarker({ onLocationChange }: MapWithMarkerProps) {
-  const mapInstanceRef = useRef<L.Map | null>(null);
+  const mapInstanceRef = useRef<{ target: L.Map } | null>(null);
 
   // Cleanup effect to destroy the map instance on component unmount
   useEffect(() => {
-    // The return function from useEffect serves as the cleanup function.
     return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
+      if (mapInstanceRef.current && mapInstanceRef.current.target) {
+        mapInstanceRef.current.target.remove();
         mapInstanceRef.current = null;
       }
     };
   }, []);
-
-  const handleMapReady = (map: L.Map) => {
-    // Store the map instance once it's ready.
-    mapInstanceRef.current = map;
-  };
 
   return (
     <div className="h-full w-full">
@@ -79,7 +76,7 @@ export default function MapWithMarker({ onLocationChange }: MapWithMarkerProps) 
         zoom={13}
         scrollWheelZoom={false}
         style={{ height: '100%', width: '100%' }}
-        whenReady={handleMapReady}
+        whenReady={(map) => { mapInstanceRef.current = map; }}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
