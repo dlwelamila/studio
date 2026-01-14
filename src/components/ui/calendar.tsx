@@ -2,17 +2,20 @@
 
 import * as React from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { DayPicker, useNavigation } from "react-day-picker"
+import { DayPicker, useNavigation, type HeadProps } from "react-day-picker"
+import { format } from "date-fns"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>
 
+// Custom Navigation Component for v9
 function CustomNavigation() {
   const { goToMonth, nextMonth, previousMonth } = useNavigation()
+
   return (
-    <div className="flex items-center justify-between pt-1">
+    <div className="flex items-center justify-between pt-1 relative">
       <button
         disabled={!previousMonth}
         onClick={() => previousMonth && goToMonth(previousMonth)}
@@ -24,7 +27,7 @@ function CustomNavigation() {
         <ChevronLeft className="h-4 w-4" />
       </button>
       <div className="text-sm font-medium">
-        {/* The caption_label will be rendered here by DayPicker */}
+        {/* The caption_label will be rendered here by DayPicker's default caption */}
       </div>
       <button
         disabled={!nextMonth}
@@ -39,6 +42,28 @@ function CustomNavigation() {
     </div>
   )
 }
+
+function CustomHead({ classNames, ...props }: HeadProps) {
+  return (
+    <thead className={cn(props.className, classNames?.head)}>
+      <tr className={cn(classNames?.head_row, "flex")}>
+        {props.weekdays.map((weekday) => (
+          <th
+            key={format(weekday, "i")}
+            scope="col"
+            className={cn(
+              classNames?.head_cell,
+              "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]"
+            )}
+          >
+            {format(weekday, "cccccc")}
+          </th>
+        ))}
+      </tr>
+    </thead>
+  );
+}
+
 
 function Calendar({
   className,
@@ -80,6 +105,7 @@ function Calendar({
       }}
       components={{
         Nav: CustomNavigation,
+        Head: CustomHead
       }}
       {...props}
     />
