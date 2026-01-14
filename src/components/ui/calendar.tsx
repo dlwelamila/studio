@@ -9,11 +9,11 @@ import { buttonVariants } from "@/components/ui/button"
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>
 
-function CustomNav() {
+function CustomNavigation() {
   const { goToMonth, nextMonth, previousMonth } = useNavigation()
   return (
-    <div className="flex items-center justify-between">
-       <button
+    <div className="flex items-center justify-between pt-1">
+      <button
         disabled={!previousMonth}
         onClick={() => previousMonth && goToMonth(previousMonth)}
         className={cn(
@@ -40,7 +40,6 @@ function CustomNav() {
   )
 }
 
-
 function Calendar({
   className,
   classNames,
@@ -56,13 +55,7 @@ function Calendar({
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
         caption_label: "text-sm font-medium",
-        nav: "space-x-1 flex items-center",
-        nav_button: cn(
-          buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
-        ),
-        nav_button_previous: "absolute left-1",
-        nav_button_next: "absolute right-1",
+        nav: "hidden", // Hide default navigation container
         table: "w-full border-collapse space-y-1",
         head_row: "flex",
         head_cell:
@@ -78,7 +71,7 @@ function Calendar({
           "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
         day_today: "bg-accent text-accent-foreground",
         day_outside:
-          "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground",
+          "day-outside text-muted-foreground aria-selected:bg-accent/50 aria-selected:text-muted-foreground",
         day_disabled: "text-muted-foreground opacity-50",
         day_range_middle:
           "aria-selected:bg-accent aria-selected:text-accent-foreground",
@@ -86,8 +79,7 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" {...props} />,
-        IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" {...props} />,
+        Nav: CustomNavigation,
       }}
       {...props}
     />
