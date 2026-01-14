@@ -229,34 +229,37 @@ export default function NewTaskPage() {
                         )}
                     />
                 </div>
-                 <FormField
-                    control={form.control}
-                    name="location"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Precise Location</FormLabel>
-                            <FormControl>
-                                <LocationPicker onLocationChange={field.onChange} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                
+                <div className="grid grid-cols-1 gap-6">
+                     <FormField
+                        control={form.control}
+                        name="location"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Precise Location</FormLabel>
+                                <FormControl>
+                                    <LocationPicker onLocationChange={field.onChange} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
 
-                <FormField
-                    control={form.control}
-                    name="dueDate"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Due Date & Time</FormLabel>
-                            <FormControl>
-                                <DateTimePicker date={field.value} setDate={field.onChange} />
-                            </FormControl>
-                             <FormDescription>When does this task need to be completed by? (Optional)</FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                    <FormField
+                        control={form.control}
+                        name="dueDate"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Due Date & Time</FormLabel>
+                                <FormControl>
+                                    <DateTimePicker date={field.value} setDate={field.onChange} />
+                                </FormControl>
+                                <FormDescription>When does this task need to be completed by? (Optional)</FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
 
                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                      <FormField
