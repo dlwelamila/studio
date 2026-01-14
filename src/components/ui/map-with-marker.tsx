@@ -1,8 +1,8 @@
 'use client';
 
-import { useRef, useMemo, useEffect } from 'react';
+import { useRef, useMemo, useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
+import L, { LatLng } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 // Fix for default marker icons
@@ -20,14 +20,14 @@ interface MapWithMarkerProps {
 }
 
 const DraggableMarker = ({ onLocationChange }: MapWithMarkerProps) => {
+  const defaultPosition = new LatLng(-6.792354, 39.208328);
+  const [position, setPosition] = useState<LatLng>(defaultPosition);
   const markerRef = useRef<L.Marker>(null);
 
   const map = useMapEvents({
     click(e) {
       const newPos = e.latlng;
-      if (markerRef.current) {
-        markerRef.current.setLatLng(newPos);
-      }
+      setPosition(newPos);
       onLocationChange(newPos.lat, newPos.lng);
       map.flyTo(newPos, map.getZoom());
     },
@@ -35,6 +35,12 @@ const DraggableMarker = ({ onLocationChange }: MapWithMarkerProps) => {
 
   const eventHandlers = useMemo(
     () => ({
+      drag() {
+        const marker = markerRef.current;
+        if (marker != null) {
+          setPosition(marker.getLatLng());
+        }
+      },
       dragend() {
         const marker = markerRef.current;
         if (marker != null) {
@@ -45,14 +51,28 @@ const DraggableMarker = ({ onLocationChange }: MapWithMarkerProps) => {
     }),
     [onLocationChange]
   );
+  
+  useEffect(() => {
+    onLocationChange(defaultPosition.lat, defaultPosition.lng);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <Marker
-      draggable={true}
-      eventHandlers={eventHandlers}
-      position={[-6.792354, 39.208328]} // Default to Dar es Salaam
-      ref={markerRef}
-    />
+    <>
+      <div 
+        className="absolute top-2 left-1/2 -translate-x-1/2 z-[1000] bg-background/80 p-2 rounded-md shadow-lg backdrop-blur-sm text-xs"
+      >
+        <p className='font-mono'>
+            <span className="font-semibold">Lat:</span> {position.lat.toFixed(6)}, <span className="font-semibold">Lng:</span> {position.lng.toFixed(6)}
+        </p>
+      </div>
+      <Marker
+        draggable={true}
+        eventHandlers={eventHandlers}
+        position={position}
+        ref={markerRef}
+      />
+    </>
   );
 };
 
@@ -70,7 +90,7 @@ export default function MapWithMarker({ onLocationChange }: MapWithMarkerProps) 
   }, []);
 
   return (
-    <div className="h-full w-full">
+    <div className="h-full w-full relative">
       <MapContainer
         center={[-6.792354, 39.208328]}
         zoom={13}
