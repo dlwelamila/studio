@@ -229,22 +229,7 @@ export default function NewTaskPage() {
                         )}
                     />
                 </div>
-                
-                <div className="grid grid-cols-1 gap-6">
-                     <FormField
-                        control={form.control}
-                        name="location"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Precise Location</FormLabel>
-                                <FormControl>
-                                    <LocationPicker onLocationChange={field.onChange} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </div>
+
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                     <FormField
                         control={form.control}
@@ -279,6 +264,22 @@ export default function NewTaskPage() {
                                         <SelectItem value="heavy">Heavy (4+ hours, demanding task)</SelectItem>
                                     </SelectContent>
                                 </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+                
+                <div className="grid grid-cols-1 gap-6">
+                     <FormField
+                        control={form.control}
+                        name="location"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Precise Location</FormLabel>
+                                <FormControl>
+                                    <LocationPicker onLocationChange={field.onChange} />
+                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}
