@@ -221,10 +221,11 @@ export default function NewTaskPage() {
                         name="area"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>General Area Name</FormLabel>
+                            <FormLabel>Neighborhood / Area</FormLabel>
                             <FormControl>
                                 <Input placeholder="e.g., Masaki, Dar es Salaam" {...field} />
                             </FormControl>
+                            <FormDescription>The general area for helpers to browse.</FormDescription>
                             <FormMessage />
                             </FormItem>
                         )}
@@ -236,11 +237,11 @@ export default function NewTaskPage() {
                     name="location"
                     render={({ field }) => (
                         <FormItem>
-                             <FormLabel>Task Location</FormLabel>
-                             <FormDescription>Click or drag the marker to set the precise task location.</FormDescription>
+                             <FormLabel>Precise Task Location</FormLabel>
                              <FormControl>
                                 <LocationPicker onLocationChange={(lat, lng) => field.onChange({ lat, lng })} />
                              </FormControl>
+                              <FormDescription>Click or drag the marker to set the exact spot for the task.</FormDescription>
                              <FormMessage />
                         </FormItem>
                     )}
@@ -345,4 +346,3 @@ export default function NewTaskPage() {
     </div>
   );
 }
-    
