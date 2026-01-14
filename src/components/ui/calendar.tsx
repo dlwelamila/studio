@@ -9,54 +9,6 @@ import { buttonVariants } from "@/components/ui/button"
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>
 
-function CustomNav(props: any) {
-  const {
-    className,
-    previousMonth,
-    nextMonth,
-    onPreviousClick,
-    onNextClick,
-    ...rest
-  } = props
-
-  const isPreviousDisabled = !previousMonth
-  const isNextDisabled = !nextMonth
-
-  return (
-    <div
-      className={cn("flex justify-center pt-1 relative items-center", className)}
-      {...rest}
-    >
-      <button
-        type="button"
-        className={cn(
-          buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute left-1",
-          isPreviousDisabled && "invisible"
-        )}
-        disabled={isPreviousDisabled}
-        onClick={() => onPreviousClick()}
-      >
-        <ChevronLeft className="h-4 w-4" />
-      </button>
-
-      <button
-        type="button"
-        className={cn(
-          buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute right-1",
-          isNextDisabled && "invisible"
-        )}
-        disabled={isNextDisabled}
-        onClick={() => onNextClick()}
-      >
-        <ChevronRight className="h-4 w-4" />
-      </button>
-    </div>
-  )
-}
-
-
 function Calendar({
   className,
   classNames,
@@ -72,12 +24,20 @@ function Calendar({
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
         caption_label: "text-sm font-medium",
-        table: "w-full border-collapse space-y-1",
-        head_row: "flex",
-        head_cell:
+        nav: "space-x-1 flex items-center",
+        button_previous: cn(
+          buttonVariants({ variant: "outline" }),
+          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute left-1"
+        ),
+        button_next: cn(
+          buttonVariants({ variant: "outline" }),
+          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute right-1"
+        ),
+        month_grid: "w-full border-collapse space-y-1",
+        weekdays: "flex",
+        weekday:
           "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
-        row: "flex w-full mt-2",
-        cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+        week: "flex w-full mt-2",
         day: cn(
           buttonVariants({ variant: "ghost" }),
           "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
@@ -95,7 +55,8 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        Nav: CustomNav
+        IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" {...props} />,
+        IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" {...props} />,
       }}
       {...props}
     />
