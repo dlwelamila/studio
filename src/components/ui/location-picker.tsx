@@ -22,7 +22,7 @@ export function LocationPicker({ onLocationChange }: LocationPickerProps) {
   };
 
   return (
-    <div className="space-y-2 relative">
+    <div className="space-y-2 relative z-10">
       <MapWithMarker onLocationChange={handleLocationChange} />
       <p className="text-xs text-muted-foreground">
         Click on the map or drag the marker to set the exact task location.
