@@ -75,7 +75,7 @@ export default function MapWithMarker({ onLocationChange }: MapWithMarkerProps) 
         center={[-6.792354, 39.208328]}
         zoom={13}
         scrollWheelZoom={false}
-        style={{ height: '100%', width: '100%' }}
+        style={{ height: '100%', width: '100%', zIndex: 1 }}
         whenReady={(map) => { mapInstanceRef.current = map; }}
       >
         <TileLayer
