@@ -16,11 +16,31 @@ interface DateTimePickerProps {
 }
 
 export function DateTimePicker({ date, setDate }: DateTimePickerProps) {
-  // Ensure the calendar always opens on a deterministic month to avoid hydration errors:
-  // - If a date is selected, open to that date’s month.
-  // - Otherwise, open to the real current month.
-  const defaultMonth = React.useMemo(() => date ?? new Date(), [date]);
-
+  /**
+   * handleSelect MUST be separate from setDate.
+   * This is a known issue in v8 where `onSelect` can be called with `undefined`.
+   * This is not the case in v9 but since we are using v8, we need to account for this.
+   *
+   * @see https://github.com/gpbl/react-day-picker/issues/1432
+   */
+  const handleSelect = (newDate: Date | undefined) => {
+    if (!newDate) return;
+    if (!date) {
+      setDate(newDate);
+      return;
+    }
+    const diff = newDate.getTime() - date.getTime();
+    const diffInDays = diff / (1000 * 60 * 60 * 24);
+    const newDateAtTime = new Date(
+      newDate.getFullYear(),
+      newDate.getMonth(),
+      newDate.getDate(),
+      date.getHours(),
+      date.getMinutes(),
+      date.getSeconds()
+    );
+    setDate(newDateAtTime);
+  };
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -39,8 +59,7 @@ export function DateTimePicker({ date, setDate }: DateTimePickerProps) {
         <Calendar
           mode="single"
           selected={date}
-          onSelect={setDate}
-          defaultMonth={defaultMonth}
+          onSelect={handleSelect}
           initialFocus
         />
         <div className="p-3 border-t border-border">

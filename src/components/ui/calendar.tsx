@@ -2,68 +2,12 @@
 
 import * as React from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { DayPicker, useNavigation, type HeadProps } from "react-day-picker"
-import { format } from "date-fns"
+import { DayPicker } from "react-day-picker"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>
-
-// Custom Navigation Component for v9
-function CustomNavigation() {
-  const { goToMonth, nextMonth, previousMonth } = useNavigation()
-
-  return (
-    <div className="flex items-center justify-between pt-1 relative">
-      <button
-        disabled={!previousMonth}
-        onClick={() => previousMonth && goToMonth(previousMonth)}
-        className={cn(
-          buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute left-1"
-        )}
-      >
-        <ChevronLeft className="h-4 w-4" />
-      </button>
-      <div className="text-sm font-medium">
-        {/* The caption_label will be rendered here by DayPicker's default caption */}
-      </div>
-      <button
-        disabled={!nextMonth}
-        onClick={() => nextMonth && goToMonth(nextMonth)}
-        className={cn(
-          buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute right-1"
-        )}
-      >
-        <ChevronRight className="h-4 w-4" />
-      </button>
-    </div>
-  )
-}
-
-function CustomHead({ classNames, ...props }: HeadProps) {
-  return (
-    <thead className={cn(props.className, classNames?.head)}>
-      <tr className={cn(classNames?.head_row, "flex")}>
-        {props.weekdays.map((weekday) => (
-          <th
-            key={format(weekday, "i")}
-            scope="col"
-            className={cn(
-              classNames?.head_cell,
-              "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]"
-            )}
-          >
-            {format(weekday, "cccccc")}
-          </th>
-        ))}
-      </tr>
-    </thead>
-  );
-}
-
 
 function Calendar({
   className,
@@ -80,7 +24,13 @@ function Calendar({
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
         caption_label: "text-sm font-medium",
-        nav: "hidden", // Hide default navigation as we use a custom one
+        nav: "space-x-1 flex items-center",
+        nav_button: cn(
+          buttonVariants({ variant: "outline" }),
+          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
+        ),
+        nav_button_previous: "absolute left-1",
+        nav_button_next: "absolute right-1",
         table: "w-full border-collapse space-y-1",
         head_row: "flex",
         head_cell:
@@ -104,8 +54,8 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        Nav: CustomNavigation,
-        Head: CustomHead
+        IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" {...props} />,
+        IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" {...props} />,
       }}
       {...props}
     />
