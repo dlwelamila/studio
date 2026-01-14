@@ -2,52 +2,60 @@
 
 import * as React from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { DayPicker, useDayPicker, useNavigation } from "react-day-picker"
+import { DayPicker } from "react-day-picker"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>
 
-// Custom Navigation Component for v9
-function CustomNavigation() {
-  const { goToMonth, nextMonth, previousMonth } = useNavigation()
+function CustomNav(props: any) {
+  const {
+    className,
+    previousMonth,
+    nextMonth,
+    onPreviousClick,
+    onNextClick,
+    ...rest
+  } = props
 
   const isPreviousDisabled = !previousMonth
   const isNextDisabled = !nextMonth
 
   return (
-    <div className="flex justify-center pt-1 relative items-center">
+    <div
+      className={cn("flex justify-center pt-1 relative items-center", className)}
+      {...rest}
+    >
       <button
+        type="button"
         className={cn(
           buttonVariants({ variant: "outline" }),
           "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute left-1",
           isPreviousDisabled && "invisible"
         )}
         disabled={isPreviousDisabled}
-        onClick={() => previousMonth && goToMonth(previousMonth)}
+        onClick={() => onPreviousClick()}
       >
         <ChevronLeft className="h-4 w-4" />
       </button>
-      
-      <div className="text-sm font-medium">
-        {/* Caption will be inserted by DayPicker's default caption layout */}
-      </div>
-      
+
       <button
+        type="button"
         className={cn(
           buttonVariants({ variant: "outline" }),
           "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute right-1",
           isNextDisabled && "invisible"
         )}
         disabled={isNextDisabled}
-        onClick={() => nextMonth && goToMonth(nextMonth)}
+        onClick={() => onNextClick()}
       >
         <ChevronRight className="h-4 w-4" />
       </button>
     </div>
   )
 }
+
 
 function Calendar({
   className,
@@ -64,10 +72,6 @@ function Calendar({
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
         caption_label: "text-sm font-medium",
-        nav: "hidden", // Hide default nav
-        nav_button: "hidden",
-        nav_button_previous: "hidden",
-        nav_button_next: "hidden",
         table: "w-full border-collapse space-y-1",
         head_row: "flex",
         head_cell:
@@ -91,7 +95,7 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        Navigation: CustomNavigation,
+        Nav: CustomNav
       }}
       {...props}
     />
