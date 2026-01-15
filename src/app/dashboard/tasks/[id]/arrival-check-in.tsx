@@ -2,13 +2,15 @@
 
 import { useState } from 'react';
 import { serverTimestamp, GeoPoint, DocumentReference } from 'firebase/firestore';
-import { MapPin, Loader, AlertTriangle } from 'lucide-react';
+import { MapPin, Loader, AlertTriangle, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Task } from '@/lib/data';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useTimer } from 'react-timer-hook';
+import { differenceInSeconds } from 'date-fns';
 
 type ArrivalCheckInProps = {
   task: Task;
@@ -16,122 +18,116 @@ type ArrivalCheckInProps = {
   mutateTask: () => void;
 };
 
-// Haversine distance formula to calculate distance between two lat/lng points in meters
-function getHaversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371e3; // Radius of the Earth in meters
-  const φ1 = (lat1 * Math.PI) / 180;
-  const φ2 = (lat2 * Math.PI) / 180;
-  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+function Countdown({ expiryTimestamp, onExpire }: { expiryTimestamp: Date, onExpire: () => void }) {
+  const { seconds, minutes, hours } = useTimer({ expiryTimestamp, onExpire });
 
-  const a =
-    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return R * c;
+  return (
+    <div className="text-center">
+      <p className="text-sm text-muted-foreground">Check-in window opens in:</p>
+      <p className="font-mono text-2xl font-bold text-primary">
+        {String(hours).padStart(2, '0')}:{String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+      </p>
+    </div>
+  );
 }
 
 export function ArrivalCheckIn({ task, taskRef, mutateTask }: ArrivalCheckInProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const acceptedOffer = task.offers.find(o => o.id === task.acceptedOfferId);
+  const eta = acceptedOffer?.eta.toDate();
+
+  const [isCheckInWindowOpen, setIsCheckInWindowOpen] = useState(eta ? differenceInSeconds(new Date(), eta) >= 0 : false);
 
   const handleCheckIn = () => {
-    setIsLoading(true);
-    setError(null);
-
-    if (!navigator.geolocation) {
-      setError('Geolocation is not supported by your browser.');
-      setIsLoading(false);
-      return;
+    if (!eta) {
+        setError('The ETA for this task is not set.');
+        return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        const taskLocation = task.location as GeoPoint | undefined;
+    const now = new Date();
+    const thirtyMinutesAfterETA = new Date(eta.getTime() + 30 * 60000);
 
-        if (!taskLocation) {
-          setError('Task location is missing. Cannot verify arrival.');
-          setIsLoading(false);
-          return;
-        }
-
-        const distance = getHaversineDistance(
-          latitude,
-          longitude,
-          taskLocation.latitude,
-          taskLocation.longitude
-        );
-
-        if (distance > 100) { // 100 meter radius as per blueprint
-          setError(`You are too far from the task location (${distance.toFixed(0)}m away). You must be within 100m to check in.`);
-          setIsLoading(false);
-          return;
-        }
-
-        // Success! Update the task document
-        updateDocumentNonBlocking(taskRef, {
-          arrivedAt: serverTimestamp(),
-          status: 'ACTIVE',
-        });
-        
-        mutateTask(); // Trigger re-render of parent component
-        
-        toast({
-          title: 'Check-In Successful!',
-          description: 'You have arrived at the task location. The task is now active.',
-        });
-        
-        setIsLoading(false);
-      },
-      (geoError) => {
-        let message = 'Could not get your location. ';
-        switch (geoError.code) {
-            case geoError.PERMISSION_DENIED:
-                message += 'Please enable location permissions for this site.';
-                break;
-            case geoError.POSITION_UNAVAILABLE:
-                message += 'Location information is unavailable.';
-                break;
-            case geoError.TIMEOUT:
-                message += 'The request to get user location timed out.';
-                break;
-            default:
-                message += 'An unknown error occurred.';
-                break;
-        }
-        setError(message);
-        setIsLoading(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
+    if (now > thirtyMinutesAfterETA) {
+        setError('The 30-minute check-in window has passed. You can no longer check in for this task.');
+        return;
+    }
+    
+    setIsLoading(true);
+    updateDocumentNonBlocking(taskRef, { helperCheckInTime: serverTimestamp() });
+    mutateTask();
+    setIsLoading(false);
+    toast({
+        title: 'Check-in initiated!',
+        description: 'The customer has been notified to confirm your arrival.'
+    });
   };
+  
+   const handleCustomerConfirm = () => {
+    updateDocumentNonBlocking(taskRef, {
+        status: 'ACTIVE',
+        customerConfirmationTime: serverTimestamp(),
+        arrivedAt: task.helperCheckInTime, // Use the time helper initiated check-in
+    });
+    mutateTask();
+  };
+
+
+  if (!eta) {
+    return <Card><CardContent><p className="p-4 text-center text-muted-foreground">Offer details not found.</p></CardContent></Card>
+  }
+  
+  const hasHelperCheckedIn = !!task.helperCheckInTime;
+  
+  if (hasHelperCheckedIn) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Arrival Confirmation</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center">
+                <p className="text-muted-foreground">Waiting for customer to confirm your arrival...</p>
+                {/* This button is for demonstration. In a real app, it would only be on the customer's screen. */}
+                <Button onClick={handleCustomerConfirm} className="mt-4">
+                    (Demo) Customer Confirm Arrival
+                </Button>
+            </CardContent>
+        </Card>
+    )
+  }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="font-headline flex items-center gap-2">
-            <MapPin className="h-5 w-5" />
+            <Clock className="h-5 w-5" />
             <span>Arrival Check-In</span>
         </CardTitle>
         <CardDescription>
-          You must be at the task location to begin. This confirms your arrival to the customer and starts the task.
+          Check in within 30 minutes of your promised ETA to start the task.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="text-center">
         {error && (
-            <Alert variant="destructive" className="mb-4">
+            <Alert variant="destructive" className="mb-4 text-left">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Check-In Failed</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
             </Alert>
         )}
-        <Button onClick={handleCheckIn} disabled={isLoading} className="w-full">
-            {isLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-            {isLoading ? 'Verifying Location...' : 'Check-In at Task Location'}
-        </Button>
+        
+        {!isCheckInWindowOpen && (
+            <Countdown expiryTimestamp={eta} onExpire={() => setIsCheckInWindowOpen(true)} />
+        )}
+
+        {isCheckInWindowOpen && (
+            <Button onClick={handleCheckIn} disabled={isLoading} className="w-full">
+                {isLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                {isLoading ? 'Notifying Customer...' : 'Check In & Notify Customer'}
+            </Button>
+        )}
       </CardContent>
     </Card>
   );

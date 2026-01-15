@@ -68,7 +68,7 @@ import { Progress } from '@/components/ui/progress';
 
 const offerFormSchema = z.object({
     price: z.coerce.number().positive({ message: "Please enter a valid price." }),
-    eta: z.string().min(3, { message: "Please provide an ETA." }),
+    eta: z.date({ required_error: 'Please select an arrival date and time.' }),
     message: z.string().min(10, { message: "Message must be at least 10 characters long."})
 });
 
@@ -121,7 +121,6 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
     resolver: zodResolver(offerFormSchema),
     defaultValues: {
         price: 0,
-        eta: '',
         message: '',
     }
   });
@@ -136,6 +135,20 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
         toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'Your profile is not yet approved to send offers.' });
         return;
     }
+
+    const offerData = {
+        taskId: task.id,
+        helperId: currentUser.uid,
+        price: data.price,
+        eta: data.eta,
+        message: data.message,
+        status: 'ACTIVE',
+        createdAt: serverTimestamp(),
+    };
+
+    const offersCollection = collection(firestore, 'tasks', task.id, 'offers');
+    addDocumentNonBlocking(offersCollection, offerData);
+    toast({ title: 'Offer Submitted!', description: 'The customer has been notified of your offer.' });
   }
 
   const handleAcceptSuccess = () => {
@@ -641,5 +654,3 @@ function TaskDetailSkeleton() {
     </div>
   )
 }
-
-    
