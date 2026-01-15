@@ -131,7 +131,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
         taskId: task.id,
         customerId: task.customerId,
         helperId: currentUser.uid,
-        members: [task.customerId, currentUser.uid],
+        participantIds: [task.customerId, currentUser.uid],
         createdAt: serverTimestamp(),
         lastMessagePreview: 'You have joined the conversation.',
         lastMessageAt: serverTimestamp(),

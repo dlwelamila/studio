@@ -22,7 +22,7 @@ export default function InboxPage() {
         if (!user || !firestore) return null;
         return query(
             collection(firestore, 'task_threads'),
-            where('members', 'array-contains', user.uid),
+            where('participantIds', 'array-contains', user.uid),
             orderBy('lastMessageAt', 'desc')
         );
     }, [user, firestore]);
@@ -32,8 +32,8 @@ export default function InboxPage() {
     const isLoading = isUserLoading || areThreadsLoading;
 
     const description = role === 'customer' 
-        ? "This is where you'll find your conversations with helpers who are interested in your tasks."
-        : "This is where you'll find your conversations with customers about tasks.";
+        ? "This is where you'll find your conversations with helpers interested in your tasks."
+        : "This is where you'll find your conversations with customers about tasks you are participating in.";
 
     return (
         <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
