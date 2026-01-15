@@ -3,11 +3,8 @@
 import { use, useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronLeft, Star, AlertTriangle, Briefcase, Wrench, CircleX, UserCheck, Clock, CheckCircle, MessagesSquare } from 'lucide-react';
+import { ChevronLeft, Star, AlertTriangle, Briefcase, Wrench, CircleX, MessagesSquare, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
 
 
@@ -39,18 +36,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { OfferCard } from './offer-card';
 import { RecommendedHelpers } from './recommended-helpers';
@@ -60,7 +48,6 @@ import { useToast } from '@/hooks/use-toast';
 import { ReviewForm } from './review-form';
 import { FitIndicator } from './fit-indicator';
 import { useHelperJourney } from '@/hooks/use-helper-journey';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { TaskEvidence } from './task-evidence';
 import { ArrivalCheckIn } from './arrival-check-in';
 import { Progress } from '@/components/ui/progress';
@@ -224,8 +211,11 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const participateButton = () => {
       if (hasParticipated) {
           return (
-              <Button className="w-full" asChild>
-                  <Link href={`/dashboard/inbox/${task.id}_${currentUser?.uid}`}>Open Chat</Link>
+              <Button className="w-full gap-2" asChild>
+                  <Link href={`/dashboard/inbox/${task.id}_${currentUser?.uid}`}>
+                      <MessagesSquare />
+                      Open Chat
+                  </Link>
               </Button>
           )
       }
@@ -260,7 +250,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
           
           {canShowFitIndicator && task && <FitIndicator task={task} />}
           
-          {isAssignedHelperView && task.status === 'ASSIGNED' && taskRef && (
+          {task.status === 'ASSIGNED' && taskRef && (
              <ArrivalCheckIn task={task} taskRef={taskRef} mutateTask={mutateTask} />
           )}
 
@@ -327,13 +317,6 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                     </div>
                  </div>
                  <div className="flex items-start gap-2">
-                    <Clock className="h-5 w-5 mt-0.5 text-muted-foreground"/>
-                    <div>
-                        <p className="font-semibold text-foreground">Due Date</p>
-                        <p className="capitalize text-muted-foreground">{task.dueAt ? format(task.dueAt.toDate(), 'PPP, p') : 'Flexible'}</p>
-                    </div>
-                 </div>
-                  <div className="flex items-start gap-2">
                     <Wrench className="h-5 w-5 mt-0.5 text-muted-foreground"/>
                     <div>
                         <p className="font-semibold text-foreground">Tools Expected</p>
@@ -425,7 +408,27 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                         </CardHeader>
                     </Card>
                  )}
-
+                {task.allowOffers && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="font-headline">Offers ({offers?.length || 0})</CardTitle>
+                            <CardDescription>
+                                Review the offers from helpers below. You can view their profile before accepting.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid gap-4">
+                            {isOffersLoading && <Skeleton className="h-24 w-full" />}
+                            {!isOffersLoading && offersError && (
+                                <div className="text-center py-8 text-destructive">Could not load offers. You may not have permission.</div>
+                            )}
+                            {!isOffersLoading && !offersError && offers && offers.length > 0 ? offers.map(offer => (
+                                <OfferCard key={offer.id} offer={offer} task={task} onAccept={handleAcceptSuccess} />
+                            )) : (
+                            !isOffersLoading &&  <div className="text-center py-8 text-muted-foreground">No offers received yet.</div>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
                 <RecommendedHelpers task={task} />
             </>
           ) : isAssignedHelperView ? (
@@ -460,7 +463,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
           ) : (
             <Card>
                 <CardHeader>
-                    <CardTitle className="font-headline">Participate</CardTitle>
+                    <CardTitle className="font-headline">Participate & Negotiate</CardTitle>
                     <CardDescription>Express interest and ask the customer questions before making a formal offer.</CardDescription>
                 </CardHeader>
                 <CardFooter>

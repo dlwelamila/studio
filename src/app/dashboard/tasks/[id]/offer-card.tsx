@@ -41,6 +41,7 @@ export function OfferCard({ offer, task, onAccept }: OfferCardProps) {
       acceptedOfferPrice: offer.price,
       acceptedOfferId: offer.id, // Store accepted offer ID
       allowOffers: false, // Disallow further offers
+      assignedAt: serverTimestamp(),
     });
 
     // 2. Update the offer status

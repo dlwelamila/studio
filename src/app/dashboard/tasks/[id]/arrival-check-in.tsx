@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { serverTimestamp, DocumentReference } from 'firebase/firestore';
 import { Loader, AlertTriangle, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -10,8 +10,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useTimer } from 'react-timer-hook';
-import { differenceInSeconds } from 'date-fns';
+import { differenceInSeconds, isAfter } from 'date-fns';
 import { useUserRole } from '@/context/user-role-context';
+import { useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, doc, orderBy } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
 
 type ArrivalCheckInProps = {
   task: Task;
@@ -35,13 +38,30 @@ function Countdown({ expiryTimestamp, onExpire }: { expiryTimestamp: Date, onExp
 export function ArrivalCheckIn({ task, taskRef, mutateTask }: ArrivalCheckInProps) {
   const { toast } = useToast();
   const { role } = useUserRole();
+  const firestore = useFirestore();
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  const acceptedOffer = task.offers?.find(o => o.id === task.acceptedOfferId);
-  const eta = acceptedOffer?.etaAt.toDate();
 
+  const offersQuery = useMemoFirebase(() => {
+    if (!firestore || !task.acceptedOfferId) return null;
+    return query(collection(firestore, 'tasks', task.id, 'offers'), where('__name__', '==', task.acceptedOfferId));
+  }, [firestore, task.id, task.acceptedOfferId]);
+
+  const { data: offers } = useCollection<Offer>(offersQuery);
+  const acceptedOffer = offers?.[0];
+  
+  const eta = acceptedOffer?.etaAt.toDate();
   const [isCheckInWindowOpen, setIsCheckInWindowOpen] = useState(eta ? differenceInSeconds(new Date(), eta) >= 0 : false);
+
+  useEffect(() => {
+    if (eta && !isCheckInWindowOpen) {
+      const now = new Date();
+      if (isAfter(now, eta)) {
+        setIsCheckInWindowOpen(true);
+      }
+    }
+  }, [eta, isCheckInWindowOpen]);
 
   const handleCheckIn = () => {
     if (!eta) {
@@ -54,6 +74,7 @@ export function ArrivalCheckIn({ task, taskRef, mutateTask }: ArrivalCheckInProp
 
     if (now > thirtyMinutesAfterETA) {
         setError('The 30-minute check-in window has passed. You can no longer check in for this task.');
+        // Optionally, flag helper as late in the database
         return;
     }
     
@@ -78,8 +99,11 @@ export function ArrivalCheckIn({ task, taskRef, mutateTask }: ArrivalCheckInProp
   };
 
 
-  if (!eta) {
-    return <Card><CardContent><p className="p-4 text-center text-muted-foreground">Offer details not found.</p></CardContent></Card>
+  if (!acceptedOffer) {
+    return <Card><CardContent><p className="p-4 text-center text-muted-foreground">Loading offer details...</p></CardContent></Card>
+  }
+   if (!eta) {
+    return <Card><CardContent><p className="p-4 text-center text-muted-foreground">Offer ETA not found.</p></CardContent></Card>
   }
   
   const hasHelperCheckedIn = !!task.helperCheckInTime;
@@ -126,11 +150,15 @@ export function ArrivalCheckIn({ task, taskRef, mutateTask }: ArrivalCheckInProp
             <Countdown expiryTimestamp={eta} onExpire={() => setIsCheckInWindowOpen(true)} />
         )}
 
-        {isCheckInWindowOpen && (
+        {isCheckInWindowOpen && role === 'helper' && (
             <Button onClick={handleCheckIn} disabled={isLoading} className="w-full">
                 {isLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
                 {isLoading ? 'Notifying Customer...' : 'Check In & Notify Customer'}
             </Button>
+        )}
+        
+         {isCheckInWindowOpen && role === 'customer' && (
+             <p className="text-sm text-muted-foreground">Awaiting helper check-in.</p>
         )}
       </CardContent>
     </Card>
