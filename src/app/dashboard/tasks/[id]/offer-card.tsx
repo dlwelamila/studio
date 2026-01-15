@@ -40,7 +40,6 @@ export function OfferCard({ offer, task, onAccept }: OfferCardProps) {
       assignedHelperId: offer.helperId,
       acceptedOfferPrice: offer.price,
       acceptedOfferId: offer.id, // Store accepted offer ID
-      assignedAt: serverTimestamp(),
       allowOffers: false, // Disallow further offers
     });
 

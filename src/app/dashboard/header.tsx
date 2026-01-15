@@ -82,6 +82,9 @@ export default function AppHeader() {
     if (pathname.startsWith('/dashboard/tasks/')) {
         return 'Task Details';
     }
+    if (pathname.startsWith('/dashboard/inbox/')) {
+        return 'Chat';
+    }
     return 'Dashboard';
   };
 

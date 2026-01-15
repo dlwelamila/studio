@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { useUserRole } from '@/context/user-role-context';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { collection, query, where, doc, orderBy } from 'firebase/firestore';
 import type { TaskThread, Helper, Customer, Task } from '@/lib/data';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,7 +22,8 @@ export default function InboxPage() {
         if (!user || !firestore) return null;
         return query(
             collection(firestore, 'task_threads'),
-            where('members', 'array-contains', user.uid)
+            where('members', 'array-contains', user.uid),
+            orderBy('lastMessageAt', 'desc')
         );
     }, [user, firestore]);
 
