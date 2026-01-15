@@ -3,36 +3,37 @@
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { useUserRole } from '@/context/user-role-context';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
-import type { TaskChat } from '@/lib/data';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { collection, query, where, doc } from 'firebase/firestore';
+import type { TaskThread, Helper, Customer } from '@/lib/data';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { MessagesSquare } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
+import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
+
 
 export default function InboxPage() {
     const { role } = useUserRole();
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
 
-    const chatsQuery = useMemoFirebase(() => {
+    const threadsQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
-        // This query now matches the security rules
         return query(
-            collection(firestore, 'task_chats'),
-            where('participantIds', 'array-contains', user.uid)
+            collection(firestore, 'task_threads'),
+            where('members', 'array-contains', user.uid)
         );
     }, [user, firestore]);
 
-    const { data: chats, isLoading: areChatsLoading } = useCollection<TaskChat>(chatsQuery);
+    const { data: threads, isLoading: areThreadsLoading } = useCollection<TaskThread>(threadsQuery);
 
-    const isLoading = isUserLoading || areChatsLoading;
+    const isLoading = isUserLoading || areThreadsLoading;
 
     const description = role === 'customer' 
-        ? "This is where you'll find your conversations with helpers."
+        ? "This is where you'll find your conversations with helpers who are interested in your tasks."
         : "This is where you'll find your conversations with your customers.";
 
     return (
@@ -46,11 +47,11 @@ export default function InboxPage() {
                     </CardTitle>
                     <CardDescription>{description}</CardDescription>
                 </CardHeader>
-                <CardContent className="grid gap-4">
-                   {isLoading && Array.from({ length: 3 }).map((_, i) => <ChatItemSkeleton key={i} />)}
-                   {!isLoading && chats && chats.length > 0 ? (
-                       chats.map(chat => (
-                           <ChatItem key={chat.id} chat={chat} />
+                <CardContent className="grid gap-2">
+                   {isLoading && Array.from({ length: 3 }).map((_, i) => <ThreadItemSkeleton key={i} />)}
+                   {!isLoading && threads && threads.length > 0 ? (
+                       threads.map(thread => (
+                           <ThreadItem key={thread.id} thread={thread} currentUserId={user!.uid} role={role} />
                        ))
                    ) : (
                        !isLoading && (
@@ -67,40 +68,65 @@ export default function InboxPage() {
     )
 }
 
+function ThreadItem({ thread, currentUserId, role }: { thread: TaskThread, currentUserId: string, role: 'customer' | 'helper' }) {
+    const firestore = useFirestore();
+    
+    // Determine the other user's ID
+    const otherUserId = role === 'customer' ? thread.helperId : thread.customerId;
+    const otherUserCollection = role === 'customer' ? 'helpers' : 'customers';
 
-function ChatItem({ chat }: { chat: TaskChat }) {
+    const otherUserRef = useMemoFirebase(() => {
+        if (!firestore || !otherUserId) return null;
+        return doc(firestore, otherUserCollection, otherUserId);
+    }, [firestore, otherUserId, otherUserCollection]);
+
+    const { data: otherUser, isLoading } = useDoc<Helper | Customer>(otherUserRef);
+
     return (
         <Link
-            href={`/dashboard/inbox/${chat.id}`}
+            href={`/dashboard/inbox/${thread.id}`}
             className="flex items-center gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/50"
         >
+            {isLoading || !otherUser ? (
+                <Skeleton className="h-12 w-12 rounded-full" />
+            ): (
+                 <Image
+                    src={otherUser.profilePhotoUrl}
+                    alt={otherUser.fullName}
+                    width={48}
+                    height={48}
+                    className="rounded-full object-cover"
+                />
+            )}
             <div className="flex-1">
-                <p className="font-semibold">{chat.taskTitle}</p>
-                <p className="text-sm text-muted-foreground line-clamp-1">{chat.lastMessage?.text || 'No messages yet'}</p>
+                <p className="font-semibold">{isLoading ? <Skeleton className="h-5 w-32" /> : otherUser?.fullName}</p>
+                <p className="text-sm text-muted-foreground line-clamp-1">{thread.taskTitle}</p>
+                <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{thread.lastMessagePreview || 'No messages yet'}</p>
             </div>
             <div className="text-right">
-                {chat.lastMessage?.timestamp && (
+                {thread.lastMessageAt && (
                      <p className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(chat.lastMessage.timestamp.toDate(), { addSuffix: true })}
+                        {formatDistanceToNow(thread.lastMessageAt.toDate(), { addSuffix: true })}
                     </p>
                 )}
-               <Badge variant="outline" className="mt-2">{chat.participantIds.length - 1} helpers</Badge>
             </div>
         </Link>
     )
 }
 
-function ChatItemSkeleton() {
+function ThreadItemSkeleton() {
     return (
         <div className="flex items-center gap-4 rounded-lg border p-4">
+            <Skeleton className="h-12 w-12 rounded-full" />
             <div className="flex-1 space-y-2">
                 <Skeleton className="h-5 w-3/4" />
                 <Skeleton className="h-4 w-full" />
             </div>
             <div className="text-right space-y-2">
                 <Skeleton className="h-4 w-24 ml-auto" />
-                <Skeleton className="h-5 w-16 ml-auto" />
             </div>
         </div>
     )
 }
+
+    

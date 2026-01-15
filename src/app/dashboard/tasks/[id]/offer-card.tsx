@@ -39,7 +39,9 @@ export function OfferCard({ offer, task, onAccept }: OfferCardProps) {
       status: 'ASSIGNED',
       assignedHelperId: offer.helperId,
       acceptedOfferPrice: offer.price,
+      acceptedOfferId: offer.id, // Store accepted offer ID
       assignedAt: serverTimestamp(),
+      allowOffers: false, // Disallow further offers
     });
 
     // 2. Update the offer status
@@ -119,7 +121,7 @@ export function OfferCard({ offer, task, onAccept }: OfferCardProps) {
         <p className="text-sm text-muted-foreground">{offer.message}</p>
         <div className="flex items-center text-sm text-muted-foreground mt-3">
             <AlarmClock className="h-4 w-4 mr-2" />
-            <span>ETA: {format(offer.eta.toDate(), 'PPP, p')}</span>
+            <span>Promised ETA: {format(offer.etaAt.toDate(), 'PPP, p')}</span>
         </div>
         <div className="mt-4 flex justify-end gap-2">
             <Button variant="ghost" asChild>
@@ -133,3 +135,5 @@ export function OfferCard({ offer, task, onAccept }: OfferCardProps) {
     </Card>
   );
 }
+
+    

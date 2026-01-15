@@ -45,6 +45,19 @@ service cloud.firestore {
       // Customer transition
       return currentStatus == 'COMPLETED' && nextStatus == 'IN_DISPUTE';
     }
+    
+    // --- New Rules from Blueprint ---
+    function isThreadMember() {
+      return resource.data.members is list
+        && request.auth.uid in resource.data.members;
+    }
+
+    function isCreatingOwnThread() {
+      return request.resource.data.members is list
+        && request.auth.uid in request.resource.data.members
+        && request.resource.data.members.size() == 2;
+    }
+    // ---------------------------------
 
     match /customers/{userId} {
       allow get: if isSignedIn();
@@ -84,7 +97,9 @@ service cloud.firestore {
         // Helper can update status (ASSIGNED -> ACTIVE -> COMPLETED)
         (isAssignedHelper(resource.data) && canUpdateTaskStatus(resource.data.status, request.resource.data.status) && ownerFieldIsImmutable('customerId') && ownerFieldIsImmutable('assignedHelperId')) ||
         // Helper can check in (add arrivedAt and update status)
-        (isAssignedHelper(resource.data) && resource.data.status == 'ASSIGNED' && request.resource.data.keys().hasAll(['arrivedAt', 'status']))
+        (isAssignedHelper(resource.data) && resource.data.status == 'ASSIGNED' && request.resource.data.keys().hasAll(['helperCheckInTime'])) ||
+        // Customer can confirm arrival
+        (isResourceOwner(resource, 'customerId') && resource.data.status == 'ASSIGNED' && request.resource.data.keys().hasAll(['customerConfirmationTime', 'status', 'arrivedAt']))
       );
       
       allow delete: if isResourceOwner(resource, 'customerId');
@@ -98,14 +113,38 @@ service cloud.firestore {
       }
     }
     
-    match /task_chats/{chatId} {
-      allow read, update: if request.auth.uid in resource.data.participantIds;
-      allow create: if request.auth.uid in request.resource.data.participantIds;
+    match /task_threads/{threadId} {
+      allow read: if isSignedIn() && isThreadMember();
+      allow create: if isSignedIn() && isCreatingOwnThread();
+      allow update: if isSignedIn() && isThreadMember();
+      allow delete: if false;
 
       match /messages/{messageId} {
-        allow read: if request.auth.uid in get(/databases/$(database)/documents/task_chats/$(chatId)).data.participantIds;
-        allow create: if isCreatingOwnResource('senderId') && request.auth.uid in get(/databases/$(database)/documents/task_chats/$(chatId)).data.participantIds;
+        allow read: if isSignedIn() && isThreadMember();
+        allow create: if isSignedIn() && isThreadMember()
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 1500;
+        allow update, delete: if false;
       }
+    }
+
+    match /task_participants/{pid} {
+      allow read: if isSignedIn() && (
+        resource.data.customerId == request.auth.uid ||
+        resource.data.helperId == request.auth.uid
+      );
+
+      allow create: if isSignedIn() && (
+        request.resource.data.helperId == request.auth.uid
+      );
+
+      allow update: if isSignedIn() && (
+        resource.data.helperId == request.auth.uid ||
+        resource.data.customerId == request.auth.uid
+      );
+
+      allow delete: if false;
     }
     
     match /feedbacks/{feedbackId} {
@@ -125,3 +164,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

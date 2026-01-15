@@ -1,290 +1,321 @@
----
+A. What’s causing the current crash (in plain terms)
 
-# Phase 4 — Intelligence & Experience Polish (Helper Side)
+Your app tries to read:
 
-Phase 4 focuses on **personalization, predictability, and calm intelligence**.
-These features improve decision-making and satisfaction without adding pressure.
+task_chats/s2WUG1lTGwBds7SLQdFu
 
----
+…but the signed-in user (customer@taskey.app) is not allowed by Firestore rules, OR the doc does not contain the fields your rules require (commonly members).
 
-## 11. Smart Task Prioritization
+So we must do two fixes in parallel:
 
-### Objective
-Surface the most relevant tasks first, reducing scrolling and decision fatigue.
+Define the new chat/participation data model correctly (members + threads + messages).
 
----
+Update Firestore rules to match the model.
 
-### 11.1 Recommendation Engine (Explainable) [x]
+Update frontend so chat reads don’t happen until membership is known (no boot-killer).
 
-#### Backend
-- Implement task relevance scoring based on:
-  - Skill match
-  - Area match
-  - Historical acceptance
-  - Time-of-day preference
-- Store computed relevance score (non-persistent or cached)
-- Expose via:
-  - `/api/helpers/{id}/recommended-tasks`
+B. Recommended data model for the new flow (safe + scalable)
+Collections (minimum)
+1) tasks/{taskId}
 
-Each recommended task MUST include:
-- `reasonTags`: e.g. ["Near you", "Matches your skills"]
+Add:
 
-#### Frontend
-- Add “Recommended for You” section at top of Task Feed
-- Display reason tags on task cards
-- Fallback to standard feed if no recommendations
+customerId (uid)
 
-#### UX Rules
-- Always explain *why* a task is recommended
-- No hidden AI logic
+status: OPEN | ASSIGNED | IN_PROGRESS | DONE | CANCELLED
 
-#### Tests
-- Recommendations are relevant to helper history
-- No recommendations shown if insufficient data
-- Feed ordering stable
+assignedHelperId (uid|null)
 
----
+dueAt (timestamp) — customer due date/time window
 
-## 12. Earnings Forecast (Soft Prediction)
+allowOffers (bool) — true only while OPEN
 
-### Objective
-Increase income predictability without guarantees.
+participantsCount (number) — optional for UI
 
----
+2) task_participants/{taskId}_{helperId}
 
-### 12.1 Earnings Estimation Service
+One doc per helper who clicked “Participate”.
+Fields:
 
-#### Backend
-- Analyze helper activity (last 2–4 weeks)
-- Calculate projected weekly earnings range
-- Endpoint:
-  - `/api/helpers/{id}/earnings-forecast`
-- Always return a **range**, never a single value
+taskId
 
-#### Frontend
-- Display forecast card on dashboard:
-  - “Estimated earnings this week: TZS X–Y”
-- Include disclaimer text:
-  - “Based on recent activity. Not guaranteed.”
+customerId
 
-#### UX Rules
-- Never display as promise
-- Hide forecast if data is insufficient
+helperId
 
-#### Tests
-- Forecast updates as activity changes
-- Forecast never blocks helper actions
+status: ACTIVE | WITHDRAWN | SELECTED | NOT_SELECTED
 
----
+createdAt
 
-## 13. Notification Controls (Calm System)
+lastMessageAt
 
-### Objective
-Prevent notification fatigue and respect helpers’ time.
+This is your “tender participants list” and the basis for the customer Inbox threads.
 
----
+3) task_threads/{threadId} (one thread per task per helper)
 
-### 13.1 Notification Preferences
+Thread ID: ${taskId}_${helperId}
+Fields:
 
-#### Backend
-- Store notification preferences:
-  - Categories:
-    - Opportunities
-    - Assignments
-    - Performance
-    - System
-  - Quiet hours (time range)
-- Enforce preferences in notification dispatch
+taskId
 
-#### Frontend
-- Notification settings screen:
-  - Toggle per category
-  - Quiet hours picker
-- Preview text explaining effect of each toggle
+customerId
 
-#### UX Rules
-- Notifications opt-in by category
-- Quiet hours respected strictly
+helperId
 
-#### Tests
-- Disabled categories receive no notifications
-- Quiet hours block notifications correctly
+members: [customerId, helperId] ✅ required
 
----
+createdAt
 
-## 14. Performance Insights (Private Analytics)
+lastMessageAt
 
-### Objective
-Help helpers understand strengths without public comparison.
+lastMessagePreview (string)
 
----
+4) task_threads/{threadId}/messages/{messageId}
 
-### 14.1 Insight Generation
+Fields:
 
-#### Backend
-- Analyze helper history:
-  - Task types
-  - Areas
-  - Ratings
-- Generate insights:
-  - “You perform best in Laundry tasks”
-  - “Higher ratings in Sinza area”
-- Endpoint:
-  - `/api/helpers/{id}/performance-insights`
+senderId
 
-#### Frontend
-- Private “Insights” screen
-- Insight cards with plain-language explanations
+text
 
-#### UX Rules
-- No rankings
-- No comparisons with other helpers
+createdAt
 
-#### Tests
-- Insights reflect real data
-- No insight shown if insufficient data
+type: TEXT | SYSTEM
 
----
+Optional: meta (e.g., system events like “task assigned”)
 
-# Phase 5 — Trust, Retention & Long-Term Stability
+5) offers/{taskId}_{helperId} (or tasks/{taskId}/offers/{offerId})
 
-Phase 5 completes the Helper side for **long-term use at scale**.
+Fields:
 
----
+taskId
 
-## 15. Trusted Helper Mode
+customerId
 
-### Objective
-Reward consistent quality with subtle recognition and benefits.
+helperId
 
----
+price
 
-### 15.1 Trusted Status
+etaAt (timestamp) ✅ (date + time)
 
-#### Backend
-- Criteria:
-  - Reliability above threshold
-  - Minimum completed tasks
-- Assign `trustedHelper: true`
-- Priority visibility weighting applied
+status: SUBMITTED | ACCEPTED | REJECTED | WITHDRAWN
 
-#### Frontend
-- Subtle “Trusted Helper” label on profile
-- Early visibility note:
-  - “You may see some tasks earlier”
+createdAt
 
-#### UX Rules
-- No loud badges
-- No exclusion of others
+C. Updated workflow mapping to your 5 steps
+Step 1 — Task posted
 
-#### Tests
-- Trusted status applied correctly
-- Status revoked if criteria fall below threshold
+Task is visible in feed to everyone allowed (helpers + customers, sanitized fields).
 
----
+Step 2 — Participation (interest intent)
 
-## 16. Task History Timeline
+Helper clicks “Click here to Participate”
 
-### Objective
-Provide helpers with a professional work record.
+System:
 
----
+creates task_participants/{taskId}_{helperId} with ACTIVE
 
-### 16.1 History Ledger
+creates task_threads/{taskId}_{helperId} with members and metadata
 
-#### Backend
-- Store completed task summaries:
-  - Date
-  - Task type
-  - Area
-  - Outcome
-  - Rating
-- Endpoint:
-  - `/api/helpers/{id}/task-history`
+optionally creates a first SYSTEM message: “Helper joined the conversation”
 
-#### Frontend
-- Timeline-style list
-- Filters by month/task type
+This is the key new stage. It does not submit final pricing yet.
 
-#### UX Rules
-- Read-only
-- Calm presentation
+Step 3 — Negotiation chat
 
-#### Tests
-- History accurate and ordered
-- No private customer data exposed
+Helper and Customer chat in the thread.
 
----
+Customer inbox is thread list: one thread per helper participant (like WhatsApp).
 
-## 17. Repeat Customer Preference
+The chat is strictly between the two members.
 
-### Objective
-Create stable trust loops without exclusivity.
+Step 4 — Offer submission (still while task OPEN)
 
----
+Helpers can submit offers only if:
 
-### 17.1 Preference System
+task status is OPEN
 
-#### Backend
-- Allow customers to mark preferred helpers
-- Store preference non-exclusively
-- Notify helper of preference (non-binding)
+participant status is ACTIVE
 
-#### Frontend
-- Helper sees:
-  - “This customer prefers you”
-- No forced assignments
+Customer sees all offers and accepts one.
 
-#### UX Rules
-- Preference ≠ obligation
-- Helper may decline freely
+On accept:
 
-#### Tests
-- Preferences stored correctly
-- No monopolies created
+Task becomes ASSIGNED
 
----
+Winning participant becomes SELECTED
 
-## 18. Smart Availability Assistant
+Others become NOT_SELECTED
 
-### Objective
-Reduce missed opportunities through gentle guidance.
+System sends SYSTEM message to all threads:
 
----
+winner: “You were selected”
 
-### 18.1 Availability Suggestions
+others: “Thank you — another helper was selected”
 
-#### Backend
-- Detect patterns:
-  - Usual working hours
-  - Missed tasks due to availability off
-- Generate suggestion messages
+Important: after assignment, offers must be blocked for everyone else.
 
-#### Frontend
-- Non-intrusive suggestion cards:
-  - “You usually work evenings — turn availability on?”
-- One-tap accept or dismiss
+Step 5 — Countdown + time-based check-in + customer confirm
 
-#### UX Rules
-- Suggestions never auto-apply
-- Dismissed suggestions respected
+After offer accepted:
 
-#### Tests
-- Suggestions relevant and infrequent
-- No repeated nagging
+store etaAt on the accepted offer
 
----
+check-in becomes time-window based:
 
-## Phase 4 & 5 Acceptance Criteria (Final)
+helper can check-in only within:
 
-Phase 4 & 5 are complete only if:
-- No Phase 1–3 guardrails are violated
-- All intelligence features are explainable
-- No pressure patterns introduced
-- Helper autonomy fully preserved
-- Features improve clarity, not noise
-- All endpoints secured and tested
+from etaAt to etaAt + 30 minutes
 
----
+cannot check-in before etaAt
 
-End of Phase 4 & Phase 5 specification.
+if late > 30 min, check-in permanently blocked and helper is marked late
+
+Then:
+
+Helper presses “Check-in”
+
+Customer receives a “Confirm helper onsite?” prompt
+
+Customer taps YES → check-in confirmed
+
+Only after confirmation:
+
+Helper sees “Start Task” enabled
+
+D. Firestore Security Rules (minimum safe set)
+1) Threads and Messages — member-only
+
+Critical rule: thread must include members: [customerId, helperId]
+
+match /task_threads/{threadId} {
+  allow read: if signedIn() && isThreadMember();
+  allow create: if signedIn() && isCreatingOwnThread();
+  allow update: if signedIn() && isThreadMember();
+  allow delete: if false;
+
+  function isThreadMember() {
+    return resource.data.members is list
+      && resource.data.members.hasAny([request.auth.uid]);
+  }
+
+  function isCreatingOwnThread() {
+    return request.resource.data.members is list
+      && request.resource.data.members.hasAny([request.auth.uid])
+      && request.resource.data.members.size() == 2;
+  }
+
+  match /messages/{messageId} {
+    allow read: if signedIn() && isThreadMember();
+    allow create: if signedIn() && isThreadMember()
+      && request.resource.data.senderId == request.auth.uid
+      && request.resource.data.text is string
+      && request.resource.data.text.size() <= 1500;
+    allow update, delete: if false;
+  }
+}
+
+2) Participants
+match /task_participants/{pid} {
+  allow read: if signedIn() && (
+    resource.data.customerId == request.auth.uid ||
+    resource.data.helperId == request.auth.uid
+  );
+
+  allow create: if signedIn() && (
+    request.resource.data.helperId == request.auth.uid
+  );
+
+  allow update: if signedIn() && (
+    resource.data.helperId == request.auth.uid ||
+    resource.data.customerId == request.auth.uid
+  );
+
+  allow delete: if false;
+}
+
+
+You can tighten this later, but this prevents cross-access.
+
+E. Frontend boot stability rule (fix the crash permanently)
+
+Your useDoc hook must not crash the whole app on permission errors. Two safe patterns:
+
+Pattern 1 (best): Don’t subscribe unless allowed
+
+In chat screen:
+
+first query for thread list using a query that the user is always allowed:
+
+task_threads where members array-contains auth.uid
+
+only open a specific thread once it appears in that list.
+
+Pattern 2: Permission denied is a UI state
+
+useDoc returns {status: 'forbidden'} instead of throwing
+
+UI shows “You don’t have access to this chat.”
+
+Either way, app boots.
+
+F. Concrete UI changes (as per your flow)
+Helper side
+
+Task detail screen:
+
+New primary button while task OPEN:
+
+“Click here to Participate”
+
+After participating:
+
+show “Open Chat”
+
+show “Make Offer” (still allowed until assignment)
+
+Customer side
+
+Inbox:
+
+List threads (WhatsApp style)
+
+Each thread shows helper name + last message preview
+
+Task view:
+
+“Participants” list
+
+“Offers” list
+
+“Assign Helper” action
+
+Check-in confirmation prompt:
+
+YES / NO
+
+if YES → unlock Start Task for helper
+
+G. Check-in timing rules (exact)
+
+Offer must store etaAt (timestamp)
+
+Check-in allowed window:
+
+allowed if now >= etaAt AND now <= etaAt + 30min
+
+If now > etaAt + 30min
+
+check-in forbidden
+
+mark helper late (reliability impact event)
+
+If helper tries check-in early:
+
+show “Check-in opens at HH:MM”
+
+Customer confirmation required:
+
+check-in request creates checkinRequests/{taskId} (or task subcollection)
+
+customer confirms → server marks checkinConfirmedAt

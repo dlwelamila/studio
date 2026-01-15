@@ -1,146 +1,662 @@
-'use client';
+{
+  "entities": {
+    "Customer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Customer",
+      "type": "object",
+      "description": "Represents a customer who needs assistance with tasks.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the customer entity."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The first name of the customer."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The last name of the customer."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the customer.",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "The phone number of the customer."
+        },
+        "address": {
+          "type": "string",
+          "description": "The address of the customer."
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "email",
+        "phone",
+        "address"
+      ]
+    },
+    "Helper": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Helper",
+      "type": "object",
+      "description": "Represents a helper who provides assistance with tasks.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the helper entity."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The first name of the helper."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The last name of the helper."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the helper.",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "The phone number of the helper."
+        },
+        "address": {
+          "type": "string",
+          "description": "The address of the helper."
+        },
+        "skills": {
+          "type": "array",
+          "description": "List of skills the helper possesses.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "bio": {
+          "type": "string",
+          "description": "A short biography of the helper."
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "email",
+        "phone",
+        "address",
+        "skills"
+      ]
+    },
+    "Task": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Task",
+      "type": "object",
+      "description": "Represents a task posted by a customer.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the task entity."
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to Customer. (Relationship: Customer 1:N Task)"
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the task."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the task."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the task (e.g., Cleaning, Laundry)."
+        },
+        "location": {
+          "type": "object",
+          "description": "The location where the task needs to be performed.",
+          "properties": {
+            "latitude": {
+              "type": "number"
+            },
+            "longitude": {
+              "type": "number"
+            }
+          }
+        },
+        "budget": {
+          "type": "number",
+          "description": "The budget allocated for the task."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the task (e.g., OPEN, ASSIGNED, IN_PROGRESS, DONE, CANCELLED)."
+        },
+        "assignedHelperId": {
+          "type": "string",
+          "description": "Reference to Helper. (Relationship: Helper 1:N Task). Nullable if task is not assigned."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "assignedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "arrivedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "disputedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "dueAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completedItems": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "helperCheckInTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "customerConfirmationTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "allowOffers": {
+          "type": "boolean"
+        },
+        "participantsCount": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "customerId",
+        "title",
+        "description",
+        "category",
+        "location",
+        "budget",
+        "status",
+        "createdAt"
+      ]
+    },
+    "Offer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Offer",
+      "type": "object",
+      "description": "Represents an offer submitted by a helper for a task.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the offer entity."
+        },
+        "taskId": {
+          "type": "string",
+          "description": "Reference to Task. (Relationship: Task 1:N Offer)"
+        },
+        "helperId": {
+          "type": "string",
+          "description": "Reference to Helper. (Relationship: Helper 1:N Offer)"
+        },
+        "price": {
+          "type": "number",
+          "description": "The price offered by the helper."
+        },
+        "etaAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The helper's estimated time of arrival to perform the task."
+        },
+        "message": {
+          "type": "string",
+          "description": "A message from the helper to the customer."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["SUBMITTED", "ACCEPTED", "REJECTED", "WITHDRAWN"]
+        }
+      },
+      "required": [
+        "id",
+        "taskId",
+        "helperId",
+        "price",
+        "etaAt",
+        "message",
+        "status"
+      ]
+    },
+    "TaskParticipant": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Task Participant",
+      "type": "object",
+      "description": "Represents a helper who has shown interest in a task.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique ID, format: {taskId}_{helperId}"
+        },
+        "taskId": {
+          "type": "string"
+        },
+        "customerId": {
+          "type": "string"
+        },
+        "helperId": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["ACTIVE", "WITHDRAWN", "SELECTED", "NOT_SELECTED"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastMessageAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "taskId", "customerId", "helperId", "status", "createdAt"]
+    },
+    "TaskThread": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Task Thread",
+      "type": "object",
+      "description": "A chat thread related to a specific task between a customer and one helper.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the chat, format: {taskId}_{helperId}"
+        },
+        "taskId": {
+          "type": "string"
+        },
+        "customerId": {
+          "type": "string"
+        },
+        "helperId": {
+          "type": "string"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "An array containing the customerId and helperId."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastMessageAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastMessagePreview": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "taskId", "customerId", "helperId", "members", "createdAt"]
+    },
+    "ChatMessage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Chat Message",
+      "type": "object",
+      "description": "A message within a task negotiation chat.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "senderId": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "type": {
+            "type": "string",
+            "enum": ["TEXT", "SYSTEM"]
+        }
+      },
+      "required": [
+        "id",
+        "senderId",
+        "text",
+        "createdAt",
+        "type"
+      ]
+    },
+    "Admin": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Admin",
+      "type": "object",
+      "description": "Represents an administrator who manages the platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the admin entity."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The first name of the admin."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The last name of the admin."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the admin.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "email"
+      ]
+    },
+    "Rating": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Rating",
+      "type": "object",
+      "description": "Represents a rating given by a customer to a helper after task completion.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the rating entity."
+        },
+        "taskId": {
+          "type": "string",
+          "description": "Reference to Task. (Relationship: Task 1:N Rating)"
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to Customer. (Relationship: Customer 1:N Rating)"
+        },
+        "helperId": {
+          "type": "string",
+          "description": "Reference to Helper. (Relationship: Helper 1:N Rating)"
+        },
+        "rating": {
+          "type": "number",
+          "description": "The rating value (e.g., 1 to 5 stars)."
+        },
+        "comment": {
+          "type": "string",
+          "description": "Optional comment from the customer."
+        }
+      },
+      "required": [
+        "id",
+        "taskId",
+        "customerId",
+        "helperId",
+        "rating"
+      ]
+    },
+    "SupportTicket": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Support Ticket",
+      "type": "object",
+      "description": "Represents a support ticket submitted by a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the support ticket."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The Firebase Auth UID of the user submitting the ticket."
+        },
+        "userEmail": {
+          "type": "string",
+          "description": "The email of the user submitting the ticket."
+        },
+        "subject": {
+          "type": "string",
+          "description": "The subject of the support ticket."
+        },
+        "message": {
+          "type": "string",
+          "description": "The detailed message from the user."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "NEW",
+            "IN_PROGRESS",
+            "RESOLVED"
+          ],
+          "description": "The current status of the support ticket."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "userEmail",
+        "subject",
+        "message",
+        "status",
+        "createdAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/customers/{userId}",
+        "definition": {
+          "entityName": "Customer",
+          "schema": {
+            "$ref": "#/backend/entities/Customer"
+          },
+          "description": "Stores customer profile data. The document ID is the Firebase Auth UID.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/helpers/{userId}",
+        "definition": {
+          "entityName": "Helper",
+          "schema": {
+            "$ref": "#/backend/entities/Helper"
+          },
+          "description": "Stores helper profile data. The document ID is the Firebase Auth UID.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/tasks/{taskId}",
+        "definition": {
+          "entityName": "Task",
+          "schema": {
+            "$ref": "#/backend/entities/Task"
+          },
+          "description": "Stores tasks created by customers. Includes denormalized 'customerId' for authorization independence.",
+          "params": [
+            {
+              "name": "taskId",
+              "description": "The unique ID of the task."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/tasks/{taskId}/offers/{offerId}",
+        "definition": {
+          "entityName": "Offer",
+          "schema": {
+            "$ref": "#/backend/entities/Offer"
+          },
+          "description": "Stores offers made by helpers for tasks.",
+          "params": [
+            {
+              "name": "taskId",
+              "description": "The parent task ID."
+            },
+            {
+              "name": "offerId",
+              "description": "The unique ID of the offer."
+            }
+          ]
+        }
+      },
+       {
+        "path": "/task_threads/{threadId}",
+        "definition": {
+          "entityName": "TaskThread",
+          "schema": {
+            "$ref": "#/backend/entities/TaskThread"
+          },
+          "description": "Stores metadata for a task chat thread. The document ID is {taskId}_{helperId}.",
+          "params": [
+            {
+              "name": "threadId",
+              "description": "The unique ID for the chat session, format: {taskId}_{helperId}"
+            }
+          ]
+        }
+      },
+      {
+        "path": "/task_threads/{threadId}/messages/{messageId}",
+        "definition": {
+          "entityName": "ChatMessage",
+          "schema": {
+            "$ref": "#/backend/entities/ChatMessage"
+          },
+          "description": "Stores messages for a specific task chat.",
+          "params": [
+            {
+              "name": "threadId",
+              "description": "The parent chat thread ID."
+            },
+            {
+              "name": "messageId",
+              "description": "The unique ID of the message."
+            }
+          ]
+        }
+      },
+       {
+        "path": "/task_participants/{participantId}",
+        "definition": {
+          "entityName": "TaskParticipant",
+          "schema": {
+            "$ref": "#/backend/entities/TaskParticipant"
+          },
+          "description": "Stores a record of a helper participating in a task. Document ID is {taskId}_{helperId}.",
+          "params": [
+            {
+              "name": "participantId",
+              "description": "The unique ID for the participant record, format: {taskId}_{helperId}"
+            }
+          ]
+        }
+      },
+      {
+        "path": "/ratings/{ratingId}",
+        "definition": {
+          "entityName": "Rating",
+          "schema": {
+            "$ref": "#/backend/entities/Rating"
+          },
+          "description": "Stores ratings given by customers to helpers. Includes denormalized 'taskId', 'customerId', and 'helperId' for authorization independence.",
+          "params": [
+            {
+              "name": "ratingId",
+              "description": "The unique ID of the rating."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{userId}",
+        "definition": {
+          "entityName": "Admin",
+          "schema": {
+            "$ref": "#/backend/entities/Admin"
+          },
+          "description": "Indicates admin status. Document existence determines admin role.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/support_tickets/{ticketId}",
+        "definition": {
+          "entityName": "SupportTicket",
+          "schema": {
+            "$ref": "#/backend/entities/SupportTicket"
+          },
+          "description": "Stores support tickets submitted by users.",
+          "params": [
+            {
+              "name": "ticketId",
+              "description": "The unique ID of the support ticket."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support the tasKey application, focusing on task management, user roles (Customers, Helpers, Admins), and efficient data access with robust security rules.  The key principle is Authorization Independence, achieved through denormalization. For example, tasks denormalize customerId, and offers denormalize helperId and taskId, allowing rules to validate access without needing to `get()` parent documents. \n\n*   **Customers:** `/customers/{userId}` stores customer profiles.\n*   **Helpers:** `/helpers/{userId}` stores helper profiles.\n*   **Tasks:** `/tasks/{taskId}` stores task documents. Tasks denormalize `customerId` to ensure Authorization Independence.\n*   **Offers:** `/tasks/{taskId}/offers/{offerId}` is a subcollection within each task. This simplifies security rules as access to offers can be inherited from the parent task.\n*   **Ratings:** Ratings are stored in `/ratings/{ratingId}`. They denormalize `taskId`, `customerId`, and `helperId` for authorization independence and simpler querying.\n*   **Admins:** Admin status is managed via document existence in `/roles_admin/{userId}`.  This leverages the \"existence over content\" pattern for global role management.\n*   **Task Threads**: A new top-level collection `task_threads` is added to handle the negotiation phase. Each document represents a chat thread, and messages are a subcollection within it. This separates chat data from the main task document for cleaner data management and more specific security rules.\n\n\n**QAPs (Rules are not Filters):**\n\n*   The structure supports secure `list` operations.\n*   Helpers can list all documents in the `/tasks` collection, but rules on `get` will prevent them from reading full details of tasks they are not involved in.\n\nThis structure adheres to all core design principles and strategy mandates, ensuring a secure, scalable, and debuggable Firestore database for the tasKey application."
+  }
+}
 
-import type { ImagePlaceholder } from '@/lib/placeholder-images';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { Timestamp, GeoPoint } from 'firebase/firestore';
-
-const avatars = PlaceHolderImages.filter(img => img.id.startsWith('avatar-'));
-
-export type Helper = {
-  id: string; // Corresponds to Firebase Auth UID
-  fullName: string;
-  email?: string;
-  phoneNumber: string;
-  profilePhotoUrl: string;
-  serviceCategories: string[];
-  serviceAreas: string[];
-  aboutMe: string;
-  isAvailable: boolean;
-  memberSince: Timestamp;
-  phoneVerified?: boolean;
-
-  // New Lifecycle Fields
-  verificationStatus: 'PENDING' | 'APPROVED' | 'SUSPENDED';
-  profileCompletion: {
-    percent: number; // 0-100
-    missing: Array<'profilePhoto' | 'serviceCategories' | 'serviceAreas' | 'aboutMe'>;
-  };
-  lifecycleStage: 'REGISTERED' | 'PROFILE_INCOMPLETE' | 'PENDING_VERIFICATION' | 'VERIFIED_READY' | 'ACTIVE' | 'GROWING' | 'SUSPENDED';
-  stats: {
-    totalAttempted: number;
-    jobsCompleted: number;
-    jobsCancelled: number;
-    completionRate: number;
-    ratingAvg: number;
-    reliabilityLevel: 'GREEN' | 'YELLOW' | 'RED';
-  };
-  walletSummary: {
-      lifetimeEarnings: number;
-      currency: 'TZS';
-  };
-  
-  // Legacy fields to be deprecated or merged into stats
-  reliabilityIndicator: 'Good' | 'Average' | 'Poor';
-};
-
-export type Customer = {
-  id: string; // Corresponds to Firebase Auth UID
-  fullName: string;
-  phoneNumber: string;
-  phoneVerified?: boolean;
-  email?: string;
-  rating?: number;
-  profilePhotoUrl: string;
-  memberSince: Timestamp;
-};
-
-export type Task = {
-  id: string;
-  customerId: string;
-  title: string;
-  description: string;
-  category: string;
-  area: string; // Approximate area
-  location: GeoPoint; // Exact location, revealed after assignment
-  budget: { min: number; max: number };
-  acceptedOfferPrice?: number; // Final price from the accepted offer
-  effort: 'light' | 'medium' | 'heavy';
-  toolsRequired: string[];
-  timeWindow: string; // e.g. "Tomorrow afternoon", "Flexible"
-  status: 'OPEN' | 'ASSIGNED' | 'ACTIVE' | 'COMPLETED' | 'IN_DISPUTE' | 'REASSIGNED' | 'CANCELLED';
-  assignedHelperId?: string;
-  createdAt: Timestamp;
-  assignedAt?: Timestamp;
-  arrivedAt?: Timestamp; // When helper checks in
-  startedAt?: Timestamp;
-  completedAt?: Timestamp;
-  disputedAt?: Timestamp;
-  dueDate?: Timestamp;
-  completedItems: string[];
-  helperCheckInTime?: Timestamp;
-  customerConfirmationTime?: Timestamp;
-};
-
-export type Offer = {
-  id: string;
-  taskId: string;
-  helperId: string;
-  price: number;
-  eta: Timestamp;
-  message: string;
-  status: 'ACTIVE' | 'WITHDRAWN' | 'ACCEPTED' | 'REJECTED';
-  createdAt: Timestamp;
-};
-
-export type Feedback = {
-  id: string;
-  taskId: string;
-  customerId: string;
-  helperId: string;
-  rating: number;
-  feedback: string;
-  createdAt: Timestamp;
-};
-
-export type SupportTicket = {
-  id: string;
-  userId: string;
-  userEmail: string;
-  subject: string;
-  message: string;
-  status: 'NEW' | 'IN_PROGRESS' | 'RESOLVED';
-  createdAt: Timestamp;
-};
-
-export type TaskChat = {
-  id: string; // Same as taskId
-  taskId: string;
-  taskTitle: string;
-  customerId: string;
-  participantIds: string[]; // [customerId, helperId1, helperId2, ...]
-  lastMessage?: {
-    text: string;
-    timestamp: Timestamp;
-  };
-};
-
-export type ChatMessage = {
-  id: string;
-  senderId: string;
-  text: string;
-  createdAt: Timestamp;
-};
-
-
-export const taskCategories = [
-    'Cleaning',
-    'Laundry',
-    'Dishwashing',
-    'Home Maintenance',
-    'Gardening',
-    'Cooking',
-    'Shopping',
-    'Other'
-];
-
-      
+    

@@ -138,7 +138,7 @@
         },
         "status": {
           "type": "string",
-          "description": "The current status of the task (e.g., Open, Assigned, Completed, IN_DISPUTE, REASSIGNED)."
+          "description": "The current status of the task (e.g., OPEN, ASSIGNED, IN_PROGRESS, DONE, CANCELLED)."
         },
         "assignedHelperId": {
           "type": "string",
@@ -168,7 +168,7 @@
           "type": "string",
           "format": "date-time"
         },
-        "dueDate": {
+        "dueAt": {
           "type": "string",
           "format": "date-time"
         },
@@ -185,6 +185,12 @@
         "customerConfirmationTime": {
           "type": "string",
           "format": "date-time"
+        },
+        "allowOffers": {
+          "type": "boolean"
+        },
+        "participantsCount": {
+          "type": "number"
         }
       },
       "required": [
@@ -221,7 +227,7 @@
           "type": "number",
           "description": "The price offered by the helper."
         },
-        "eta": {
+        "etaAt": {
           "type": "string",
           "format": "date-time",
           "description": "The helper's estimated time of arrival to perform the task."
@@ -229,6 +235,10 @@
         "message": {
           "type": "string",
           "description": "A message from the helper to the customer."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["SUBMITTED", "ACCEPTED", "REJECTED", "WITHDRAWN"]
         }
       },
       "required": [
@@ -236,8 +246,115 @@
         "taskId",
         "helperId",
         "price",
-        "eta",
-        "message"
+        "etaAt",
+        "message",
+        "status"
+      ]
+    },
+    "TaskParticipant": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Task Participant",
+      "type": "object",
+      "description": "Represents a helper who has shown interest in a task.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique ID, format: {taskId}_{helperId}"
+        },
+        "taskId": {
+          "type": "string"
+        },
+        "customerId": {
+          "type": "string"
+        },
+        "helperId": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["ACTIVE", "WITHDRAWN", "SELECTED", "NOT_SELECTED"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastMessageAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "taskId", "customerId", "helperId", "status", "createdAt"]
+    },
+    "TaskThread": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Task Thread",
+      "type": "object",
+      "description": "A chat thread related to a specific task between a customer and one helper.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the chat, format: {taskId}_{helperId}"
+        },
+        "taskId": {
+          "type": "string"
+        },
+        "customerId": {
+          "type": "string"
+        },
+        "helperId": {
+          "type": "string"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "An array containing the customerId and helperId."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastMessageAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastMessagePreview": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "taskId", "customerId", "helperId", "members", "createdAt"]
+    },
+    "ChatMessage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Chat Message",
+      "type": "object",
+      "description": "A message within a task negotiation chat.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "senderId": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "type": {
+            "type": "string",
+            "enum": ["TEXT", "SYSTEM"]
+        }
+      },
+      "required": [
+        "id",
+        "senderId",
+        "text",
+        "createdAt",
+        "type"
       ]
     },
     "Admin": {
@@ -359,75 +476,6 @@
         "status",
         "createdAt"
       ]
-    },
-    "TaskChat": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Task Chat",
-      "type": "object",
-      "description": "A chat thread related to a specific task, containing participants and metadata.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the chat, typically the same as the taskId."
-        },
-        "taskId": {
-          "type": "string"
-        },
-        "taskTitle": {
-          "type": "string"
-        },
-        "customerId": {
-          "type": "string"
-        },
-        "participantIds": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "An array containing the customerId and all participating helperIds."
-        },
-        "lastMessage": {
-          "type": "object",
-          "properties": {
-            "text": { "type": "string" },
-            "timestamp": { "type": "string", "format": "date-time" }
-          }
-        }
-      },
-      "required": [
-        "id",
-        "taskId",
-        "taskTitle",
-        "customerId",
-        "participantIds"
-      ]
-    },
-    "ChatMessage": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Chat Message",
-      "type": "object",
-      "description": "A message within a task negotiation chat.",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "senderId": {
-          "type": "string"
-        },
-        "text": {
-          "type": "string"
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "senderId",
-        "text",
-        "createdAt"
-      ]
     }
   },
   "auth": {
@@ -507,23 +555,23 @@
         }
       },
        {
-        "path": "/task_chats/{chatId}",
+        "path": "/task_threads/{threadId}",
         "definition": {
-          "entityName": "TaskChat",
+          "entityName": "TaskThread",
           "schema": {
-            "$ref": "#/backend/entities/TaskChat"
+            "$ref": "#/backend/entities/TaskThread"
           },
-          "description": "Stores metadata for a task chat thread. The document ID is the taskId.",
+          "description": "Stores metadata for a task chat thread. The document ID is {taskId}_{helperId}.",
           "params": [
             {
-              "name": "chatId",
-              "description": "The unique ID for the chat session, same as the taskId."
+              "name": "threadId",
+              "description": "The unique ID for the chat session, format: {taskId}_{helperId}"
             }
           ]
         }
       },
       {
-        "path": "/task_chats/{chatId}/messages/{messageId}",
+        "path": "/task_threads/{threadId}/messages/{messageId}",
         "definition": {
           "entityName": "ChatMessage",
           "schema": {
@@ -532,12 +580,28 @@
           "description": "Stores messages for a specific task chat.",
           "params": [
             {
-              "name": "chatId",
-              "description": "Unique ID for the chat session, same as the taskId."
+              "name": "threadId",
+              "description": "The parent chat thread ID."
             },
             {
               "name": "messageId",
               "description": "The unique ID of the message."
+            }
+          ]
+        }
+      },
+       {
+        "path": "/task_participants/{participantId}",
+        "definition": {
+          "entityName": "TaskParticipant",
+          "schema": {
+            "$ref": "#/backend/entities/TaskParticipant"
+          },
+          "description": "Stores a record of a helper participating in a task. Document ID is {taskId}_{helperId}.",
+          "params": [
+            {
+              "name": "participantId",
+              "description": "The unique ID for the participant record, format: {taskId}_{helperId}"
             }
           ]
         }
@@ -591,7 +655,8 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to support the tasKey application, focusing on task management, user roles (Customers, Helpers, Admins), and efficient data access with robust security rules.  The key principle is Authorization Independence, achieved through denormalization. For example, tasks denormalize customerId, and offers denormalize helperId and taskId, allowing rules to validate access without needing to `get()` parent documents. \n\n*   **Customers:** `/customers/{userId}` stores customer profiles.\n*   **Helpers:** `/helpers/{userId}` stores helper profiles.\n*   **Tasks:** `/tasks/{taskId}` stores task documents. Tasks denormalize `customerId` to ensure Authorization Independence.\n*   **Offers:** `/tasks/{taskId}/offers/{offerId}` is a subcollection within each task. This simplifies security rules as access to offers can be inherited from the parent task.\n*   **Ratings:** Ratings are stored in `/ratings/{ratingId}`. They denormalize `taskId`, `customerId`, and `helperId` for authorization independence and simpler querying.\n*   **Admins:** Admin status is managed via document existence in `/roles_admin/{userId}`.  This leverages the \"existence over content\" pattern for global role management.\n*   **Task Chats**: A new top-level collection `task_chats` is added to handle the negotiation phase. Each document represents a chat thread, and messages are a subcollection within it. This separates chat data from the main task document for cleaner data management and more specific security rules.\n\n\n**QAPs (Rules are not Filters):**\n\n*   The structure supports secure `list` operations.\n*   Helpers can list all documents in the `/tasks` collection, but rules on `get` will prevent them from reading full details of tasks they are not involved in.\n\nThis structure adheres to all core design principles and strategy mandates, ensuring a secure, scalable, and debuggable Firestore database for the tasKey application."
+    "reasoning": "The Firestore structure is designed to support the tasKey application, focusing on task management, user roles (Customers, Helpers, Admins), and efficient data access with robust security rules.  The key principle is Authorization Independence, achieved through denormalization. For example, tasks denormalize customerId, and offers denormalize helperId and taskId, allowing rules to validate access without needing to `get()` parent documents. \n\n*   **Customers:** `/customers/{userId}` stores customer profiles.\n*   **Helpers:** `/helpers/{userId}` stores helper profiles.\n*   **Tasks:** `/tasks/{taskId}` stores task documents. Tasks denormalize `customerId` to ensure Authorization Independence.\n*   **Offers:** `/tasks/{taskId}/offers/{offerId}` is a subcollection within each task. This simplifies security rules as access to offers can be inherited from the parent task.\n*   **Ratings:** Ratings are stored in `/ratings/{ratingId}`. They denormalize `taskId`, `customerId`, and `helperId` for authorization independence and simpler querying.\n*   **Admins:** Admin status is managed via document existence in `/roles_admin/{userId}`.  This leverages the \"existence over content\" pattern for global role management.\n*   **Task Threads**: A new top-level collection `task_threads` is added to handle the negotiation phase. Each document represents a chat thread, and messages are a subcollection within it. This separates chat data from the main task document for cleaner data management and more specific security rules.\n\n\n**QAPs (Rules are not Filters):**\n\n*   The structure supports secure `list` operations.\n*   Helpers can list all documents in the `/tasks` collection, but rules on `get` will prevent them from reading full details of tasks they are not involved in.\n\nThis structure adheres to all core design principles and strategy mandates, ensuring a secure, scalable, and debuggable Firestore database for the tasKey application."
   }
 }
-      
+
+    
