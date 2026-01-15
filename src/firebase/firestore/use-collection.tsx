@@ -21,10 +21,20 @@ export type WithId<T> = T & { id: string };
  * @template T Type of the document data.
  */
 export interface UseCollectionResult<T> {
-  data: WithId<T>[] | null; // Document data with ID, or null.
-  isLoading: boolean;       // True if loading.
-  error: FirestoreError | Error | null; // Error object, or null.
-  mutate: () => void; // Function to manually re-fetch the collection.
+  data: WithId<T>[] | null;
+  isLoading: boolean;
+  error: FirestoreError | Error | null;
+  mutate: () => void;
+}
+
+/**
+ * Options for useCollection hook.
+ * emitPermissionErrors:
+ *  - When true, permission errors are emitted globally through errorEmitter.
+ *  - Default false to avoid global crashes for normal forbidden reads.
+ */
+export interface UseCollectionOptions {
+  emitPermissionErrors?: boolean;
 }
 
 /* Internal implementation of Query:
@@ -35,26 +45,35 @@ export interface InternalQuery extends Query<DocumentData> {
     path: {
       canonicalString(): string;
       toString(): string;
-    }
-  }
+    };
+  };
+}
+
+function getPathFromQuery(q: any): string {
+  try {
+    if (q?.type === 'collection') return q.path;
+    if (q?._query?.path?.canonicalString) return q._query.path.canonicalString();
+  } catch {}
+  return 'unknown path';
 }
 
 /**
  * React hook to subscribe to a Firestore collection or query in real-time.
  * Handles nullable references/queries.
- * 
  *
- * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedTargetRefOrQuery or BAD THINGS WILL HAPPEN
- * use useMemoFirebase to memoize it per React guidence.  Also make sure that it's dependencies are stable
- * references
- *  
+ * IMPORTANT: Input must be memoized (useMemoFirebase).
+ *
  * @template T Optional type for document data. Defaults to any.
- * @param {CollectionReference<DocumentData> | Query<DocumentData> | null | undefined} memoizedTargetRefOrQuery -
- * The Firestore CollectionReference or Query. Waits if null/undefined.
- * @returns {UseCollectionResult<T>} Object with data, isLoading, error, and mutate function.
+ * @param memoizedTargetRefOrQuery Firestore CollectionReference or Query. Waits if null/undefined.
+ * @param options Optional flags (e.g., emitPermissionErrors).
+ * @returns Object with data, isLoading, error, and mutate function.
  */
 export function useCollection<T = any>(
-    memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,
+  memoizedTargetRefOrQuery:
+    | ((CollectionReference<DocumentData> | Query<DocumentData>) & { __memo?: boolean })
+    | null
+    | undefined,
+  options: UseCollectionOptions = {},
 ): UseCollectionResult<T> {
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
@@ -63,34 +82,49 @@ export function useCollection<T = any>(
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
-  const getPathFromQuery = (query: any): string => {
-    if (query.type === 'collection') return query.path;
-    if (query._query?.path?.canonicalString) return query._query.path.canonicalString();
-    return 'unknown path';
-  };
+  const emitPermissionErrors = options.emitPermissionErrors === true;
+
+  const handlePermissionError = useCallback(
+    (operation: 'list' | 'get') => {
+      if (!memoizedTargetRefOrQuery) return;
+
+      const contextualError = new FirestorePermissionError({
+        operation,
+        path: getPathFromQuery(memoizedTargetRefOrQuery),
+      });
+
+      setError(contextualError);
+      setData(null);
+
+      // ✅ Avoid app-wide crashes by default.
+      // Only emit globally when caller explicitly opts-in.
+      if (emitPermissionErrors) {
+        errorEmitter.emit('permission-error', contextualError);
+      }
+    },
+    [memoizedTargetRefOrQuery, emitPermissionErrors],
+  );
 
   const mutate = useCallback(() => {
     if (!memoizedTargetRefOrQuery) return;
 
     setIsLoading(true);
-    getDocs(memoizedTargetRefOrQuery).then(snapshot => {
-      const results: ResultItemType[] = [];
-      for (const doc of snapshot.docs) {
-        results.push({ ...(doc.data() as T), id: doc.id });
-      }
-      setData(results);
-      setError(null);
-    }).catch(err => {
-      const contextualError = new FirestorePermissionError({
-        operation: 'list',
-        path: getPathFromQuery(memoizedTargetRefOrQuery),
+    getDocs(memoizedTargetRefOrQuery)
+      .then((snapshot) => {
+        const results: ResultItemType[] = snapshot.docs.map((d) => ({
+          ...(d.data() as T),
+          id: d.id,
+        }));
+        setData(results);
+        setError(null);
+      })
+      .catch(() => {
+        handlePermissionError('list');
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
-      setError(contextualError);
-      errorEmitter.emit('permission-error', contextualError);
-    }).finally(() => {
-      setIsLoading(false);
-    });
-  }, [memoizedTargetRefOrQuery]);
+  }, [memoizedTargetRefOrQuery, handlePermissionError]);
 
   useEffect(() => {
     if (!memoizedTargetRefOrQuery) {
@@ -106,33 +140,29 @@ export function useCollection<T = any>(
     const unsubscribe = onSnapshot(
       memoizedTargetRefOrQuery,
       (snapshot: QuerySnapshot<DocumentData>) => {
-        const results: ResultItemType[] = [];
-        for (const doc of snapshot.docs) {
-          results.push({ ...(doc.data() as T), id: doc.id });
-        }
+        const results: ResultItemType[] = snapshot.docs.map((d) => ({
+          ...(d.data() as T),
+          id: d.id,
+        }));
         setData(results);
         setError(null);
         setIsLoading(false);
       },
-      (error: FirestoreError) => {
-        const contextualError = new FirestorePermissionError({
-          operation: 'list',
-          path: getPathFromQuery(memoizedTargetRefOrQuery),
-        })
-
-        setError(contextualError)
-        setData(null)
-        setIsLoading(false)
-
-        errorEmitter.emit('permission-error', contextualError);
-      }
+      () => {
+        // ✅ permission errors must be a UI state, not a boot crash
+        handlePermissionError('list');
+        setIsLoading(false);
+      },
     );
 
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery]);
+  }, [memoizedTargetRefOrQuery, handlePermissionError]);
 
   if (memoizedTargetRefOrQuery && !(memoizedTargetRefOrQuery as any).__memo) {
-    console.warn('useCollection was not properly memoized using useMemoFirebase. This may cause infinite loops.', memoizedTargetRefOrQuery);
+    console.warn(
+      'useCollection was not properly memoized using useMemoFirebase. This may cause infinite loops.',
+      memoizedTargetRefOrQuery,
+    );
   }
 
   return { data, isLoading, error, mutate };
