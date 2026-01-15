@@ -54,7 +54,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { OfferCard } from './offer-card';
 import { RecommendedHelpers } from './recommended-helpers';
-import type { Task, Offer, Customer, Helper, Feedback } from '@/lib/data';
+import type { Task, Offer, Customer, Helper, Feedback, TaskParticipant } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { ReviewForm } from './review-form';
@@ -67,14 +67,14 @@ import { Progress } from '@/components/ui/progress';
 
 
 export default function TaskDetailPage({ params }: { params: { id: string } }) {
-  const { id } = use(params);
+  const { id: taskId } = use(params);
   const { role } = useUserRole();
   const { user: currentUser, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [reportMessage, setReportMessage] = useState('');
 
-  const taskRef = useMemoFirebase(() => firestore && doc(firestore, 'tasks', id), [firestore, id]);
+  const taskRef = useMemoFirebase(() => firestore && doc(firestore, 'tasks', taskId), [firestore, taskId]);
   const { data: task, isLoading: isTaskLoading, error, mutate: mutateTask } = useDoc<Task>(taskRef);
 
   const customerRef = useMemoFirebase(() => firestore && task && doc(firestore, 'customers', task.customerId), [firestore, task]);
@@ -87,10 +87,10 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const { data: currentHelperProfile } = useDoc<Helper>(helperProfileRef);
   const journey = useHelperJourney(currentHelperProfile);
 
-  const chatRef = useMemoFirebase(() => firestore && doc(firestore, 'task_chats', id), [firestore, id]);
-  const { data: chat } = useDoc(chatRef);
+  const participantRef = useMemoFirebase(() => firestore && currentUser && doc(firestore, 'task_participants', `${taskId}_${currentUser.uid}`), [firestore, taskId, currentUser]);
+  const { data: participant } = useDoc<TaskParticipant>(participantRef);
 
-  const offersQuery = useMemoFirebase(() => firestore && query(collection(firestore, 'tasks', id, 'offers')), [firestore, id]);
+  const offersQuery = useMemoFirebase(() => firestore && query(collection(firestore, 'tasks', taskId, 'offers')), [firestore, taskId]);
   const { data: offers, isLoading: isOffersLoading, error: offersError } = useCollection<Offer>(offersQuery);
 
   const feedbacksQuery = useMemoFirebase(() => firestore && task ? query(collection(firestore, 'feedbacks'), where('taskId', '==', task.id)) : null, [firestore, task]);
@@ -104,25 +104,41 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
 
   const isCustomerView = role === 'customer';
   const isAssignedHelperView = currentUser?.uid === task?.assignedHelperId;
-  const hasParticipated = chat?.participantIds?.includes(currentUser?.uid ?? '');
+  const hasParticipated = !!participant;
   const hasReviewed = (feedbacks?.length ?? 0) > 0;
   
   const canShowFitIndicator = !isCustomerView && !isAssignedHelperView && currentHelperProfile && task?.status === 'OPEN';
   
   const handleParticipate = () => {
-    if (!chatRef || !currentUser || !task) return;
+    if (!currentUser || !task || !participantRef || !firestore) return;
     
-    const chatData = {
-      id: task.id,
-      taskId: task.id,
-      taskTitle: task.title,
-      customerId: task.customerId,
-      participantIds: arrayUnion(currentUser.uid),
+    const threadRef = doc(firestore, 'task_threads', `${task.id}_${currentUser.uid}`);
+    
+    // Create participant document
+    const participantData = {
+        id: participantRef.id,
+        taskId: task.id,
+        customerId: task.customerId,
+        helperId: currentUser.uid,
+        status: 'ACTIVE',
+        createdAt: serverTimestamp(),
     };
+    setDocumentNonBlocking(participantRef, participantData);
+    
+    // Create thread document
+    const threadData = {
+        id: threadRef.id,
+        taskId: task.id,
+        customerId: task.customerId,
+        helperId: currentUser.uid,
+        members: [task.customerId, currentUser.uid],
+        createdAt: serverTimestamp(),
+        lastMessagePreview: 'You have joined the conversation.',
+        lastMessageAt: serverTimestamp(),
+    };
+    setDocumentNonBlocking(threadRef, threadData);
 
-    setDocumentNonBlocking(chatRef, chatData, { merge: true });
-
-    toast({ title: 'You are now participating!', description: 'You can now chat with the customer.' });
+    toast({ title: 'You are now participating!', description: 'You can now chat with the customer in your inbox.' });
   }
 
   const handleAcceptSuccess = () => {
@@ -209,13 +225,13 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
       if (hasParticipated) {
           return (
               <Button className="w-full" asChild>
-                  <Link href={`/dashboard/inbox/${task.id}`}>Continue Chat</Link>
+                  <Link href={`/dashboard/inbox/${task.id}_${currentUser?.uid}`}>Open Chat</Link>
               </Button>
           )
       }
       return (
           <Button onClick={handleParticipate} className="w-full">
-              Participate & Ask a Question
+              Click here to Participate
           </Button>
       )
   };
@@ -225,7 +241,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
     <div className="mx-auto grid max-w-6xl flex-1 auto-rows-max gap-4">
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" className="h-7 w-7" asChild>
-          <Link href={isCustomerView ? "/dashboard" : "/dashboard/gigs"}>
+          <Link href={isCustomerView ? "/dashboard" : "/dashboard/browse"}>
             <ChevronLeft className="h-4 w-4" />
             <span className="sr-only">Back</span>
           </Link>
@@ -238,20 +254,13 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
             Task ID: {task.id}
           </p>
         </div>
-         {isCustomerView && (
-            <Button variant="outline" asChild>
-              <Link href={`/dashboard/inbox/${task.id}`}>
-                <MessagesSquare className="mr-2 h-4 w-4" /> View Chats
-              </Link>
-            </Button>
-          )}
       </div>
       <div className="grid gap-4 md:grid-cols-[1fr_250px] lg:grid-cols-3 lg:gap-8">
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
           
           {canShowFitIndicator && task && <FitIndicator task={task} />}
           
-          {isAssignedHelperView && task.status === 'ASSIGNED' && (
+          {isAssignedHelperView && task.status === 'ASSIGNED' && taskRef && (
              <ArrivalCheckIn task={task} taskRef={taskRef} mutateTask={mutateTask} />
           )}
 
@@ -321,7 +330,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                     <Clock className="h-5 w-5 mt-0.5 text-muted-foreground"/>
                     <div>
                         <p className="font-semibold text-foreground">Due Date</p>
-                        <p className="capitalize text-muted-foreground">{task.dueDate ? format(task.dueDate.toDate(), 'PPP, p') : 'Flexible'}</p>
+                        <p className="capitalize text-muted-foreground">{task.dueAt ? format(task.dueAt.toDate(), 'PPP, p') : 'Flexible'}</p>
                     </div>
                  </div>
                   <div className="flex items-start gap-2">
@@ -417,25 +426,6 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                     </Card>
                  )}
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="font-headline">Offers ({offers?.length || 0})</CardTitle>
-                        <CardDescription>
-                            Review the offers from helpers below. You can view their profile before accepting.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid gap-4">
-                        {isOffersLoading && <Skeleton className="h-24 w-full" />}
-                        {!isOffersLoading && offersError && (
-                             <div className="text-center py-8 text-destructive">Could not load offers. You may not have permission.</div>
-                        )}
-                        {!isOffersLoading && !offersError && offers && offers.length > 0 ? offers.map(offer => (
-                            <OfferCard key={offer.id} offer={offer} task={task} onAccept={handleAcceptSuccess} />
-                        )) : (
-                           !isOffersLoading &&  <div className="text-center py-8 text-muted-foreground">No offers received yet.</div>
-                        )}
-                    </CardContent>
-                </Card>
                 <RecommendedHelpers task={task} />
             </>
           ) : isAssignedHelperView ? (
@@ -642,5 +632,3 @@ function TaskDetailSkeleton() {
     </div>
   )
 }
-
-      

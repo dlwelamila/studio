@@ -1,16 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { serverTimestamp, GeoPoint, DocumentReference } from 'firebase/firestore';
-import { MapPin, Loader, AlertTriangle, Clock } from 'lucide-react';
+import { serverTimestamp, DocumentReference } from 'firebase/firestore';
+import { Loader, AlertTriangle, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import type { Task } from '@/lib/data';
+import type { Task, Offer } from '@/lib/data';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useTimer } from 'react-timer-hook';
 import { differenceInSeconds } from 'date-fns';
+import { useUserRole } from '@/context/user-role-context';
 
 type ArrivalCheckInProps = {
   task: Task;
@@ -33,11 +34,12 @@ function Countdown({ expiryTimestamp, onExpire }: { expiryTimestamp: Date, onExp
 
 export function ArrivalCheckIn({ task, taskRef, mutateTask }: ArrivalCheckInProps) {
   const { toast } = useToast();
+  const { role } = useUserRole();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const acceptedOffer = task.offers.find(o => o.id === task.acceptedOfferId);
-  const eta = acceptedOffer?.eta.toDate();
+  const acceptedOffer = task.offers?.find(o => o.id === task.acceptedOfferId);
+  const eta = acceptedOffer?.etaAt.toDate();
 
   const [isCheckInWindowOpen, setIsCheckInWindowOpen] = useState(eta ? differenceInSeconds(new Date(), eta) >= 0 : false);
 
@@ -66,10 +68,11 @@ export function ArrivalCheckIn({ task, taskRef, mutateTask }: ArrivalCheckInProp
   };
   
    const handleCustomerConfirm = () => {
+    if (!task.helperCheckInTime) return;
     updateDocumentNonBlocking(taskRef, {
         status: 'ACTIVE',
         customerConfirmationTime: serverTimestamp(),
-        arrivedAt: task.helperCheckInTime, // Use the time helper initiated check-in
+        arrivedAt: task.helperCheckInTime, 
     });
     mutateTask();
   };
@@ -89,10 +92,11 @@ export function ArrivalCheckIn({ task, taskRef, mutateTask }: ArrivalCheckInProp
             </CardHeader>
             <CardContent className="text-center">
                 <p className="text-muted-foreground">Waiting for customer to confirm your arrival...</p>
-                {/* This button is for demonstration. In a real app, it would only be on the customer's screen. */}
-                <Button onClick={handleCustomerConfirm} className="mt-4">
-                    (Demo) Customer Confirm Arrival
-                </Button>
+                {role === 'customer' && (
+                  <Button onClick={handleCustomerConfirm} className="mt-4">
+                      Confirm Helper Arrival
+                  </Button>
+                )}
             </CardContent>
         </Card>
     )

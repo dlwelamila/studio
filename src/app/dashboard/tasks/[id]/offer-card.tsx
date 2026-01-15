@@ -135,5 +135,3 @@ export function OfferCard({ offer, task, onAccept }: OfferCardProps) {
     </Card>
   );
 }
-
-    

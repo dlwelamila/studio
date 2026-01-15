@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -5,15 +6,13 @@ import Link from 'next/link';
 import { useUserRole } from '@/context/user-role-context';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
-import type { TaskThread, Helper, Customer } from '@/lib/data';
+import type { TaskThread, Helper, Customer, Task } from '@/lib/data';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { MessagesSquare } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
 import Image from 'next/image';
-import { Badge } from '@/components/ui/badge';
-
 
 export default function InboxPage() {
     const { role } = useUserRole();
@@ -34,7 +33,7 @@ export default function InboxPage() {
 
     const description = role === 'customer' 
         ? "This is where you'll find your conversations with helpers who are interested in your tasks."
-        : "This is where you'll find your conversations with your customers.";
+        : "This is where you'll find your conversations with customers about tasks.";
 
     return (
         <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
@@ -71,7 +70,6 @@ export default function InboxPage() {
 function ThreadItem({ thread, currentUserId, role }: { thread: TaskThread, currentUserId: string, role: 'customer' | 'helper' }) {
     const firestore = useFirestore();
     
-    // Determine the other user's ID
     const otherUserId = role === 'customer' ? thread.helperId : thread.customerId;
     const otherUserCollection = role === 'customer' ? 'helpers' : 'customers';
 
@@ -80,7 +78,15 @@ function ThreadItem({ thread, currentUserId, role }: { thread: TaskThread, curre
         return doc(firestore, otherUserCollection, otherUserId);
     }, [firestore, otherUserId, otherUserCollection]);
 
-    const { data: otherUser, isLoading } = useDoc<Helper | Customer>(otherUserRef);
+    const taskRef = useMemoFirebase(() => {
+        if (!firestore || !thread.taskId) return null;
+        return doc(firestore, 'tasks', thread.taskId);
+    }, [firestore, thread.taskId]);
+
+    const { data: otherUser, isLoading: isUserLoading } = useDoc<Helper | Customer>(otherUserRef);
+    const { data: task, isLoading: isTaskLoading } = useDoc<Task>(taskRef);
+    
+    const isLoading = isUserLoading || isTaskLoading;
 
     return (
         <Link
@@ -100,7 +106,7 @@ function ThreadItem({ thread, currentUserId, role }: { thread: TaskThread, curre
             )}
             <div className="flex-1">
                 <p className="font-semibold">{isLoading ? <Skeleton className="h-5 w-32" /> : otherUser?.fullName}</p>
-                <p className="text-sm text-muted-foreground line-clamp-1">{thread.taskTitle}</p>
+                <p className="text-sm text-muted-foreground line-clamp-1">{isLoading ? <Skeleton className="h-4 w-48 mt-1" /> : task?.title}</p>
                 <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{thread.lastMessagePreview || 'No messages yet'}</p>
             </div>
             <div className="text-right">
@@ -128,5 +134,3 @@ function ThreadItemSkeleton() {
         </div>
     )
 }
-
-    

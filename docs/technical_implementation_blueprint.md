@@ -1,193 +1,181 @@
-A. What’s causing the current crash (in plain terms)
+---
 
-Your app tries to read:
+# Participation, Negotiation Chat & Offer Flow — Technical Specification
 
-task_chats/s2WUG1lTGwBds7SLQdFu
+This section formalizes the **Participation → Negotiation → Offer → Assignment → Time-Based Check-In** workflow and documents the resolution of the current Firestore permission crash.
 
-…but the signed-in user (customer@taskey.app) is not allowed by Firestore rules, OR the doc does not contain the fields your rules require (commonly members).
+This specification is **mandatory** for correct system behavior and application stability.
 
-So we must do two fixes in parallel:
+---
 
-Define the new chat/participation data model correctly (members + threads + messages).
+## A. Root Cause of Current Crash
 
-Update Firestore rules to match the model.
+The application attempts to read a chat document:
 
-Update frontend so chat reads don’t happen until membership is known (no boot-killer).
+`task_chats/s2WUG1lTGwBds7SLQdFu`
 
-B. Recommended data model for the new flow (safe + scalable)
-Collections (minimum)
-1) tasks/{taskId}
+The signed-in user (`customer@taskey.app`) is denied by Firestore Security Rules because:
+- The document does not match the required rule conditions, **or**
+- The document does not contain required fields expected by rules (commonly `members`).
 
-Add:
+Resolution requires **three parallel fixes**:
 
-customerId (uid)
+1. Define the Participation & Chat data model correctly (members, threads, messages).
+2. Update Firestore Security Rules to strictly match the new model.
+3. Update frontend logic so chat documents are never read before membership is known (no boot-blocking reads).
 
-status: OPEN | ASSIGNED | IN_PROGRESS | DONE | CANCELLED
+---
 
-assignedHelperId (uid|null)
+## B. Recommended Data Model (Safe & Scalable)
 
-dueAt (timestamp) — customer due date/time window
+### B1. Tasks
+**Collection:** `tasks/{taskId}`
 
-allowOffers (bool) — true only while OPEN
+Required fields:
+- `customerId` (uid)
+- `status`: `OPEN | ASSIGNED | IN_PROGRESS | DONE | CANCELLED`
+- `assignedHelperId` (uid | null)
+- `dueAt` (timestamp)
+- `allowOffers` (boolean) — true only while status is `OPEN`
+- `participantsCount` (number, optional, UI only)
 
-participantsCount (number) — optional for UI
+---
 
-2) task_participants/{taskId}_{helperId}
-
-One doc per helper who clicked “Participate”.
-Fields:
-
-taskId
-
-customerId
-
-helperId
-
-status: ACTIVE | WITHDRAWN | SELECTED | NOT_SELECTED
-
-createdAt
-
-lastMessageAt
-
-This is your “tender participants list” and the basis for the customer Inbox threads.
-
-3) task_threads/{threadId} (one thread per task per helper)
-
-Thread ID: ${taskId}_${helperId}
-Fields:
-
-taskId
-
-customerId
-
-helperId
-
-members: [customerId, helperId] ✅ required
-
-createdAt
-
-lastMessageAt
-
-lastMessagePreview (string)
-
-4) task_threads/{threadId}/messages/{messageId}
+### B2. Task Participants
+**Collection:** `task_participants/{taskId}_{helperId}`  
+One document per Helper who clicks **Participate**.
 
 Fields:
+- `taskId`
+- `customerId`
+- `helperId`
+- `status`: `ACTIVE | WITHDRAWN | SELECTED | NOT_SELECTED`
+- `createdAt`
+- `lastMessageAt`
 
-senderId
+This collection represents the **tender participation list** and drives the Customer Inbox.
 
-text
+---
 
-createdAt
-
-type: TEXT | SYSTEM
-
-Optional: meta (e.g., system events like “task assigned”)
-
-5) offers/{taskId}_{helperId} (or tasks/{taskId}/offers/{offerId})
+### B3. Task Threads
+**Collection:** `task_threads/{threadId}`  
+**Thread ID format:** `${taskId}_${helperId}`
 
 Fields:
+- `taskId`
+- `customerId`
+- `helperId`
+- `members`: `[customerId, helperId]` **(required)**
+- `createdAt`
+- `lastMessageAt`
+- `lastMessagePreview` (string)
 
-taskId
+Each thread represents a **private negotiation channel** between one Helper and the Customer.
 
-customerId
+---
 
-helperId
+### B4. Thread Messages
+**Collection:** `task_threads/{threadId}/messages/{messageId}`
 
-price
+Fields:
+- `senderId`
+- `text`
+- `createdAt`
+- `type`: `TEXT | SYSTEM`
+- `meta` (optional; e.g. assignment events)
 
-etaAt (timestamp) ✅ (date + time)
+---
 
-status: SUBMITTED | ACCEPTED | REJECTED | WITHDRAWN
+### B5. Offers
+**Collection:**  
+- `offers/{taskId}_{helperId}`  
+  **or**
+- `tasks/{taskId}/offers/{offerId}`
 
-createdAt
+Fields:
+- `taskId`
+- `customerId`
+- `helperId`
+- `price`
+- `etaAt` (timestamp) — date & time promised by Helper
+- `status`: `SUBMITTED | ACCEPTED | REJECTED | WITHDRAWN`
+- `createdAt`
 
-C. Updated workflow mapping to your 5 steps
-Step 1 — Task posted
+---
 
-Task is visible in feed to everyone allowed (helpers + customers, sanitized fields).
+## C. Updated Workflow Mapping (5 Steps)
 
-Step 2 — Participation (interest intent)
+### Step 1 — Task Posted
+- Task appears in feeds for authorized users.
+- Only sanitized fields are visible.
 
-Helper clicks “Click here to Participate”
+---
 
-System:
+### Step 2 — Participation (Interest Intent)
+Helper clicks **“Click here to Participate”**.
 
-creates task_participants/{taskId}_{helperId} with ACTIVE
+System actions:
+- Create `task_participants/{taskId}_{helperId}` with `status = ACTIVE`
+- Create `task_threads/{taskId}_{helperId}` with `members`
+- Optionally create a SYSTEM message:
+  - “Helper joined the conversation”
 
-creates task_threads/{taskId}_{helperId} with members and metadata
+This stage **does not submit pricing**.
 
-optionally creates a first SYSTEM message: “Helper joined the conversation”
+---
 
-This is the key new stage. It does not submit final pricing yet.
+### Step 3 — Negotiation Chat
+- Helper and Customer communicate inside the thread.
+- Customer Inbox shows **one thread per Helper** (WhatsApp-style).
+- Chat visibility is restricted to thread members only.
 
-Step 3 — Negotiation chat
+---
 
-Helper and Customer chat in the thread.
+### Step 4 — Offer Submission (Task Still OPEN)
+Helpers may submit offers only if:
+- `task.status == OPEN`
+- `participant.status == ACTIVE`
 
-Customer inbox is thread list: one thread per helper participant (like WhatsApp).
+On Customer acceptance:
+- Task → `ASSIGNED`
+- Winning participant → `SELECTED`
+- Others → `NOT_SELECTED`
 
-The chat is strictly between the two members.
+System sends SYSTEM messages:
+- Winner: “You were selected”
+- Others: “Thank you — another helper was selected”
 
-Step 4 — Offer submission (still while task OPEN)
+After assignment:
+- No new offers allowed.
 
-Helpers can submit offers only if:
+---
 
-task status is OPEN
+### Step 5 — Countdown + Time-Based Check-In + Customer Confirmation
 
-participant status is ACTIVE
+After offer acceptance:
+- Store `etaAt` on accepted offer
 
-Customer sees all offers and accepts one.
+Check-in rules:
+- Allowed window:
+  - `now >= etaAt`
+  - `now <= etaAt + 30 minutes`
+- Early check-in blocked
+- Late (>30 min) check-in permanently blocked and helper flagged late
 
-On accept:
+Flow:
+1. Helper presses **Check-in**
+2. Customer receives confirmation prompt
+3. Customer confirms **YES**
+4. System records `checkinConfirmedAt`
+5. **Start Task** button unlocks for Helper
 
-Task becomes ASSIGNED
+---
 
-Winning participant becomes SELECTED
+## D. Firestore Security Rules (Minimum Safe Set)
 
-Others become NOT_SELECTED
+### D1. Threads & Messages (Members Only)
 
-System sends SYSTEM message to all threads:
-
-winner: “You were selected”
-
-others: “Thank you — another helper was selected”
-
-Important: after assignment, offers must be blocked for everyone else.
-
-Step 5 — Countdown + time-based check-in + customer confirm
-
-After offer accepted:
-
-store etaAt on the accepted offer
-
-check-in becomes time-window based:
-
-helper can check-in only within:
-
-from etaAt to etaAt + 30 minutes
-
-cannot check-in before etaAt
-
-if late > 30 min, check-in permanently blocked and helper is marked late
-
-Then:
-
-Helper presses “Check-in”
-
-Customer receives a “Confirm helper onsite?” prompt
-
-Customer taps YES → check-in confirmed
-
-Only after confirmation:
-
-Helper sees “Start Task” enabled
-
-D. Firestore Security Rules (minimum safe set)
-1) Threads and Messages — member-only
-
-Critical rule: thread must include members: [customerId, helperId]
-
+```ruby
 match /task_threads/{threadId} {
   allow read: if signedIn() && isThreadMember();
   allow create: if signedIn() && isCreatingOwnThread();
@@ -214,17 +202,17 @@ match /task_threads/{threadId} {
     allow update, delete: if false;
   }
 }
-
-2) Participants
+D2. Task Participants
+ruby
+Copy code
 match /task_participants/{pid} {
   allow read: if signedIn() && (
     resource.data.customerId == request.auth.uid ||
     resource.data.helperId == request.auth.uid
   );
 
-  allow create: if signedIn() && (
-    request.resource.data.helperId == request.auth.uid
-  );
+  allow create: if signedIn() &&
+    request.resource.data.helperId == request.auth.uid;
 
   allow update: if signedIn() && (
     resource.data.helperId == request.auth.uid ||
@@ -233,89 +221,86 @@ match /task_participants/{pid} {
 
   allow delete: if false;
 }
+This prevents cross-access while supporting negotiation.
 
+E. Frontend Boot Stability Rule
+Chat subscriptions must never crash the application.
 
-You can tighten this later, but this prevents cross-access.
+Approved Patterns
+Pattern 1 (Preferred):
 
-E. Frontend boot stability rule (fix the crash permanently)
-
-Your useDoc hook must not crash the whole app on permission errors. Two safe patterns:
-
-Pattern 1 (best): Don’t subscribe unless allowed
-
-In chat screen:
-
-first query for thread list using a query that the user is always allowed:
+Query thread list using:
 
 task_threads where members array-contains auth.uid
 
-only open a specific thread once it appears in that list.
+Open individual thread only after it appears in the list
 
-Pattern 2: Permission denied is a UI state
+Pattern 2:
 
-useDoc returns {status: 'forbidden'} instead of throwing
+useDoc returns { status: 'forbidden' }
 
-UI shows “You don’t have access to this chat.”
+UI renders a safe “No access to this chat” state
 
-Either way, app boots.
+Permission errors must be handled as UI states, not fatal errors.
 
-F. Concrete UI changes (as per your flow)
-Helper side
+F. Required UI Changes
+Helper Side
+Task Detail (status = OPEN):
 
-Task detail screen:
+Primary CTA: “Click here to Participate”
 
-New primary button while task OPEN:
+After participation:
 
-“Click here to Participate”
+Open Chat
 
-After participating:
+Make Offer (until task assigned)
 
-show “Open Chat”
-
-show “Make Offer” (still allowed until assignment)
-
-Customer side
-
+Customer Side
 Inbox:
 
-List threads (WhatsApp style)
+Thread list (one per helper)
 
-Each thread shows helper name + last message preview
+Helper name + last message preview
 
-Task view:
+Task View:
 
-“Participants” list
+Participants list
 
-“Offers” list
+Offers list
 
-“Assign Helper” action
+Assign Helper action
 
 Check-in confirmation prompt:
 
 YES / NO
 
-if YES → unlock Start Task for helper
+YES unlocks Start Task for Helper
 
-G. Check-in timing rules (exact)
+G. Check-In Timing Rules (Exact)
+Offer must include etaAt
 
-Offer must store etaAt (timestamp)
+Check-in allowed if:
 
-Check-in allowed window:
+now >= etaAt
 
-allowed if now >= etaAt AND now <= etaAt + 30min
+now <= etaAt + 30 minutes
 
-If now > etaAt + 30min
+If now > etaAt + 30 minutes:
 
-check-in forbidden
+Check-in forbidden
 
-mark helper late (reliability impact event)
+Helper marked late
 
-If helper tries check-in early:
+Early attempt:
 
-show “Check-in opens at HH:MM”
+Show: “Check-in opens at HH:MM”
 
-Customer confirmation required:
+Customer confirmation:
 
-check-in request creates checkinRequests/{taskId} (or task subcollection)
+Create checkinRequests/{taskId} (or subcollection)
 
-customer confirms → server marks checkinConfirmedAt
+On confirmation:
+
+Set checkinConfirmedAt
+
+End of Participation & Negotiation Flow specification.

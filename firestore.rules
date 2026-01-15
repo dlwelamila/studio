@@ -79,11 +79,12 @@ service cloud.firestore {
       // Allow list for all signed-in users (feed), but get is restricted.
       allow list: if isSignedIn();
       
-      // Get is allowed if task is OPEN, or if user is owner/assigned helper.
+      // Get is allowed if task is OPEN, or if user is owner/assigned helper/participant.
       allow get: if isSignedIn() && (
         resource.data.status == 'OPEN' || 
         isResourceOwner(resource, 'customerId') || 
-        isAssignedHelper(resource.data)
+        isAssignedHelper(resource.data) ||
+        exists(/databases/$(database)/documents/task_participants/$(taskId + '_' + request.auth.uid))
       );
 
       allow create: if isCreatingOwnResource('customerId') && exists(/databases/$(database)/documents/customers/$(request.auth.uid));
@@ -114,14 +115,14 @@ service cloud.firestore {
     }
     
     match /task_threads/{threadId} {
-      allow read: if isSignedIn() && isThreadMember();
+      allow read: if isSignedIn() && request.auth.uid in resource.data.members;
       allow create: if isSignedIn() && isCreatingOwnThread();
-      allow update: if isSignedIn() && isThreadMember();
+      allow update: if isSignedIn() && request.auth.uid in resource.data.members;
       allow delete: if false;
 
       match /messages/{messageId} {
-        allow read: if isSignedIn() && isThreadMember();
-        allow create: if isSignedIn() && isThreadMember()
+        allow read, list: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/task_threads/$(threadId)).data.members;
+        allow create: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/task_threads/$(threadId)).data.members
           && request.resource.data.senderId == request.auth.uid
           && request.resource.data.text is string
           && request.resource.data.text.size() <= 1500;
@@ -135,9 +136,8 @@ service cloud.firestore {
         resource.data.helperId == request.auth.uid
       );
 
-      allow create: if isSignedIn() && (
-        request.resource.data.helperId == request.auth.uid
-      );
+      allow create: if isSignedIn() &&
+        request.resource.data.helperId == request.auth.uid;
 
       allow update: if isSignedIn() && (
         resource.data.helperId == request.auth.uid ||
@@ -164,5 +164,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
