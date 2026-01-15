@@ -123,7 +123,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
         status: 'ACTIVE',
         createdAt: serverTimestamp(),
     };
-    setDocumentNonBlocking(participantRef, participantData);
+    setDocumentNonBlocking(participantRef, participantData, {});
     
     // Create thread document
     const threadData = {
@@ -136,7 +136,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
         lastMessagePreview: 'You have joined the conversation.',
         lastMessageAt: serverTimestamp(),
     };
-    setDocumentNonBlocking(threadRef, threadData);
+    setDocumentNonBlocking(threadRef, threadData, {});
 
     toast({ title: 'You are now participating!', description: 'You can now chat with the customer in your inbox.' });
   }

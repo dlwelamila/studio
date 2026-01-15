@@ -109,6 +109,7 @@ export default function NewTaskPage() {
             timeWindow: 'Flexible',
             status: 'OPEN',
             createdAt: serverTimestamp(),
+            allowOffers: true,
         };
 
         try {
@@ -350,5 +351,3 @@ export default function NewTaskPage() {
     </div>
   );
 }
-
-    
