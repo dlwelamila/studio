@@ -3,7 +3,7 @@
 import { use, useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronLeft, Star, AlertTriangle, Briefcase, Wrench, CircleX, UserCheck, Clock, CheckCircle } from 'lucide-react';
+import { ChevronLeft, Star, AlertTriangle, Briefcase, Wrench, CircleX, UserCheck, Clock, CheckCircle, MessagesSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -103,8 +103,8 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const feedbacksQuery = useMemoFirebase(() => firestore && task ? query(collection(firestore, 'feedbacks'), where('taskId', '==', task.id)) : null, [firestore, task]);
   const { data: feedbacks, isLoading: areFeedbacksLoading } = useCollection<Feedback>(feedbacksQuery);
 
-  const taskChecklist = useMemo(() => task?.description.split('\n').filter(line => line.trim() !== '') || [], [task?.description]);
-  const completedItems = []; //This is not a real field.
+  const taskChecklist = useMemo(() => task?.description.split('\n').filter(line => line.trim() !== '' && line.trim().startsWith('- ')) || [], [task?.description]);
+  const completedItems = useMemo(() => task?.completedItems || [], [task]);
   const isChecklistComplete = useMemo(() => taskChecklist.length > 0 && completedItems.length === taskChecklist.length, [taskChecklist, completedItems]);
   const checklistProgress = useMemo(() => taskChecklist.length > 0 ? (completedItems.length / taskChecklist.length) * 100 : 0, [taskChecklist, completedItems]);
 
@@ -136,20 +136,6 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
         toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'Your profile is not yet approved to send offers.' });
         return;
     }
-
-    const offerData = {
-        taskId: task.id,
-        helperId: currentUser.uid,
-        price: data.price,
-        eta: data.eta,
-        message: data.message,
-        status: 'ACTIVE',
-        createdAt: serverTimestamp(),
-    };
-
-    const offersCollection = collection(firestore, 'tasks', task.id, 'offers');
-    addDocumentNonBlocking(offersCollection, offerData);
-    toast({ title: 'Offer Submitted!', description: 'The customer has been notified of your offer.' });
   }
 
   const handleAcceptSuccess = () => {
@@ -249,6 +235,13 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
             Task ID: {task.id}
           </p>
         </div>
+         {isCustomerView && (
+            <Button variant="outline" asChild>
+              <Link href={`/dashboard/inbox?taskId=${task.id}`}>
+                <MessagesSquare className="mr-2 h-4 w-4" /> View Chats
+              </Link>
+            </Button>
+          )}
       </div>
       <div className="grid gap-4 md:grid-cols-[1fr_250px] lg:grid-cols-3 lg:gap-8">
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
@@ -275,30 +268,37 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                 </Badge>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <h3 className="font-headline text-base font-semibold">Task Checklist</h3>
-                 {taskChecklist.length > 0 && isAssignedHelperView && (
-                    <div className="space-y-2">
-                        <Progress value={checklistProgress} className="h-2" />
-                        <p className="text-xs text-muted-foreground text-right">{completedItems.length} of {taskChecklist.length} items completed</p>
-                    </div>
-                )}
-                <div className="grid gap-2">
-                    {taskChecklist.map((item, index) => (
-                        <div key={index} className="flex items-center gap-3">
-                            <Checkbox 
-                                id={`check-${index}`} 
-                                disabled={!isAssignedHelperView || task.status !== 'ACTIVE'}
-                                checked={completedItems.includes(item)}
-                                onCheckedChange={(checked) => handleChecklistItemToggle(item, !!checked)}
-                            />
-                            <Label htmlFor={`check-${index}`} className="text-sm text-muted-foreground">
-                                {item}
-                            </Label>
+              <p className="text-muted-foreground whitespace-pre-wrap">
+                {task.description}
+              </p>
+
+              {taskChecklist.length > 0 && (
+                <div className="space-y-4 mt-6">
+                    <h3 className="font-headline text-base font-semibold">Task Checklist</h3>
+                    {isAssignedHelperView && (
+                        <div className="space-y-2">
+                            <Progress value={checklistProgress} className="h-2" />
+                            <p className="text-xs text-muted-foreground text-right">{completedItems.length} of {taskChecklist.length} items completed</p>
                         </div>
-                    ))}
+                    )}
+                    <div className="grid gap-2">
+                        {taskChecklist.map((item, index) => (
+                            <div key={index} className="flex items-center gap-3 rounded-md border p-3">
+                                <Checkbox 
+                                    id={`check-${index}`} 
+                                    disabled={!isAssignedHelperView || task.status !== 'ACTIVE'}
+                                    checked={completedItems.includes(item)}
+                                    onCheckedChange={(checked) => handleChecklistItemToggle(item, !!checked)}
+                                />
+                                <Label htmlFor={`check-${index}`} className="text-sm text-foreground">
+                                    {item.substring(1).trim()}
+                                </Label>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-              </div>
+              )}
+              
               <Separator className="my-6" />
                <div className="grid grid-cols-2 gap-y-6 gap-x-4">
                 <div>
@@ -465,110 +465,17 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                 </CardContent>
              </Card>
           ) : (
-            <>
-                {task.status === 'OPEN' && !hasMadeOffer && (
-                    <>
-                    {journey?.capabilities.canSendOffers ? (
-                        <Card>
-                            <Form {...form}>
-                                <form onSubmit={form.handleSubmit(handleMakeOffer)}>
-                                    <CardHeader>
-                                    <CardTitle className="font-headline">Make an Offer</CardTitle>
-                                    <CardDescription>
-                                        Submit your price and a message to the customer.
-                                    </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="grid gap-6">
-                                        <FormField
-                                            control={form.control}
-                                            name="price"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                <FormLabel>Your Price (TZS)</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" placeholder="e.g., 25,000" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="eta"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                <FormLabel>Availability / ETA</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="e.g., Tomorrow afternoon" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="message"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                <FormLabel>Message to Customer</FormLabel>
-                                                <FormControl>
-                                                    <Textarea placeholder="Introduce yourself and explain why you're a good fit for this task." className="min-h-24" {...field}/>
-                                                </FormControl>
-                                                <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </CardContent>
-                                    <CardFooter>
-                                        <Button type="submit" className="ml-auto" disabled={form.formState.isSubmitting}>
-                                            {form.formState.isSubmitting ? 'Submitting...' : 'Submit Offer'}
-                                        </Button>
-                                    </CardFooter>
-                                </form>
-                            </Form>
-                        </Card>
-                    ) : (
-                        <Card>
-                             <CardHeader>
-                                <CardTitle className="font-headline flex items-center gap-2">
-                                    <UserCheck className="h-5 w-5" />
-                                    Become a Verified Helper
-                                </CardTitle>
-                                <CardDescription>
-                                    You must complete your profile and get verified before you can make offers on tasks.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <Button asChild className="w-full">
-                                    <Link href="/dashboard/profile">Complete Your Profile</Link>
-                                </Button>
-                                <p className="text-xs text-center text-muted-foreground mt-3">Once your profile is complete, our team will review it for verification.</p>
-                            </CardContent>
-                        </Card>
-                    )}
-                    </>
-                )}
-                {task.status === 'OPEN' && hasMadeOffer && (
-                     <Card>
-                        <CardHeader>
-                            <CardTitle className="font-headline">Your Offer</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-center py-8 text-muted-foreground">You have already submitted an offer for this task. The customer will be in touch if they select you.</p>
-                        </CardContent>
-                    </Card>
-                )}
-                 {task.status !== 'OPEN' && !isAssignedHelperView && (
-                     <Card>
-                        <CardHeader>
-                            <CardTitle className="font-headline">Task Not Available</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-center py-8 text-muted-foreground">This task is no longer open for offers.</p>
-                        </CardContent>
-                    </Card>
-                )}
-            </>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline">Participate</CardTitle>
+                    <CardDescription>Express interest and ask the customer questions before making a formal offer.</CardDescription>
+                </CardHeader>
+                <CardFooter>
+                    <Button className="w-full" asChild>
+                        <Link href={`/dashboard/inbox?taskId=${task.id}&helperId=${currentUser?.uid}`}>Participate & Ask a Question</Link>
+                    </Button>
+                </CardFooter>
+            </Card>
           )}
 
         </div>
@@ -734,3 +641,5 @@ function TaskDetailSkeleton() {
     </div>
   )
 }
+
+    

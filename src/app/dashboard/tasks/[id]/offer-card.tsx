@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Star, AlarmClock } from 'lucide-react';
 import { doc, serverTimestamp } from 'firebase/firestore';
+import { format } from 'date-fns';
 
 import type { Offer, Helper, Task } from '@/lib/data';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
@@ -118,7 +119,7 @@ export function OfferCard({ offer, task, onAccept }: OfferCardProps) {
         <p className="text-sm text-muted-foreground">{offer.message}</p>
         <div className="flex items-center text-sm text-muted-foreground mt-3">
             <AlarmClock className="h-4 w-4 mr-2" />
-            {offer.eta}
+            <span>ETA: {format(offer.eta.toDate(), 'PPP, p')}</span>
         </div>
         <div className="mt-4 flex justify-end gap-2">
             <Button variant="ghost" asChild>
@@ -132,3 +133,5 @@ export function OfferCard({ offer, task, onAccept }: OfferCardProps) {
     </Card>
   );
 }
+
+    

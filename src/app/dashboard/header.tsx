@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { Home, PanelLeft, Settings, Package2, Users2, Briefcase, Handshake, Repeat, PlusCircle, LifeBuoy } from 'lucide-react';
+import { Home, PanelLeft, Settings, Package2, Users2, Briefcase, Handshake, Repeat, PlusCircle, LifeBuoy, MessagesSquare } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -36,6 +36,7 @@ const breadcrumbMap: Record<string, Record<string, string>> = {
         '/dashboard': 'My Tasks',
         '/dashboard/tasks/new': 'New Task',
         '/dashboard/profile': 'My Profile',
+        '/dashboard/inbox': 'Inbox',
         '/support': 'Support',
     },
     helper: {
@@ -43,6 +44,7 @@ const breadcrumbMap: Record<string, Record<string, string>> = {
         '/dashboard/browse': 'Browse Tasks',
         '/dashboard/gigs': 'My Gigs',
         '/dashboard/profile': 'My Profile',
+        '/dashboard/inbox': 'Inbox',
         '/support': 'Support',
     }
 }
@@ -125,6 +127,13 @@ export default function AppHeader() {
                       My Gigs
                   </Link>
               )}
+               <Link
+                href="/dashboard/inbox"
+                className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+              >
+                <MessagesSquare className="h-5 w-5" />
+                Inbox
+              </Link>
               <Link
                 href="/dashboard/profile"
                 className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
@@ -221,3 +230,5 @@ export default function AppHeader() {
     </header>
   );
 }
+
+    

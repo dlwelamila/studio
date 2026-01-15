@@ -17,6 +17,7 @@ export type Helper = {
   aboutMe: string;
   isAvailable: boolean;
   memberSince: Timestamp;
+  phoneVerified?: boolean;
 
   // New Lifecycle Fields
   verificationStatus: 'PENDING' | 'APPROVED' | 'SUSPENDED';
@@ -26,24 +27,27 @@ export type Helper = {
   };
   lifecycleStage: 'REGISTERED' | 'PROFILE_INCOMPLETE' | 'PENDING_VERIFICATION' | 'VERIFIED_READY' | 'ACTIVE' | 'GROWING' | 'SUSPENDED';
   stats: {
+    totalAttempted: number;
     jobsCompleted: number;
     jobsCancelled: number;
+    completionRate: number;
     ratingAvg: number;
     reliabilityLevel: 'GREEN' | 'YELLOW' | 'RED';
   };
+  walletSummary: {
+      lifetimeEarnings: number;
+      currency: 'TZS';
+  };
   
   // Legacy fields to be deprecated or merged into stats
-  references?: string;
-  additionalSkills?: string;
   reliabilityIndicator: 'Good' | 'Average' | 'Poor';
-  rating?: number;
-  completedTasks?: number;
 };
 
 export type Customer = {
   id: string; // Corresponds to Firebase Auth UID
   fullName: string;
   phoneNumber: string;
+  phoneVerified?: boolean;
   email?: string;
   rating?: number;
   profilePhotoUrl: string;
@@ -67,10 +71,14 @@ export type Task = {
   assignedHelperId?: string;
   createdAt: Timestamp;
   assignedAt?: Timestamp;
+  arrivedAt?: Timestamp; // When helper checks in
   startedAt?: Timestamp;
   completedAt?: Timestamp;
   disputedAt?: Timestamp;
   dueDate?: Timestamp;
+  completedItems: string[];
+  helperCheckInTime?: Timestamp;
+  customerConfirmationTime?: Timestamp;
 };
 
 export type Offer = {
@@ -78,7 +86,7 @@ export type Offer = {
   taskId: string;
   helperId: string;
   price: number;
-  eta: string; // Availability / ETA
+  eta: Timestamp;
   message: string;
   status: 'ACTIVE' | 'WITHDRAWN' | 'ACCEPTED' | 'REJECTED';
   createdAt: Timestamp;
@@ -104,6 +112,19 @@ export type SupportTicket = {
   createdAt: Timestamp;
 };
 
+export type ChatParticipant = {
+  id: string; // helperId
+  name: string;
+  avatarUrl: string;
+};
+
+export type ChatMessage = {
+  id: string;
+  senderId: string;
+  text: string;
+  createdAt: Timestamp;
+};
+
 
 export const taskCategories = [
     'Cleaning',
@@ -115,3 +136,5 @@ export const taskCategories = [
     'Shopping',
     'Other'
 ];
+
+    

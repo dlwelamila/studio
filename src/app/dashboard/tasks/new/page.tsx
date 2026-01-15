@@ -181,14 +181,17 @@ export default function NewTaskPage() {
                     name="description"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Description</FormLabel>
+                        <FormLabel>Description & Checklist</FormLabel>
                         <FormControl>
                            <Textarea
-                                placeholder="Describe what needs to be done. Use separate lines for checklist items. Include any important details like size of the area, specific instructions, or if you will provide supplies."
+                                placeholder="Describe what needs to be done. Use a new line with a hyphen (-) for each checklist item."
                                 className="min-h-32"
                                 {...field}
                             />
                         </FormControl>
+                         <FormDescription>
+                           Example: - Clean the oven. - Wash the floors.
+                         </FormDescription>
                         <FormMessage />
                         </FormItem>
                     )}
@@ -347,3 +350,5 @@ export default function NewTaskPage() {
     </div>
   );
 }
+
+    

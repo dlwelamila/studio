@@ -7,6 +7,7 @@ import {
   Package2,
   Settings,
   Handshake,
+  MessagesSquare,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
@@ -22,11 +23,13 @@ import {
 const CustomerNav = [
   { href: '/dashboard', label: 'My Tasks', icon: Home },
   { href: '/dashboard/tasks/new', label: 'New Task', icon: Package2 },
+  { href: '/dashboard/inbox', label: 'Inbox', icon: MessagesSquare },
 ];
 
 const HelperNav = [
   { href: '/dashboard/browse', label: 'Browse Tasks', icon: Home },
   { href: '/dashboard/gigs', label: 'My Gigs', icon: Briefcase },
+  { href: '/dashboard/inbox', label: 'Inbox', icon: MessagesSquare },
 ];
 
 export function AppSidebar() {
@@ -54,8 +57,8 @@ export function AppSidebar() {
                   href={item.href}
                   className={cn(
                     'flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8',
-                    pathname === item.href &&
-                      'bg-accent text-accent-foreground'
+                    pathname.startsWith(item.href) && item.href !== '/dashboard' || (pathname === '/dashboard' && item.href === '/dashboard') ?
+                      'bg-accent text-accent-foreground' : ''
                   )}
                 >
                   <item.icon className="h-5 w-5" />
@@ -88,3 +91,5 @@ export function AppSidebar() {
     </aside>
   );
 }
+
+    
