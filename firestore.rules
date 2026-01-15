@@ -106,6 +106,17 @@ service cloud.firestore {
       }
     }
     
+    match /task_chats/{chatId} {
+      allow get, list: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+      allow create: if isCreatingOwnResource('customerId');
+      allow update: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+
+      match /messages/{messageId} {
+        allow get, list: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/task_chats/$(chatId)).data.participantIds;
+        allow create: if isCreatingOwnResource('senderId') && request.auth.uid in get(/databases/$(database)/documents/task_chats/$(chatId)).data.participantIds;
+      }
+    }
+    
     match /feedbacks/{feedbackId} {
        allow get, list: if true;
        allow create: if isCreatingOwnResource('customerId');
