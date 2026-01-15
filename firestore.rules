@@ -35,14 +35,6 @@ service cloud.firestore {
       return request.resource.data[key] == resource.data[key];
     }
     
-    function hasRequiredFields(role) {
-      let fields = ['id', 'fullName', 'phoneNumber'];
-      if (role == 'helper') {
-        fields.push('serviceCategories', 'serviceAreas', 'aboutMe');
-      }
-      return request.resource.data.keys().hasAll(fields);
-    }
-    
     function canUpdateTaskStatus(currentStatus, nextStatus) {
       // Helper transitions
       return (currentStatus == 'ASSIGNED' && nextStatus == 'ACTIVE') ||
@@ -57,16 +49,16 @@ service cloud.firestore {
     match /customers/{userId} {
       allow get: if isSignedIn();
       allow list: if isSignedIn();
-      allow create: if isOwner(userId) && hasRequiredFields('customer');
-      allow update: if isOwner(userId) && ownerFieldIsImmutable('id') && ownerFieldIsImmutable('phoneNumber');
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isOwner(userId) && ownerFieldIsImmutable('id');
       allow delete: if isOwner(userId);
     }
     
     match /helpers/{userId} {
       allow get: if isSignedIn();
       allow list: if isSignedIn();
-      allow create: if isOwner(userId) && hasRequiredFields('helper');
-      allow update: if isOwner(userId) && ownerFieldIsImmutable('id') && ownerFieldIsImmutable('phoneNumber');
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isOwner(userId) && ownerFieldIsImmutable('id');
       allow delete: if isOwner(userId);
     }
 
