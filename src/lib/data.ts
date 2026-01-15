@@ -112,10 +112,16 @@ export type SupportTicket = {
   createdAt: Timestamp;
 };
 
-export type ChatParticipant = {
-  id: string; // helperId
-  name: string;
-  avatarUrl: string;
+export type TaskChat = {
+  id: string; // Same as taskId
+  taskId: string;
+  taskTitle: string;
+  customerId: string;
+  participantIds: string[]; // [customerId, helperId1, helperId2, ...]
+  lastMessage?: {
+    text: string;
+    timestamp: Timestamp;
+  };
 };
 
 export type ChatMessage = {
@@ -136,3 +142,5 @@ export const taskCategories = [
     'Shopping',
     'Other'
 ];
+
+      

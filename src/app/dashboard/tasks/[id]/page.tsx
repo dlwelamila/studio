@@ -13,7 +13,7 @@ import { serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
 
 import { useUserRole } from '@/context/user-role-context';
 import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { addDocumentNonBlocking, updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 import { doc, collection, query, where, GeoPoint } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
@@ -66,15 +66,6 @@ import { ArrivalCheckIn } from './arrival-check-in';
 import { Progress } from '@/components/ui/progress';
 
 
-const offerFormSchema = z.object({
-    price: z.coerce.number().positive({ message: "Please enter a valid price." }),
-    eta: z.date({ required_error: 'Please select an arrival date and time.' }),
-    message: z.string().min(10, { message: "Message must be at least 10 characters long."})
-});
-
-type OfferFormValues = z.infer<typeof offerFormSchema>;
-
-
 export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const { id } = use(params);
   const { role } = useUserRole();
@@ -96,6 +87,8 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const { data: currentHelperProfile } = useDoc<Helper>(helperProfileRef);
   const journey = useHelperJourney(currentHelperProfile);
 
+  const chatRef = useMemoFirebase(() => firestore && doc(firestore, 'task_chats', id), [firestore, id]);
+  const { data: chat } = useDoc(chatRef);
 
   const offersQuery = useMemoFirebase(() => firestore && query(collection(firestore, 'tasks', id, 'offers')), [firestore, id]);
   const { data: offers, isLoading: isOffersLoading, error: offersError } = useCollection<Offer>(offersQuery);
@@ -111,44 +104,25 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
 
   const isCustomerView = role === 'customer';
   const isAssignedHelperView = currentUser?.uid === task?.assignedHelperId;
-  const hasMadeOffer = !!offers?.some(o => o.helperId === currentUser?.uid);
+  const hasParticipated = chat?.participantIds?.includes(currentUser?.uid ?? '');
   const hasReviewed = (feedbacks?.length ?? 0) > 0;
   
   const canShowFitIndicator = !isCustomerView && !isAssignedHelperView && currentHelperProfile && task?.status === 'OPEN';
-
-
-  const form = useForm<OfferFormValues>({
-    resolver: zodResolver(offerFormSchema),
-    defaultValues: {
-        price: 0,
-        message: '',
-    }
-  });
   
-  const handleMakeOffer = (data: OfferFormValues) => {
-    if (!currentUser || !firestore || !task) {
-        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to make an offer.' });
-        return;
-    }
-
-    if (!journey?.capabilities.canSendOffers) {
-        toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'Your profile is not yet approved to send offers.' });
-        return;
-    }
-
-    const offerData = {
-        taskId: task.id,
-        helperId: currentUser.uid,
-        price: data.price,
-        eta: data.eta,
-        message: data.message,
-        status: 'ACTIVE',
-        createdAt: serverTimestamp(),
+  const handleParticipate = () => {
+    if (!chatRef || !currentUser || !task) return;
+    
+    const chatData = {
+      id: task.id,
+      taskId: task.id,
+      taskTitle: task.title,
+      customerId: task.customerId,
+      participantIds: arrayUnion(currentUser.uid),
     };
 
-    const offersCollection = collection(firestore, 'tasks', task.id, 'offers');
-    addDocumentNonBlocking(offersCollection, offerData);
-    toast({ title: 'Offer Submitted!', description: 'The customer has been notified of your offer.' });
+    setDocumentNonBlocking(chatRef, chatData, { merge: true });
+
+    toast({ title: 'You are now participating!', description: 'You can now chat with the customer.' });
   }
 
   const handleAcceptSuccess = () => {
@@ -231,6 +205,22 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
     );
   }
 
+  const participateButton = () => {
+      if (hasParticipated) {
+          return (
+              <Button className="w-full" asChild>
+                  <Link href={`/dashboard/inbox/${task.id}`}>Continue Chat</Link>
+              </Button>
+          )
+      }
+      return (
+          <Button onClick={handleParticipate} className="w-full">
+              Participate & Ask a Question
+          </Button>
+      )
+  };
+
+
   return (
     <div className="mx-auto grid max-w-6xl flex-1 auto-rows-max gap-4">
       <div className="flex items-center gap-4">
@@ -250,7 +240,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
         </div>
          {isCustomerView && (
             <Button variant="outline" asChild>
-              <Link href={`/dashboard/inbox?taskId=${task.id}`}>
+              <Link href={`/dashboard/inbox/${task.id}`}>
                 <MessagesSquare className="mr-2 h-4 w-4" /> View Chats
               </Link>
             </Button>
@@ -484,9 +474,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                     <CardDescription>Express interest and ask the customer questions before making a formal offer.</CardDescription>
                 </CardHeader>
                 <CardFooter>
-                    <Button className="w-full" asChild>
-                        <Link href={`/dashboard/inbox?taskId=${task.id}&helperId=${currentUser?.uid}`}>Participate & Ask a Question</Link>
-                    </Button>
+                    {participateButton()}
                 </CardFooter>
             </Card>
           )}
@@ -654,3 +642,5 @@ function TaskDetailSkeleton() {
     </div>
   )
 }
+
+      
