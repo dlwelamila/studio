@@ -2,11 +2,10 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useUserRole } from '@/context/user-role-context';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import type { TaskChat, Helper, Customer } from '@/lib/data';
+import type { TaskChat } from '@/lib/data';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { MessagesSquare } from 'lucide-react';
@@ -21,6 +20,7 @@ export default function InboxPage() {
 
     const chatsQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
+        // This query now matches the security rules
         return query(
             collection(firestore, 'task_chats'),
             where('participantIds', 'array-contains', user.uid)
@@ -32,8 +32,8 @@ export default function InboxPage() {
     const isLoading = isUserLoading || areChatsLoading;
 
     const description = role === 'customer' 
-        ? "This is where you'll find your conversations with helpers about your tasks."
-        : "This is where you'll find your conversations with customers.";
+        ? "This is where you'll find your conversations with helpers."
+        : "This is where you'll find your conversations with your customers.";
 
     return (
         <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
@@ -76,7 +76,7 @@ function ChatItem({ chat }: { chat: TaskChat }) {
         >
             <div className="flex-1">
                 <p className="font-semibold">{chat.taskTitle}</p>
-                <p className="text-sm text-muted-foreground line-clamp-1">{chat.lastMessage?.text}</p>
+                <p className="text-sm text-muted-foreground line-clamp-1">{chat.lastMessage?.text || 'No messages yet'}</p>
             </div>
             <div className="text-right">
                 {chat.lastMessage?.timestamp && (
@@ -104,5 +104,3 @@ function ChatItemSkeleton() {
         </div>
     )
 }
-
-      
