@@ -45,19 +45,6 @@ service cloud.firestore {
       // Customer transition
       return currentStatus == 'COMPLETED' && nextStatus == 'IN_DISPUTE';
     }
-    
-    // --- New Rules from Blueprint ---
-    function isThreadMember() {
-      return resource.data.members is list
-        && request.auth.uid in resource.data.members;
-    }
-
-    function isCreatingOwnThread() {
-      return request.resource.data.members is list
-        && request.auth.uid in request.resource.data.members
-        && request.resource.data.members.size() == 2;
-    }
-    // ---------------------------------
 
     match /customers/{userId} {
       allow get: if isSignedIn();
@@ -76,18 +63,9 @@ service cloud.firestore {
     }
 
     match /tasks/{taskId} {
-      // Allow list for all signed-in users (feed), but get is restricted.
+      allow get: if isSignedIn(); // Let client logic handle what to show
       allow list: if isSignedIn();
-      
-      // Get is allowed if task is OPEN, or if user is owner/assigned helper/participant.
-      allow get: if isSignedIn() && (
-        resource.data.status == 'OPEN' || 
-        isResourceOwner(resource, 'customerId') || 
-        isAssignedHelper(resource.data) ||
-        exists(/databases/$(database)/documents/task_participants/$(taskId + '_' + request.auth.uid))
-      );
-
-      allow create: if isCreatingOwnResource('customerId') && exists(/databases/$(database)/documents/customers/$(request.auth.uid));
+      allow create: if isCreatingOwnResource('customerId');
       
       allow update: if isSignedIn() && (
         // Customer can accept an offer or dispute a completed task
@@ -95,12 +73,8 @@ service cloud.firestore {
             ownerFieldIsImmutable('customerId') || 
             customerCanDispute(resource.data.status, request.resource.data.status)
         )) ||
-        // Helper can update status (ASSIGNED -> ACTIVE -> COMPLETED)
-        (isAssignedHelper(resource.data) && canUpdateTaskStatus(resource.data.status, request.resource.data.status) && ownerFieldIsImmutable('customerId') && ownerFieldIsImmutable('assignedHelperId')) ||
-        // Helper can check in (add arrivedAt and update status)
-        (isAssignedHelper(resource.data) && resource.data.status == 'ASSIGNED' && request.resource.data.keys().hasAll(['helperCheckInTime'])) ||
-        // Customer can confirm arrival
-        (isResourceOwner(resource, 'customerId') && resource.data.status == 'ASSIGNED' && request.resource.data.keys().hasAll(['customerConfirmationTime', 'status', 'arrivedAt']))
+        // Helper can update status from ASSIGNED -> ACTIVE -> COMPLETED
+        (isAssignedHelper(resource.data) && canUpdateTaskStatus(resource.data.status, request.resource.data.status) && ownerFieldIsImmutable('customerId') && ownerFieldIsImmutable('assignedHelperId'))
       );
       
       allow delete: if isResourceOwner(resource, 'customerId');
@@ -113,44 +87,18 @@ service cloud.firestore {
         allow delete: if isResourceOwner(resource, 'helperId');
       }
     }
-    
-    match /task_threads/{threadId} {
-      allow read: if isSignedIn() && request.auth.uid in resource.data.members;
-      allow create: if isSignedIn() && isCreatingOwnThread();
-      allow update: if isSignedIn() && request.auth.uid in resource.data.members;
-      allow delete: if false;
 
-      match /messages/{messageId} {
-        allow read, list: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/task_threads/$(threadId)).data.members;
-        allow create: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/task_threads/$(threadId)).data.members
-          && request.resource.data.senderId == request.auth.uid
-          && request.resource.data.text is string
-          && request.resource.data.text.size() <= 1500;
-        allow update, delete: if false;
-      }
-    }
-
-    match /task_participants/{pid} {
-      allow read: if isSignedIn() && (
-        resource.data.customerId == request.auth.uid ||
-        resource.data.helperId == request.auth.uid
-      );
-
-      allow create: if isSignedIn() &&
-        request.resource.data.helperId == request.auth.uid;
-
-      allow update: if isSignedIn() && (
-        resource.data.helperId == request.auth.uid ||
-        resource.data.customerId == request.auth.uid
-      );
-
+    match /ratings/{ratingId} {
+      allow get, list: if true;
+      allow create: if isCreatingOwnResource('customerId');
+      allow update: if false;
       allow delete: if false;
     }
     
     match /feedbacks/{feedbackId} {
        allow get, list: if true;
        allow create: if isCreatingOwnResource('customerId');
-       allow update, delete: if false; // Feedback is immutable
+       allow update, delete: if false;
     }
 
     match /support_tickets/{ticketId} {

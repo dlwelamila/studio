@@ -11,7 +11,6 @@ export type Helper = {
   fullName: string;
   email?: string;
   phoneNumber: string;
-  phoneVerified?: boolean;
   profilePhotoUrl: string;
   serviceCategories: string[];
   serviceAreas: string[];
@@ -27,27 +26,24 @@ export type Helper = {
   };
   lifecycleStage: 'REGISTERED' | 'PROFILE_INCOMPLETE' | 'PENDING_VERIFICATION' | 'VERIFIED_READY' | 'ACTIVE' | 'GROWING' | 'SUSPENDED';
   stats: {
-    totalAttempted: number;
     jobsCompleted: number;
     jobsCancelled: number;
-    completionRate: number;
     ratingAvg: number;
     reliabilityLevel: 'GREEN' | 'YELLOW' | 'RED';
   };
-  walletSummary: {
-    lifetimeEarnings: number;
-    currency: 'TZS';
-  };
   
   // Legacy fields to be deprecated or merged into stats
+  references?: string;
+  additionalSkills?: string;
   reliabilityIndicator: 'Good' | 'Average' | 'Poor';
+  rating?: number;
+  completedTasks?: number;
 };
 
 export type Customer = {
   id: string; // Corresponds to Firebase Auth UID
   fullName: string;
   phoneNumber: string;
-  phoneVerified?: boolean;
   email?: string;
   rating?: number;
   profilePhotoUrl: string;
@@ -61,10 +57,9 @@ export type Task = {
   description: string;
   category: string;
   area: string; // Approximate area
-  location: GeoPoint; // Exact location, revealed after assignment
+  location?: GeoPoint; // Exact location, revealed after assignment
   budget: { min: number; max: number };
   acceptedOfferPrice?: number; // Final price from the accepted offer
-  acceptedOfferId?: string;
   effort: 'light' | 'medium' | 'heavy';
   toolsRequired: string[];
   timeWindow: string; // e.g. "Tomorrow afternoon", "Flexible"
@@ -72,17 +67,9 @@ export type Task = {
   assignedHelperId?: string;
   createdAt: Timestamp;
   assignedAt?: Timestamp;
-  arrivedAt?: Timestamp;
   startedAt?: Timestamp;
   completedAt?: Timestamp;
   disputedAt?: Timestamp;
-  dueAt?: Timestamp;
-  completedItems?: string[];
-  helperCheckInTime?: Timestamp;
-  customerConfirmationTime?: Timestamp;
-  allowOffers: boolean;
-  participantsCount?: number;
-  offers?: Offer[]; // Denormalized for check-in
 };
 
 export type Offer = {
@@ -90,10 +77,9 @@ export type Offer = {
   taskId: string;
   helperId: string;
   price: number;
-  eta: string; // Legacy ETA
-  etaAt: Timestamp; // New ETA with timestamp
+  eta: string; // Availability / ETA
   message: string;
-  status: 'SUBMITTED' | 'WITHDRAWN' | 'ACCEPTED' | 'REJECTED';
+  status: 'ACTIVE' | 'WITHDRAWN' | 'ACCEPTED' | 'REJECTED';
   createdAt: Timestamp;
 };
 
@@ -117,34 +103,6 @@ export type SupportTicket = {
   createdAt: Timestamp;
 };
 
-export type TaskParticipant = {
-    id: string; // {taskId}_{helperId}
-    taskId: string;
-    customerId: string;
-    helperId: string;
-    status: 'ACTIVE' | 'WITHDRAWN' | 'SELECTED' | 'NOT_SELECTED';
-    createdAt: Timestamp;
-    lastMessageAt?: Timestamp;
-};
-
-export type TaskThread = {
-    id: string; // {taskId}_{helperId}
-    taskId: string;
-    customerId: string;
-    helperId: string;
-    members: string[]; // [customerId, helperId]
-    createdAt: Timestamp;
-    lastMessageAt: Timestamp;
-    lastMessagePreview: string;
-};
-
-export type ChatMessage = {
-    id: string;
-    senderId: string;
-    text: string;
-    createdAt: Timestamp;
-    type: 'TEXT' | 'SYSTEM';
-};
 
 export const taskCategories = [
     'Cleaning',
