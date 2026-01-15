@@ -11,6 +11,7 @@ export type Helper = {
   fullName: string;
   email?: string;
   phoneNumber: string;
+  phoneVerified?: boolean;
   profilePhotoUrl: string;
   serviceCategories: string[];
   serviceAreas: string[];
@@ -26,24 +27,27 @@ export type Helper = {
   };
   lifecycleStage: 'REGISTERED' | 'PROFILE_INCOMPLETE' | 'PENDING_VERIFICATION' | 'VERIFIED_READY' | 'ACTIVE' | 'GROWING' | 'SUSPENDED';
   stats: {
+    totalAttempted: number;
     jobsCompleted: number;
     jobsCancelled: number;
+    completionRate: number;
     ratingAvg: number;
     reliabilityLevel: 'GREEN' | 'YELLOW' | 'RED';
   };
+  walletSummary: {
+    lifetimeEarnings: number;
+    currency: 'TZS';
+  };
   
   // Legacy fields to be deprecated or merged into stats
-  references?: string;
-  additionalSkills?: string;
   reliabilityIndicator: 'Good' | 'Average' | 'Poor';
-  rating?: number;
-  completedTasks?: number;
 };
 
 export type Customer = {
   id: string; // Corresponds to Firebase Auth UID
   fullName: string;
   phoneNumber: string;
+  phoneVerified?: boolean;
   email?: string;
   rating?: number;
   profilePhotoUrl: string;
@@ -60,16 +64,28 @@ export type Task = {
   location?: GeoPoint; // Exact location, revealed after assignment
   budget: { min: number; max: number };
   acceptedOfferPrice?: number; // Final price from the accepted offer
+  acceptedOfferId?: string; // ID of the accepted offer
   effort: 'light' | 'medium' | 'heavy';
   toolsRequired: string[];
   timeWindow: string; // e.g. "Tomorrow afternoon", "Flexible"
   status: 'OPEN' | 'ASSIGNED' | 'ACTIVE' | 'COMPLETED' | 'IN_DISPUTE' | 'REASSIGNED' | 'CANCELLED';
   assignedHelperId?: string;
   createdAt: Timestamp;
+  dueDate?: Timestamp;
   assignedAt?: Timestamp;
+  arrivedAt?: Timestamp;
   startedAt?: Timestamp;
   completedAt?: Timestamp;
   disputedAt?: Timestamp;
+  allowOffers: boolean;
+  participantsCount?: number;
+  helperCheckInTime?: Timestamp;
+  customerConfirmationTime?: Timestamp;
+  completedItems?: string[];
+  evidence?: {
+    before?: string[];
+    after?: string[];
+  }
 };
 
 export type Offer = {
@@ -77,9 +93,9 @@ export type Offer = {
   taskId: string;
   helperId: string;
   price: number;
-  eta: string; // Availability / ETA
+  etaAt: Timestamp;
   message: string;
-  status: 'ACTIVE' | 'WITHDRAWN' | 'ACCEPTED' | 'REJECTED';
+  status: 'SUBMITTED' | 'WITHDRAWN' | 'ACCEPTED' | 'REJECTED';
   createdAt: Timestamp;
 };
 
@@ -102,6 +118,36 @@ export type SupportTicket = {
   status: 'NEW' | 'IN_PROGRESS' | 'RESOLVED';
   createdAt: Timestamp;
 };
+
+export type TaskParticipant = {
+  id: string; // {taskId}_{helperId}
+  taskId: string;
+  customerId: string;
+  helperId: string;
+  status: 'ACTIVE' | 'WITHDRAWN' | 'SELECTED' | 'NOT_SELECTED';
+  createdAt: Timestamp;
+  lastMessageAt?: Timestamp;
+};
+
+export type TaskThread = {
+  id: string; // {taskId}_{helperId}
+  taskId: string;
+  customerId: string;
+  helperId: string;
+  participantIds: string[]; // [customerId, helperId]
+  createdAt: Timestamp;
+  lastMessageAt?: Timestamp;
+  lastMessagePreview?: string;
+};
+
+export type ChatMessage = {
+  id: string;
+  senderId: string;
+  text: string;
+  createdAt: Timestamp;
+  type: 'TEXT' | 'SYSTEM';
+  meta?: any;
+}
 
 
 export const taskCategories = [
