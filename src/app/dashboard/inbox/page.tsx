@@ -31,7 +31,7 @@ export default function InboxPage() {
   }, [firestore, isUserLoading, user?.uid]);
 
   const { data: threads, isLoading: areThreadsLoading, error: threadsError } =
-    useCollection<TaskThread>(threadsQuery);
+    useCollection<TaskThread>(threadsQuery, { emitPermissionErrors: false });
 
   const isLoading = isUserLoading || areThreadsLoading;
 
@@ -111,10 +111,13 @@ function ThreadItem({
   const { data: task, isLoading: isTaskLoading } = useDoc<Task>(taskRef);
 
   const isLoading = isUserLoading || isTaskLoading;
+  
+  // Always derive the canonical ID to prevent linking to invalid legacy documents.
+  const canonicalThreadId = `${thread.taskId}_${thread.customerId}_${thread.helperId}`;
 
   return (
     <Link
-      href={`/dashboard/inbox/${thread.id}`}
+      href={`/dashboard/inbox/${canonicalThreadId}`}
       className="flex items-center gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/50"
     >
       {isLoading || !otherUser ? (
@@ -129,22 +132,21 @@ function ThreadItem({
         />
       )}
 
-      <div className="flex-1">
-        {/* ✅ Avoid <p><div/></p> by not placing Skeleton (div) inside <p> */}
-        <div className="font-semibold">
+      <div className="flex-1 overflow-hidden">
+        <div className="font-semibold truncate">
           {isLoading ? <Skeleton className="h-5 w-32" /> : <span>{otherUser?.fullName}</span>}
         </div>
 
-        <div className="text-sm text-muted-foreground line-clamp-1">
+        <div className="text-sm text-muted-foreground truncate">
           {isLoading ? <Skeleton className="h-4 w-48 mt-1" /> : <span>{task?.title}</span>}
         </div>
 
-        <p className="text-xs text-muted-foreground line-clamp-1 mt-1">
+        <p className="text-xs text-muted-foreground truncate mt-1">
           {thread.lastMessagePreview || 'No messages yet'}
         </p>
       </div>
 
-      <div className="text-right">
+      <div className="text-right flex-shrink-0">
         {thread.lastMessageAt && (
           <p className="text-xs text-muted-foreground">
             {formatDistanceToNow(thread.lastMessageAt.toDate(), { addSuffix: true })}
