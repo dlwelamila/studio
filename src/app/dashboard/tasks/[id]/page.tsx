@@ -120,9 +120,11 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const canShowFitIndicator = !isCustomerView && !isAssignedHelperView && currentHelperProfile && task?.status === 'OPEN';
   
   const handleParticipate = () => {
+    if (role !== 'helper') return;
     if (!currentUser || !task || !participantRef || !firestore) return;
     
-    const threadRef = doc(firestore, 'task_threads', `${task.id}_${currentUser.uid}`);
+    const deterministicThreadId = `${task.id}_${task.customerId}_${currentUser.uid}`;
+    const threadRef = doc(firestore, 'task_threads', deterministicThreadId);
     
     // Create participant document
     const participantData = {
@@ -233,9 +235,10 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
 
   const participateButton = () => {
       if (hasParticipated) {
+          const deterministicThreadId = `${task.id}_${task.customerId}_${currentUser?.uid}`;
           return (
               <Button className="w-full gap-2" asChild>
-                  <Link href={`/dashboard/inbox/${task.id}_${currentUser?.uid}`}>
+                  <Link href={`/dashboard/inbox/${deterministicThreadId}`}>
                       <MessagesSquare />
                       Open Chat
                   </Link>
@@ -243,7 +246,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
           )
       }
       return (
-          <Button onClick={handleParticipate} className="w-full">
+          <Button onClick={handleParticipate} className="w-full" disabled={role !== 'helper'}>
               Click here to Participate
           </Button>
       )
