@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { MessagesSquare } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
-import Image from 'next/image';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function InboxPage() {
   const { role } = useUserRole();
@@ -124,8 +124,8 @@ function ThreadItem({
 
   const isLoading = isUserLoading || isTaskLoading;
 
-  // ✅ Always derive the link from the canonical components to avoid stale/invalid IDs
-  const threadLinkId = `${thread.taskId}_${thread.customerId}_${thread.helperId}`;
+  // ✅ Always use the stored thread id to support legacy and new documents
+  const threadLinkId = thread.id;
 
   return (
     <Link
@@ -135,13 +135,10 @@ function ThreadItem({
       {isLoading || !otherUser ? (
         <Skeleton className="h-12 w-12 rounded-full" />
       ) : (
-        <Image
-          src={otherUser.profilePhotoUrl || ''}
-          alt={otherUser.fullName}
-          width={48}
-          height={48}
-          className="rounded-full object-cover"
-        />
+        <Avatar className="h-12 w-12">
+          <AvatarImage src={otherUser.profilePhotoUrl || undefined} alt={otherUser.fullName} />
+          <AvatarFallback>{otherUser.fullName?.charAt(0) || '?'}</AvatarFallback>
+        </Avatar>
       )}
 
       <div className="flex-1 overflow-hidden">

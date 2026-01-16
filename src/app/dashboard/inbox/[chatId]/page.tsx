@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, Send } from 'lucide-react';
 import { format } from 'date-fns';
@@ -39,8 +39,8 @@ const messageSchema = z.object({
 
 type MessageFormValues = z.infer<typeof messageSchema>;
 
-export default function ChatPage({ params }: { params: Promise<{ chatId: string }> }) {
-  const { chatId } = use(params);
+export default function ChatPage({ params }: { params: { chatId: string } }) {
+  const { chatId } = params;
   const { user, isUserLoading } = useUser();
   const { role } = useUserRole(); // still used for UI-only behavior (e.g., offer panel), NOT for data access
   const firestore = useFirestore();
