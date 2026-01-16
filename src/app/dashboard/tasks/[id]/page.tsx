@@ -13,7 +13,7 @@ import { useUserRole } from '@/context/user-role-context';
 import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { addDocumentNonBlocking, updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
-import { doc, collection, query, where, GeoPoint } from 'firebase/firestore';
+import { doc, collection, query, where, GeoPoint, type DocumentData } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 
 import { Badge } from '@/components/ui/badge';
@@ -61,27 +61,50 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [reportMessage, setReportMessage] = useState('');
+  
+  const canRead = useMemo(() => !!firestore && !!currentUser, [firestore, currentUser]);
 
-  const taskRef = useMemoFirebase(() => firestore && doc(firestore, 'tasks', taskId), [firestore, taskId]);
+  const taskRef = useMemo(() => {
+    if (!canRead) return null;
+    return doc(firestore!, 'tasks', taskId) as unknown as import('firebase/firestore').DocumentReference<DocumentData>;
+  }, [canRead, firestore, taskId]);
   const { data: task, isLoading: isTaskLoading, error, mutate: mutateTask } = useDoc<Task>(taskRef);
 
-  const customerRef = useMemoFirebase(() => firestore && task && doc(firestore, 'customers', task.customerId), [firestore, task]);
+  const customerRef = useMemo(() => {
+    if (!canRead || !task?.customerId) return null;
+    return doc(firestore!, 'customers', task.customerId) as unknown as import('firebase/firestore').DocumentReference<DocumentData>;
+  }, [canRead, firestore, task?.customerId]);
   const { data: customer, isLoading: isCustomerLoading } = useDoc<Customer>(customerRef);
 
-  const assignedHelperRef = useMemoFirebase(() => firestore && task?.assignedHelperId && doc(firestore, 'helpers', task.assignedHelperId), [firestore, task]);
+  const assignedHelperRef = useMemo(() => {
+    if (!canRead || !task?.assignedHelperId) return null;
+    return doc(firestore!, 'helpers', task.assignedHelperId) as unknown as import('firebase/firestore').DocumentReference<DocumentData>;
+  }, [canRead, firestore, task?.assignedHelperId]);
   const { data: assignedHelper } = useDoc<Helper>(assignedHelperRef);
 
-  const helperProfileRef = useMemoFirebase(() => firestore && currentUser ? doc(firestore, 'helpers', currentUser.uid) : null, [firestore, currentUser]);
+  const helperProfileRef = useMemo(() => {
+    if (!canRead || !currentUser) return null;
+    return doc(firestore!, 'helpers', currentUser.uid) as unknown as import('firebase/firestore').DocumentReference<DocumentData>;
+  }, [canRead, firestore, currentUser]);
   const { data: currentHelperProfile } = useDoc<Helper>(helperProfileRef);
   const journey = useHelperJourney(currentHelperProfile);
 
-  const participantRef = useMemoFirebase(() => firestore && currentUser && doc(firestore, 'task_participants', `${taskId}_${currentUser.uid}`), [firestore, taskId, currentUser]);
+  const participantRef = useMemo(() => {
+    if (!canRead || !currentUser) return null;
+    return doc(firestore!, 'task_participants', `${taskId}_${currentUser.uid}`) as unknown as import('firebase/firestore').DocumentReference<DocumentData>;
+  }, [canRead, firestore, taskId, currentUser]);
   const { data: participant } = useDoc<TaskParticipant>(participantRef);
 
-  const offersQuery = useMemoFirebase(() => firestore && query(collection(firestore, 'tasks', taskId, 'offers')), [firestore, taskId]);
+  const offersQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'tasks', taskId, 'offers'));
+  }, [firestore, taskId]);
   const { data: offers, isLoading: isOffersLoading, error: offersError } = useCollection<Offer>(offersQuery);
 
-  const feedbacksQuery = useMemoFirebase(() => firestore && task ? query(collection(firestore, 'feedbacks'), where('taskId', '==', task.id)) : null, [firestore, task]);
+  const feedbacksQuery = useMemoFirebase(() => {
+    if (!firestore || !task) return null;
+    return query(collection(firestore, 'feedbacks'), where('taskId', '==', task.id));
+  }, [firestore, task]);
   const { data: feedbacks, isLoading: areFeedbacksLoading } = useCollection<Feedback>(feedbacksQuery);
 
   const taskChecklist = useMemo(() => task?.description.split('\n').filter(line => line.trim() !== '' && line.trim().startsWith('- ')) || [], [task?.description]);
