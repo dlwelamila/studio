@@ -26,7 +26,7 @@ export default function InboxPage() {
       collection(firestore, 'task_threads'),
       where('participantIds', 'array-contains', user.uid),
       orderBy('lastMessageAt', 'desc'),
-      limit(50),
+      limit(50)
     );
   }, [firestore, isUserLoading, user?.uid]);
 
@@ -65,7 +65,7 @@ export default function InboxPage() {
 
           {!isLoading && !threadsError && threads && threads.length > 0 ? (
             threads.map((thread) => (
-              <ThreadItem key={thread.id} thread={thread} currentUserId={user!.uid} role={role} />
+              <ThreadItem key={thread.id} thread={thread} currentUserId={user!.uid} />
             ))
           ) : (
             !isLoading &&
@@ -86,19 +86,31 @@ export default function InboxPage() {
 function ThreadItem({
   thread,
   currentUserId,
-  role,
 }: {
   thread: TaskThread;
   currentUserId: string;
-  role: 'customer' | 'helper';
 }) {
   const firestore = useFirestore();
 
-  const otherUserId = role === 'customer' ? thread.helperId : thread.customerId;
-  const otherUserCollection = role === 'customer' ? 'helpers' : 'customers';
+  // 🔒 Do NOT trust UI role here (your app can default to customer / allow switching).
+  // Infer my side from the thread document itself.
+  const mySide: 'customer' | 'helper' | null =
+    currentUserId === thread.customerId ? 'customer' :
+    currentUserId === thread.helperId ? 'helper' :
+    null;
+
+  const otherUserId =
+    mySide === 'customer' ? thread.helperId :
+    mySide === 'helper' ? thread.customerId :
+    null;
+
+  const otherUserCollection =
+    mySide === 'customer' ? 'helpers' :
+    mySide === 'helper' ? 'customers' :
+    null;
 
   const otherUserRef = useMemoFirebase(() => {
-    if (!firestore || !otherUserId) return null;
+    if (!firestore || !otherUserId || !otherUserCollection) return null;
     return doc(firestore, otherUserCollection, otherUserId);
   }, [firestore, otherUserCollection, otherUserId]);
 
@@ -111,20 +123,20 @@ function ThreadItem({
   const { data: task, isLoading: isTaskLoading } = useDoc<Task>(taskRef);
 
   const isLoading = isUserLoading || isTaskLoading;
-  
-  // Always derive the canonical ID to prevent linking to invalid legacy documents.
-  const canonicalThreadId = `${thread.taskId}_${thread.customerId}_${thread.helperId}`;
+
+  // ✅ Always derive the link from the canonical components to avoid stale/invalid IDs
+  const threadLinkId = `${thread.taskId}_${thread.customerId}_${thread.helperId}`;
 
   return (
     <Link
-      href={`/dashboard/inbox/${canonicalThreadId}`}
+      href={`/dashboard/inbox/${threadLinkId}`}
       className="flex items-center gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/50"
     >
       {isLoading || !otherUser ? (
         <Skeleton className="h-12 w-12 rounded-full" />
       ) : (
         <Image
-          src={otherUser.profilePhotoUrl}
+          src={otherUser.profilePhotoUrl || ''}
           alt={otherUser.fullName}
           width={48}
           height={48}

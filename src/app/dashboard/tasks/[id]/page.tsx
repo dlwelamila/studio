@@ -3,16 +3,15 @@
 import { use, useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronLeft, Star, AlertTriangle, Briefcase, Wrench, CircleX, MessagesSquare, CheckCircle } from 'lucide-react';
+import { ChevronLeft, Star, AlertTriangle, Briefcase, Wrench, CircleX, MessagesSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
-
 
 import { useUserRole } from '@/context/user-role-context';
 import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { addDocumentNonBlocking, updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
-import { doc, collection, query, where, GeoPoint, type DocumentData } from 'firebase/firestore';
+import { doc, collection, query, where, type DocumentData } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 
 import { Badge } from '@/components/ui/badge';
@@ -52,15 +51,21 @@ import { TaskEvidence } from './task-evidence';
 import { ArrivalCheckIn } from './arrival-check-in';
 import { Progress } from '@/components/ui/progress';
 
+// Define proper props type for Next.js 15
+interface PageProps {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+}
 
-export default function TaskDetailPage({ params }: { params: { id: string } }) {
+export default function TaskDetailPage({ params }: PageProps) {
+  // Unwrap the Promise using use() hook
   const { id: taskId } = use(params);
   const { role } = useUserRole();
   const { user: currentUser, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [reportMessage, setReportMessage] = useState('');
-  
+
   const canRead = useMemo(() => !!firestore && !!currentUser, [firestore, currentUser]);
 
   const taskRef = useMemo(() => {
@@ -88,10 +93,31 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const { data: currentHelperProfile } = useDoc<Helper>(helperProfileRef);
   const journey = useHelperJourney(currentHelperProfile);
 
+  // ✅ PATCH: Determine helperId/customerId deterministically for participant/thread ids
+  const deterministicHelperId = useMemo(() => {
+    if (!currentUser || !task) return null;
+    // If I'm the customer, helperId must be the assigned helper (if any) or null.
+    if (currentUser.uid === task.customerId) return task.assignedHelperId ?? null;
+    // Otherwise I'm likely the helper viewing the task
+    return currentUser.uid;
+  }, [currentUser, task]);
+
+  const deterministicCustomerId = useMemo(() => {
+    if (!task) return null;
+    return task.customerId;
+  }, [task]);
+
+  // ✅ PATCH: Stable participantId must include customerId + helperId
+  const deterministicParticipantId = useMemo(() => {
+    if (!task || !deterministicCustomerId || !deterministicHelperId) return null;
+    return `${task.id}_${deterministicCustomerId}_${deterministicHelperId}`;
+  }, [task, deterministicCustomerId, deterministicHelperId]);
+
   const participantRef = useMemo(() => {
-    if (!canRead || !currentUser) return null;
-    return doc(firestore!, 'task_participants', `${taskId}_${currentUser.uid}`) as unknown as import('firebase/firestore').DocumentReference<DocumentData>;
-  }, [canRead, firestore, taskId, currentUser]);
+    if (!canRead || !firestore || !deterministicParticipantId) return null;
+    return doc(firestore!, 'task_participants', deterministicParticipantId) as unknown as import('firebase/firestore').DocumentReference<DocumentData>;
+  }, [canRead, firestore, deterministicParticipantId]);
+
   const { data: participant } = useDoc<TaskParticipant>(participantRef);
 
   const offersQuery = useMemoFirebase(() => {
@@ -111,59 +137,57 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const isChecklistComplete = useMemo(() => taskChecklist.length > 0 && completedItems.length === taskChecklist.length, [taskChecklist, completedItems]);
   const checklistProgress = useMemo(() => taskChecklist.length > 0 ? (completedItems.length / taskChecklist.length) * 100 : 0, [taskChecklist, completedItems]);
 
-
   const isCustomerView = role === 'customer';
   const isAssignedHelperView = currentUser?.uid === task?.assignedHelperId;
   const hasParticipated = !!participant;
   const hasReviewed = (feedbacks?.length ?? 0) > 0;
-  
+
   const canShowFitIndicator = !isCustomerView && !isAssignedHelperView && currentHelperProfile && task?.status === 'OPEN';
-  
+
   const handleParticipate = () => {
     if (role !== 'helper') {
-        toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'Only helpers can participate in tasks.' });
-        return;
+      toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'Only helpers can participate in tasks.' });
+      return;
     }
     if (!currentUser || !task || !participantRef || !firestore) return;
-    
+
+    // ✅ PATCH: thread id must match participant id scheme
     const deterministicThreadId = `${task.id}_${task.customerId}_${currentUser.uid}`;
     const threadRef = doc(firestore, 'task_threads', deterministicThreadId);
-    
-    // Create participant document
+
     const participantData = {
-        id: participantRef.id,
-        taskId: task.id,
-        customerId: task.customerId,
-        helperId: currentUser.uid,
-        status: 'ACTIVE',
-        createdAt: serverTimestamp(),
+      id: participantRef.id,
+      taskId: task.id,
+      customerId: task.customerId,
+      helperId: currentUser.uid,
+      status: 'ACTIVE',
+      createdAt: serverTimestamp(),
     };
     setDocumentNonBlocking(participantRef, participantData, {});
-    
-    // Create thread document
+
     const threadData = {
-        id: threadRef.id,
-        taskId: task.id,
-        customerId: task.customerId,
-        helperId: currentUser.uid,
-        participantIds: [task.customerId, currentUser.uid],
-        createdAt: serverTimestamp(),
-        lastMessagePreview: 'You have joined the conversation.',
-        lastMessageAt: serverTimestamp(),
+      id: threadRef.id,
+      taskId: task.id,
+      customerId: task.customerId,
+      helperId: currentUser.uid,
+      participantIds: [task.customerId, currentUser.uid],
+      createdAt: serverTimestamp(),
+      lastMessagePreview: 'You have joined the conversation.',
+      lastMessageAt: serverTimestamp(),
     };
     setDocumentNonBlocking(threadRef, threadData, {});
 
     toast({ title: 'You are now participating!', description: 'You can now chat with the customer in your inbox.' });
-  }
+  };
 
   const handleAcceptSuccess = () => {
     mutateTask();
   };
-  
+
   const handleChecklistItemToggle = (item: string, isChecked: boolean) => {
     if (!taskRef) return;
     const updateData = {
-        completedItems: isChecked ? arrayUnion(item) : arrayRemove(item)
+      completedItems: isChecked ? arrayUnion(item) : arrayRemove(item)
     };
     updateDocumentNonBlocking(taskRef, updateData);
     mutateTask();
@@ -171,20 +195,14 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
 
   const handleStatusUpdate = (newStatus: 'ACTIVE' | 'COMPLETED' | 'IN_DISPUTE') => {
     if (!taskRef) return;
-    
+
     let updateData: any = { status: newStatus };
-    if (newStatus === 'COMPLETED') {
-      updateData.completedAt = serverTimestamp();
-    }
-    if (newStatus === 'ACTIVE') {
-      updateData.startedAt = serverTimestamp();
-    }
-    if (newStatus === 'IN_DISPUTE') {
-        updateData.disputedAt = serverTimestamp();
-    }
-  
+    if (newStatus === 'COMPLETED') updateData.completedAt = serverTimestamp();
+    if (newStatus === 'ACTIVE') updateData.startedAt = serverTimestamp();
+    if (newStatus === 'IN_DISPUTE') updateData.disputedAt = serverTimestamp();
+
     updateDocumentNonBlocking(taskRef, updateData);
-  
+
     mutateTask();
     toast({
       title: 'Task Status Updated',
@@ -198,8 +216,8 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
       return;
     }
     if (reportMessage.length < 20) {
-        toast({ variant: 'destructive', title: 'Message too short', description: 'Please provide more details about the issue.' });
-        return;
+      toast({ variant: 'destructive', title: 'Message too short', description: 'Please provide more details about the issue.' });
+      return;
     }
 
     const ticketData = {
@@ -213,11 +231,11 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
 
     const ticketsCollection = collection(firestore, 'support_tickets');
     addDocumentNonBlocking(ticketsCollection, ticketData);
-    
+
     toast({ title: 'Support Ticket Submitted', description: "We've received your report and will look into it." });
     setReportMessage('');
   };
-  
+
   if (isTaskLoading || isUserLoading) {
     return <TaskDetailSkeleton />;
   }
@@ -237,24 +255,25 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   }
 
   const participateButton = () => {
-      if (hasParticipated) {
-          const deterministicThreadId = `${task.id}_${task.customerId}_${currentUser?.uid}`;
-          return (
-              <Button className="w-full gap-2" asChild>
-                  <Link href={`/dashboard/inbox/${deterministicThreadId}`}>
-                      <MessagesSquare />
-                      Open Chat
-                  </Link>
-              </Button>
-          )
-      }
+    if (hasParticipated) {
+      // ✅ PATCH: if participant exists, then threadId must be the same canonical id used when the helper joined
+      const helperIdForThread = participant?.helperId || currentUser?.uid;
+      const deterministicThreadId = `${task.id}_${task.customerId}_${helperIdForThread}`;
       return (
-          <Button onClick={handleParticipate} className="w-full" disabled={role !== 'helper'}>
-              Click here to Participate
-          </Button>
-      )
+        <Button className="w-full gap-2" asChild>
+          <Link href={`/dashboard/inbox/${deterministicThreadId}`}>
+            <MessagesSquare />
+            Open Chat
+          </Link>
+        </Button>
+      );
+    }
+    return (
+      <Button onClick={handleParticipate} className="w-full" disabled={role !== 'helper'}>
+        Click here to Participate
+      </Button>
+    );
   };
-
 
   return (
     <div className="mx-auto grid max-w-6xl flex-1 auto-rows-max gap-4">
@@ -274,13 +293,13 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
           </p>
         </div>
       </div>
+
       <div className="grid gap-4 md:grid-cols-[1fr_250px] lg:grid-cols-3 lg:gap-8">
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
-          
           {canShowFitIndicator && task && <FitIndicator task={task} />}
-          
+
           {task.status === 'ASSIGNED' && taskRef && (
-             <ArrivalCheckIn task={task} taskRef={taskRef} mutateTask={mutateTask} />
+            <ArrivalCheckIn task={task} taskRef={taskRef} mutateTask={mutateTask} />
           )}
 
           <Card>
@@ -289,15 +308,16 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                 <CardTitle className="font-headline text-2xl">{task.title}</CardTitle>
                 <CardDescription>{task.category} &middot; {task.area}</CardDescription>
               </div>
-               <Badge
+              <Badge
                 className="capitalize text-nowrap"
                 variant={
-                    task.status === 'OPEN' ? 'secondary' : task.status === 'COMPLETED' ? 'default' : 'outline'
+                  task.status === 'OPEN' ? 'secondary' : task.status === 'COMPLETED' ? 'default' : 'outline'
                 }
-                >
+              >
                 {task.status.replace('_', ' ')}
-                </Badge>
+              </Badge>
             </CardHeader>
+
             <CardContent>
               <p className="text-muted-foreground whitespace-pre-wrap">
                 {task.description}
@@ -305,203 +325,214 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
 
               {taskChecklist.length > 0 && (
                 <div className="space-y-4 mt-6">
-                    <h3 className="font-headline text-base font-semibold">Task Checklist</h3>
-                    {isAssignedHelperView && (
-                        <div className="space-y-2">
-                            <Progress value={checklistProgress} className="h-2" />
-                            <p className="text-xs text-muted-foreground text-right">{completedItems.length} of {taskChecklist.length} items completed</p>
-                        </div>
-                    )}
-                    <div className="grid gap-2">
-                        {taskChecklist.map((item, index) => (
-                            <div key={index} className="flex items-center gap-3 rounded-md border p-3">
-                                <Checkbox 
-                                    id={`check-${index}`} 
-                                    disabled={!isAssignedHelperView || task.status !== 'ACTIVE'}
-                                    checked={completedItems.includes(item)}
-                                    onCheckedChange={(checked) => handleChecklistItemToggle(item, !!checked)}
-                                />
-                                <Label htmlFor={`check-${index}`} className="text-sm text-foreground">
-                                    {item.substring(1).trim()}
-                                </Label>
-                            </div>
-                        ))}
+                  <h3 className="font-headline text-base font-semibold">Task Checklist</h3>
+                  {isAssignedHelperView && (
+                    <div className="space-y-2">
+                      <Progress value={checklistProgress} className="h-2" />
+                      <p className="text-xs text-muted-foreground text-right">{completedItems.length} of {taskChecklist.length} items completed</p>
                     </div>
-                </div>
-              )}
-              
-              <Separator className="my-6" />
-               <div className="grid grid-cols-2 gap-y-6 gap-x-4">
-                <div>
-                    <div className="font-semibold text-foreground">Budget</div>
-                    <div className="text-primary font-bold text-lg">
-                        {`TZS ${task.budget.min.toLocaleString()} - ${task.budget.max.toLocaleString()}`}
-                    </div>
-                </div>
-                 <div className="flex items-start gap-2">
-                    <Briefcase className="h-5 w-5 mt-0.5 text-muted-foreground"/>
-                    <div>
-                        <p className="font-semibold text-foreground">Effort</p>
-                        <p className="capitalize text-muted-foreground">{task.effort}</p>
-                    </div>
-                 </div>
-                 <div className="flex items-start gap-2">
-                    <Wrench className="h-5 w-5 mt-0.5 text-muted-foreground"/>
-                    <div>
-                        <p className="font-semibold text-foreground">Tools Expected</p>
-                        <p className="capitalize text-muted-foreground">{task.toolsRequired?.join(', ') || 'None'}</p>
-                    </div>
-                 </div>
-               </div>
-               <Separator className="my-6" />
-                <div>
-                  <h3 className="font-headline text-base font-semibold mb-4">Task Timeline</h3>
-                  <div className="grid gap-4 text-sm sm:grid-cols-3">
-                    <div className="grid gap-1">
-                      <div className="font-medium text-muted-foreground">Posted</div>
-                      <div className="text-foreground">{task.createdAt ? format(task.createdAt.toDate(), 'MMM d, yyyy, h:mm a') : '-'}</div>
-                    </div>
-                    {task.assignedAt && (
-                      <div className="grid gap-1">
-                        <div className="font-medium text-muted-foreground">Assigned</div>
-                        <div className="text-foreground">{format(task.assignedAt.toDate(), 'MMM d, yyyy, h:mm a')}</div>
+                  )}
+                  <div className="grid gap-2">
+                    {taskChecklist.map((item, index) => (
+                      <div key={index} className="flex items-center gap-3 rounded-md border p-3">
+                        <Checkbox
+                          id={`check-${index}`}
+                          disabled={!isAssignedHelperView || task.status !== 'ACTIVE'}
+                          checked={completedItems.includes(item)}
+                          onCheckedChange={(checked) => handleChecklistItemToggle(item, !!checked)}
+                        />
+                        <Label htmlFor={`check-${index}`} className="text-sm text-foreground">
+                          {item.substring(1).trim()}
+                        </Label>
                       </div>
-                    )}
-                    {task.completedAt && (
-                      <div className="grid gap-1">
-                        <div className="font-medium text-muted-foreground">Completed</div>
-                        <div className="text-foreground">{format(task.completedAt.toDate(), 'MMM d, yyyy, h:mm a')}</div>
-                      </div>
-                    )}
+                    ))}
                   </div>
                 </div>
-                {assignedHelper && (
-                  <>
-                    <Separator className="my-6" />
-                    <div>
-                      <h3 className="font-headline text-base font-semibold mb-4">Assigned Helper</h3>
-                       <div className="flex items-center gap-4">
-                          <Image
-                              alt="Helper avatar"
-                              className="rounded-full"
-                              height={40}
-                              src={assignedHelper.profilePhotoUrl || ''}
-                              style={{ aspectRatio: '40/40', objectFit: 'cover' }}
-                              width={40}
-                          />
-                          <div>
-                              <div className="font-semibold">{assignedHelper.fullName}</div>
-                          </div>
+              )}
+
+              <Separator className="my-6" />
+
+              <div className="grid grid-cols-2 gap-y-6 gap-x-4">
+                <div>
+                  <div className="font-semibold text-foreground">Budget</div>
+                  <div className="text-primary font-bold text-lg">
+                    {`TZS ${task.budget.min.toLocaleString()} - ${task.budget.max.toLocaleString()}`}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <Briefcase className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                  <div>
+                    <p className="font-semibold text-foreground">Effort</p>
+                    <p className="capitalize text-muted-foreground">{task.effort}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <Wrench className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                  <div>
+                    <p className="font-semibold text-foreground">Tools Expected</p>
+                    <p className="capitalize text-muted-foreground">{task.toolsRequired?.join(', ') || 'None'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <Separator className="my-6" />
+
+              <div>
+                <h3 className="font-headline text-base font-semibold mb-4">Task Timeline</h3>
+                <div className="grid gap-4 text-sm sm:grid-cols-3">
+                  <div className="grid gap-1">
+                    <div className="font-medium text-muted-foreground">Posted</div>
+                    <div className="text-foreground">{task.createdAt ? format(task.createdAt.toDate(), 'MMM d, yyyy, h:mm a') : '-'}</div>
+                  </div>
+                  {task.assignedAt && (
+                    <div className="grid gap-1">
+                      <div className="font-medium text-muted-foreground">Assigned</div>
+                      <div className="text-foreground">{format(task.assignedAt.toDate(), 'MMM d, yyyy, h:mm a')}</div>
+                    </div>
+                  )}
+                  {task.completedAt && (
+                    <div className="grid gap-1">
+                      <div className="font-medium text-muted-foreground">Completed</div>
+                      <div className="text-foreground">{format(task.completedAt.toDate(), 'MMM d, yyyy, h:mm a')}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {assignedHelper && (
+                <>
+                  <Separator className="my-6" />
+                  <div>
+                    <h3 className="font-headline text-base font-semibold mb-4">Assigned Helper</h3>
+                    <div className="flex items-center gap-4">
+                      <Image
+                        alt="Helper avatar"
+                        className="rounded-full"
+                        height={40}
+                        src={assignedHelper.profilePhotoUrl || ''}
+                        style={{ aspectRatio: '40/40', objectFit: 'cover' }}
+                        width={40}
+                      />
+                      <div>
+                        <div className="font-semibold">{assignedHelper.fullName}</div>
                       </div>
                     </div>
-                  </>
-                )}
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
-          
+
           {isAssignedHelperView && <TaskEvidence task={task} />}
-          
+
           {isCustomerView ? (
             <>
-                {task.status === 'COMPLETED' && !hasReviewed && assignedHelper && !areFeedbacksLoading && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="font-headline">Confirm Completion</CardTitle>
-                            <CardDescription>Review the work and either confirm completion or mark it as incomplete if you are not satisfied.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="flex flex-col sm:flex-row gap-4">
-                            <ReviewForm task={task} helper={assignedHelper} />
-                            <Button variant="outline" className="gap-2" onClick={() => handleStatusUpdate('IN_DISPUTE')}>
-                                <CircleX /> Mark as Incomplete
-                            </Button>
-                        </CardContent>
-                    </Card>
-                )}
-                 {task.status === 'COMPLETED' && hasReviewed && !areFeedbacksLoading && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className='font-headline'>Review Submitted</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-center py-8 text-muted-foreground">Thank you for leaving a review!</p>
-                        </CardContent>
-                    </Card>
-                 )}
-                 {task.status === 'IN_DISPUTE' && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="font-headline text-destructive">Task in Dispute</CardTitle>
-                            <CardDescription>
-                                You have marked this task as incomplete. Our support team will review this and get in touch with you and the helper to resolve the issue.
-                            </CardDescription>
-                        </CardHeader>
-                    </Card>
-                 )}
-                {task.allowOffers && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="font-headline">Offers ({offers?.length || 0})</CardTitle>
-                            <CardDescription>
-                                Review the offers from helpers below. You can view their profile before accepting.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid gap-4">
-                            {isOffersLoading && <Skeleton className="h-24 w-full" />}
-                            {!isOffersLoading && offersError && (
-                                <div className="text-center py-8 text-destructive">Could not load offers. You may not have permission.</div>
-                            )}
-                            {!isOffersLoading && !offersError && offers && offers.length > 0 ? offers.map(offer => (
-                                <OfferCard key={offer.id} offer={offer} task={task} onAccept={handleAcceptSuccess} />
-                            )) : (
-                            !isOffersLoading &&  <div className="text-center py-8 text-muted-foreground">No offers received yet.</div>
-                            )}
-                        </CardContent>
-                    </Card>
-                )}
-                <RecommendedHelpers task={task} />
+              {task.status === 'COMPLETED' && !hasReviewed && assignedHelper && !areFeedbacksLoading && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="font-headline">Confirm Completion</CardTitle>
+                    <CardDescription>Review the work and either confirm completion or mark it as incomplete if you are not satisfied.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-col sm:flex-row gap-4">
+                    <ReviewForm task={task} helper={assignedHelper} />
+                    <Button variant="outline" className="gap-2" onClick={() => handleStatusUpdate('IN_DISPUTE')}>
+                      <CircleX /> Mark as Incomplete
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {task.status === 'COMPLETED' && hasReviewed && !areFeedbacksLoading && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className='font-headline'>Review Submitted</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-center py-8 text-muted-foreground">Thank you for leaving a review!</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {task.status === 'IN_DISPUTE' && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="font-headline text-destructive">Task in Dispute</CardTitle>
+                    <CardDescription>
+                      You have marked this task as incomplete. Our support team will review this and get in touch with you and the helper to resolve the issue.
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              )}
+
+              {task.allowOffers && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="font-headline">Offers ({offers?.length || 0})</CardTitle>
+                    <CardDescription>
+                      Review the offers from helpers below. You can view their profile before accepting.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid gap-4">
+                    {isOffersLoading && <Skeleton className="h-24 w-full" />}
+                    {!isOffersLoading && offersError && (
+                      <div className="text-center py-8 text-destructive">Could not load offers. You may not have permission.</div>
+                    )}
+                    {!isOffersLoading && !offersError && offers && offers.length > 0 ? offers.map(offer => (
+                      <OfferCard key={offer.id} offer={offer} task={task} onAccept={handleAcceptSuccess} />
+                    )) : (
+                      !isOffersLoading && <div className="text-center py-8 text-muted-foreground">No offers received yet.</div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              <RecommendedHelpers task={task} />
             </>
           ) : isAssignedHelperView ? (
-             <Card>
-                <CardHeader>
-                    <CardTitle className="font-headline">Helper Actions</CardTitle>
-                    <CardDescription>Manage the status of this gig.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {task.status === 'ASSIGNED' && (
-                        <p className="text-center text-sm text-muted-foreground">Check-in upon arrival to begin the task.</p>
-                    )}
-                    {task.status === 'ACTIVE' && (
-                         <Button className="w-full" onClick={() => handleStatusUpdate('COMPLETED')} disabled={!isChecklistComplete}>
-                            Mark as Complete
-                        </Button>
-                    )}
-                     {!isChecklistComplete && task.status === 'ACTIVE' && (
-                        <p className="text-xs text-center text-muted-foreground mt-2">You must complete all checklist items before marking the task as complete.</p>
-                     )}
-                    {task.status === 'COMPLETED' && (
-                        <p className="text-center text-sm text-muted-foreground">This task is complete. Awaiting customer review.</p>
-                    )}
-                     {task.status === 'IN_DISPUTE' && (
-                        <p className="text-center text-sm text-destructive">The customer has disputed this task's completion. Awaiting review.</p>
-                    )}
-                     {task.status === 'CANCELLED' && (
-                        <p className="text-center text-sm text-muted-foreground">This task was cancelled.</p>
-                    )}
-                </CardContent>
-             </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-headline">Helper Actions</CardTitle>
+                <CardDescription>Manage the status of this gig.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {task.status === 'ASSIGNED' && (
+                  <p className="text-center text-sm text-muted-foreground">Check-in upon arrival to begin the task.</p>
+                )}
+                {task.status === 'ACTIVE' && (
+                  <Button className="w-full" onClick={() => handleStatusUpdate('COMPLETED')} disabled={!isChecklistComplete}>
+                    Mark as Complete
+                  </Button>
+                )}
+                {!isChecklistComplete && task.status === 'ACTIVE' && (
+                  <p className="text-xs text-center text-muted-foreground mt-2">You must complete all checklist items before marking the task as complete.</p>
+                )}
+                {task.status === 'COMPLETED' && (
+                  <p className="text-center text-sm text-muted-foreground">This task is complete. Awaiting customer review.</p>
+                )}
+                {task.status === 'IN_DISPUTE' && (
+                  <p className="text-center text-sm text-destructive">The customer has disputed this task's completion. Awaiting review.</p>
+                )}
+                {task.status === 'CANCELLED' && (
+                  <p className="text-center text-sm text-muted-foreground">This task was cancelled.</p>
+                )}
+              </CardContent>
+            </Card>
           ) : (
             <Card>
-                <CardHeader>
-                    <CardTitle className="font-headline">Participate & Negotiate</CardTitle>
-                    <CardDescription>Express interest and ask the customer questions before making a formal offer.</CardDescription>
-                </CardHeader>
-                <CardFooter>
-                    {participateButton()}
-                </CardFooter>
+              <CardHeader>
+                <CardTitle className="font-headline">Participate & Negotiate</CardTitle>
+                <CardDescription>Express interest and ask the customer questions before making a formal offer.</CardDescription>
+              </CardHeader>
+              <CardFooter>
+                {participateButton()}
+              </CardFooter>
             </Card>
           )}
 
         </div>
+
         <div className="grid auto-rows-max items-start gap-4 lg:gap-8">
           <Card>
             <CardHeader>
@@ -518,43 +549,31 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                 </div>
               ) : customer ? (
                 <div className="flex items-center gap-4">
-                    <Image
-                        alt="Customer avatar"
-                        className="rounded-full"
-                        height={40}
-                        src={customer.profilePhotoUrl || ''}
-                        style={{ aspectRatio: '40/40', objectFit: 'cover' }}
-                        width={40}
-                    />
-                    <div>
-                        <div className="font-semibold">{customer.fullName}</div>
-                    </div>
+                  <Image
+                    alt="Customer avatar"
+                    className="rounded-full"
+                    height={40}
+                    src={customer.profilePhotoUrl || ''}
+                    style={{ aspectRatio: '40/40', objectFit: 'cover' }}
+                    width={40}
+                  />
+                  <div>
+                    <div className="font-semibold">{customer.fullName}</div>
+                  </div>
                 </div>
               ) : null}
-                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Star className="h-4 w-4 fill-primary text-primary" />
-                    <Star className="h-4 w-4 fill-primary text-primary" />
-                    <Star className="h-4 w-4 fill-primary text-primary" />
-                    <Star className="h-4 w-4 fill-primary text-primary" />
-                    <Star className="h-4 w-4 fill-muted-foreground text-muted-foreground" />
-                    <span className="ml-1 text-foreground font-semibold">4.0</span> (5 reviews)
-                 </div>
+
+              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                <Star className="h-4 w-4 fill-primary text-primary" />
+                <Star className="h-4 w-4 fill-primary text-primary" />
+                <Star className="h-4 w-4 fill-primary text-primary" />
+                <Star className="h-4 w-4 fill-primary text-primary" />
+                <Star className="h-4 w-4 fill-muted-foreground text-muted-foreground" />
+                <span className="ml-1 text-foreground font-semibold">4.0</span> (5 reviews)
+              </div>
             </CardContent>
           </Card>
-          
-          {task.disputedAt && (
-            <Card>
-                <CardHeader>
-                    <CardTitle className="font-headline text-base text-destructive">Dispute Information</CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-4 text-sm">
-                    <div className="grid gap-1">
-                        <div className="font-medium text-muted-foreground">Disputed On</div>
-                        <div className="font-medium text-destructive">{format(task.disputedAt.toDate(), 'MMM d, yyyy, p')}</div>
-                    </div>
-                </CardContent>
-            </Card>
-          )}
+
           <Card>
             <CardHeader>
               <CardTitle className="font-headline text-base">Safety &amp; Support</CardTitle>
@@ -575,16 +594,15 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <div className="grid gap-4 py-4">
-                    <Textarea 
-                      placeholder="Please provide as much detail as possible..." 
-                      className="min-h-[120px]" 
+                    <Textarea
+                      placeholder="Please provide as much detail as possible..."
+                      className="min-h-[120px]"
                       value={reportMessage}
                       onChange={(e) => setReportMessage(e.target.value)}
                     />
                   </div>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-
                     <AlertDialogAction onClick={handleReportSubmit}>Submit Report</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -596,7 +614,6 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
     </div>
   );
 }
-
 
 function TaskDetailSkeleton() {
   return (
@@ -635,12 +652,12 @@ function TaskDetailSkeleton() {
             </CardContent>
           </Card>
           <Card>
-             <CardHeader>
-                <Skeleton className="h-6 w-1/3" />
-             </CardHeader>
-             <CardContent>
-                <Skeleton className="h-24 w-full" />
-             </CardContent>
+            <CardHeader>
+              <Skeleton className="h-6 w-1/3" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-24 w-full" />
+            </CardContent>
           </Card>
         </div>
         <div className="grid auto-rows-max items-start gap-4 lg:gap-8">
@@ -662,5 +679,5 @@ function TaskDetailSkeleton() {
         </div>
       </div>
     </div>
-  )
+  );
 }

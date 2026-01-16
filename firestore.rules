@@ -140,7 +140,7 @@ service cloud.firestore {
     }
 
     match /task_threads/{threadId} {
-      
+
       // This function works for rules on the thread document itself.
       function isThreadMember() {
         return isSignedIn()
@@ -148,15 +148,13 @@ service cloud.firestore {
           && resource.data.participantIds.hasAny([request.auth.uid]);
       }
 
-      // PATCH START
-      // This new helper correctly checks the PARENT thread document from a subcollection rule.
+      // This helper correctly checks the PARENT thread document from a subcollection rule.
       function isParentThreadMember() {
-          let parentThread = get(/databases/$(database)/documents/task_threads/$(threadId));
-          return isSignedIn()
-            && parentThread.data.participantIds is list
-            && parentThread.data.participantIds.hasAny([request.auth.uid]);
+        let parentThread = get(/databases/$(database)/documents/task_threads/$(threadId));
+        return isSignedIn()
+          && parentThread.data.participantIds is list
+          && parentThread.data.participantIds.hasAny([request.auth.uid]);
       }
-      // PATCH END
 
       function isCreatingOwnThread() {
         return isSignedIn()
@@ -165,9 +163,21 @@ service cloud.firestore {
           && request.resource.data.participantIds.hasAny([request.auth.uid]);
       }
 
+      // ✅ PATCHED: must match the exact inbox query shape:
+      // where('participantIds','array-contains', uid) + orderBy('lastMessageAt','desc') + limit(<=50)
+      //
+      // Firestore Rules do NOT support request.query.where(...) / orderBy(...) as functions.
+      // Use request.query.where.get(...) and request.query.orderBy[...] instead.
       function isListingMyThreads() {
         return isSignedIn()
-          && request.query.where.get('participantIds', ['array-contains']) == [request.auth.uid];
+          // Must match: where('participantIds', 'array-contains', request.auth.uid)
+          && request.query.where.get('participantIds', ['array-contains']) == [request.auth.uid]
+          // Must match: orderBy('lastMessageAt', 'desc') (allow optional __name__ tiebreak)
+          && request.query.orderBy.size() >= 1
+          && request.query.orderBy[0].field == 'lastMessageAt'
+          && request.query.orderBy[0].direction == 'desc'
+          // Must match: limit(<= 50)
+          && request.query.limit <= 50;
       }
 
       allow get: if isThreadMember();
@@ -176,9 +186,8 @@ service cloud.firestore {
       allow update: if isThreadMember();
       allow delete: if false;
 
-      // PATCH START
       match /messages/{messageId} {
-        // Use the new helper that reads the parent thread document's permissions.
+        // Use the helper that reads the parent thread document's permissions.
         allow read: if isParentThreadMember();
         allow create: if isParentThreadMember()
           && request.resource.data.senderId == request.auth.uid
@@ -186,7 +195,6 @@ service cloud.firestore {
           && request.resource.data.text.size() <= 1500;
         allow update, delete: if false;
       }
-      // PATCH END
     }
   }
 }
