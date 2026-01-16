@@ -138,6 +138,9 @@ export type TaskThread = {
   createdAt: Timestamp;
   lastMessageAt?: Timestamp;
   lastMessagePreview?: string;
+  lastReadAt?: Record<string, Timestamp>;
+  typing?: Record<string, boolean>;
+  locked?: boolean;
 };
 
 export type ChatMessage = {
