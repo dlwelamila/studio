@@ -156,29 +156,30 @@ service cloud.firestore {
           && parentThread.data.participantIds.hasAny([request.auth.uid]);
       }
 
+      // PATCH START: Harden thread creation rule
       function isCreatingOwnThread() {
+        let pids = request.resource.data.participantIds;
         return isSignedIn()
-          && request.resource.data.participantIds is list
-          && request.resource.data.participantIds.size() == 2
-          && request.resource.data.participantIds.hasAny([request.auth.uid]);
+          && pids is list
+          && pids.size() == 2
+          && request.auth.uid in pids
+          && pids[0] != pids[1]; // Prevent duplicate UIDs
       }
+      // PATCH END
 
-      // ✅ PATCHED: must match the exact inbox query shape:
-      // where('participantIds','array-contains', uid) + orderBy('lastMessageAt','desc') + limit(<=50)
-      //
-      // Firestore Rules do NOT support request.query.where(...) / orderBy(...) as functions.
-      // Use request.query.where.get(...) and request.query.orderBy[...] instead.
+      // PATCH START: Make list rule more robust
       function isListingMyThreads() {
+        let f = request.query.where.get('participantIds', ['array-contains']);
         return isSignedIn()
-          // Must match: where('participantIds', 'array-contains', request.auth.uid)
-          && request.query.where.get('participantIds', ['array-contains']) == [request.auth.uid]
-          // Must match: orderBy('lastMessageAt', 'desc') (allow optional __name__ tiebreak)
+          // Robustly check the 'where' clause
+          && f is list && f.size() == 1 && f[0] == request.auth.uid
+          // Continue to enforce query shape for performance and security
           && request.query.orderBy.size() >= 1
           && request.query.orderBy[0].field == 'lastMessageAt'
           && request.query.orderBy[0].direction == 'desc'
-          // Must match: limit(<= 50)
           && request.query.limit <= 50;
       }
+      // PATCH END
 
       allow get: if isThreadMember();
       allow list: if isListingMyThreads();
