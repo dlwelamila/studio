@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useUserRole } from '@/context/user-role-context';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
@@ -32,6 +32,13 @@ export default function InboxPage() {
 
   const { data: threads, isLoading: areThreadsLoading, error: threadsError } =
     useCollection<TaskThread>(threadsQuery, { emitPermissionErrors: false });
+
+  // DEBUG: Log the specific error to the console to diagnose the rule failure.
+  useEffect(() => {
+    if (threadsError) {
+      console.error("INBOX_ERROR_DETAILS:", threadsError.message);
+    }
+  }, [threadsError]);
 
   const isLoading = isUserLoading || areThreadsLoading;
 
