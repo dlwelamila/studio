@@ -119,7 +119,6 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // ✅ FIXED: task_participants rules (do NOT use request.resource on reads)
     match /task_participants/{participantId} {
       allow get, list: if isSignedIn() && (
         resource.data.customerId == request.auth.uid ||
@@ -140,14 +139,24 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // ✅ FIXED: task_threads rules (LIST must be query-shaped; GET uses resource)
     match /task_threads/{threadId} {
-
+      
+      // This function works for rules on the thread document itself.
       function isThreadMember() {
         return isSignedIn()
           && resource.data.participantIds is list
           && resource.data.participantIds.hasAny([request.auth.uid]);
       }
+
+      // PATCH START
+      // This new helper correctly checks the PARENT thread document from a subcollection rule.
+      function isParentThreadMember() {
+          let parentThread = get(/databases/$(database)/documents/task_threads/$(threadId));
+          return isSignedIn()
+            && parentThread.data.participantIds is list
+            && parentThread.data.participantIds.hasAny([request.auth.uid]);
+      }
+      // PATCH END
 
       function isCreatingOwnThread() {
         return isSignedIn()
@@ -167,14 +176,17 @@ service cloud.firestore {
       allow update: if isThreadMember();
       allow delete: if false;
 
+      // PATCH START
       match /messages/{messageId} {
-        allow read: if isThreadMember();
-        allow create: if isThreadMember()
+        // Use the new helper that reads the parent thread document's permissions.
+        allow read: if isParentThreadMember();
+        allow create: if isParentThreadMember()
           && request.resource.data.senderId == request.auth.uid
           && request.resource.data.text is string
           && request.resource.data.text.size() <= 1500;
         allow update, delete: if false;
       }
+      // PATCH END
     }
   }
 }
