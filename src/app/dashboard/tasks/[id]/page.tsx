@@ -120,7 +120,10 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const canShowFitIndicator = !isCustomerView && !isAssignedHelperView && currentHelperProfile && task?.status === 'OPEN';
   
   const handleParticipate = () => {
-    if (role !== 'helper') return;
+    if (role !== 'helper') {
+        toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'Only helpers can participate in tasks.' });
+        return;
+    }
     if (!currentUser || !task || !participantRef || !firestore) return;
     
     const deterministicThreadId = `${task.id}_${task.customerId}_${currentUser.uid}`;
