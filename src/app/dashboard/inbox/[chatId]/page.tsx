@@ -8,7 +8,15 @@ import { format } from 'date-fns';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { collection, doc, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+  type DocumentData,
+} from 'firebase/firestore';
 
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -40,11 +48,18 @@ export default function ChatPage({ params }: { params: Promise<{ chatId: string 
   const { toast } = useToast();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const canRead = useMemo(() => !!firestore && !!user, [firestore, user]);
 
-  const threadRef = useMemoFirebase(() => firestore && doc(firestore, 'task_threads', chatId), [firestore, chatId]);
+  const threadRef = useMemo(() => {
+    if (!canRead) return null;
+    return doc(firestore!, 'task_threads', chatId) as unknown as import('firebase/firestore').DocumentReference<DocumentData>;
+  }, [canRead, firestore, chatId]);
   const { data: thread, isLoading: isThreadLoading, error: threadError } = useDoc<TaskThread>(threadRef);
 
-  const taskRef = useMemoFirebase(() => firestore && thread && doc(firestore, 'tasks', thread.taskId), [firestore, thread]);
+  const taskRef = useMemo(() => {
+    if (!canRead || !thread?.taskId) return null;
+    return doc(firestore!, 'tasks', thread.taskId) as unknown as import('firebase/firestore').DocumentReference<DocumentData>;
+  }, [canRead, firestore, thread?.taskId]);
   const { data: task, isLoading: isTaskLoading } = useDoc<Task>(taskRef);
 
   const messagesQuery = useMemoFirebase(() => {
@@ -60,7 +75,10 @@ export default function ChatPage({ params }: { params: Promise<{ chatId: string 
 
   const otherUserCollection = useMemo(() => role === 'customer' ? 'helpers' : 'customers', [role]);
   
-  const otherUserRef = useMemoFirebase(() => firestore && otherUserId && doc(firestore, otherUserCollection, otherUserId), [firestore, otherUserCollection, otherUserId]);
+  const otherUserRef = useMemo(() => {
+    if (!canRead || !otherUserId) return null;
+    return doc(firestore!, otherUserCollection, otherUserId) as unknown as import('firebase/firestore').DocumentReference<DocumentData>;
+  }, [canRead, firestore, otherUserCollection, otherUserId]);
   const { data: otherUser, isLoading: isOtherUserLoading } = useDoc<Helper | Customer>(otherUserRef);
 
   const form = useForm<MessageFormValues>({
