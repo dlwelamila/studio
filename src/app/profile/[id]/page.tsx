@@ -1,4 +1,6 @@
 'use client';
+
+import { use } from 'react';
 import {
   Card,
   CardContent,
@@ -20,9 +22,8 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-export default function PublicProfilePage({ params }: { params: { id: string } }) {
-  const { id } = params;
-  const firestore = useFirestore();
+export default function PublicProfilePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
 
   const userRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;

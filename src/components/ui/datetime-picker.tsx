@@ -7,7 +7,15 @@ import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./button";
 import { Calendar } from "./calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose,
+  DialogTitle,
+  DialogHeader,
+} from "./dialog";
 import { TimePicker } from "./time-picker";
 
 interface DateTimePickerProps {
@@ -16,12 +24,15 @@ interface DateTimePickerProps {
 }
 
 export function DateTimePicker({ date, setDate }: DateTimePickerProps) {
+  const [isOpen, setIsOpen] = React.useState(false);
+
   const handleSelect = (newDate: Date | undefined) => {
     if (!newDate) return;
     if (!date) {
       setDate(newDate);
       return;
     }
+
     const newDateAtTime = new Date(
       newDate.getFullYear(),
       newDate.getMonth(),
@@ -30,12 +41,13 @@ export function DateTimePicker({ date, setDate }: DateTimePickerProps) {
       date.getMinutes(),
       date.getSeconds()
     );
+
     setDate(newDateAtTime);
   };
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
         <Button
           variant={"outline"}
           className={cn(
@@ -46,19 +58,29 @@ export function DateTimePicker({ date, setDate }: DateTimePickerProps) {
           <CalendarIcon className="mr-2 h-4 w-4" />
           {date ? format(date, "PPP HH:mm:ss") : <span>Pick a date</span>}
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={handleSelect}
-          defaultMonth={date}
-          initialFocus
-        />
-        <div className="p-3 border-t border-border">
+      </DialogTrigger>
+      <DialogContent className="w-[min(90vw,360px)] max-h-[85vh] overflow-hidden p-0">
+        <DialogHeader className="px-4 pt-4 pb-2">
+          <DialogTitle className="text-base">Select date & time</DialogTitle>
+        </DialogHeader>
+        <div className="px-4 pb-4">
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={handleSelect}
+            defaultMonth={date}
+            initialFocus
+          />
+        </div>
+        <div className="border-t border-border p-4">
           <TimePicker setDate={setDate} date={date} />
         </div>
-      </PopoverContent>
-    </Popover>
+        <DialogFooter className="border-t border-border bg-muted/20 p-3">
+          <DialogClose asChild>
+            <Button className="w-full">Done</Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -4,36 +4,75 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import { useUserRole } from '@/context/user-role-context';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, doc, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, doc } from 'firebase/firestore';
 import type { TaskThread, Helper, Customer, Task } from '@/lib/data';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { MessagesSquare } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
 
 export default function InboxPage() {
   const { role } = useUserRole();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
-  const threadsQuery = useMemoFirebase(() => {
-    // Gate on auth ready
+  const customerThreadsQuery = useMemoFirebase(() => {
     if (!firestore || isUserLoading || !user?.uid) return null;
 
     return query(
       collection(firestore, 'task_threads'),
-      where('participantIds', 'array-contains', user.uid),
-      orderBy('lastMessageAt', 'desc'),
-      limit(50)
+      where('customerId', '==', user.uid)
     );
   }, [firestore, isUserLoading, user?.uid]);
 
-  const { data: threads, isLoading: areThreadsLoading, error: threadsError } =
-    useCollection<TaskThread>(threadsQuery, { emitPermissionErrors: false });
+  const helperThreadsQuery = useMemoFirebase(() => {
+    if (!firestore || isUserLoading || !user?.uid) return null;
 
-  const isLoading = isUserLoading || areThreadsLoading;
+    return query(
+      collection(firestore, 'task_threads'),
+      where('helperId', '==', user.uid)
+    );
+  }, [firestore, isUserLoading, user?.uid]);
+
+  const {
+    data: customerThreads,
+    isLoading: areCustomerThreadsLoading,
+    error: customerThreadsError,
+  } = useCollection<TaskThread>(customerThreadsQuery, { emitPermissionErrors: false });
+
+  const {
+    data: helperThreads,
+    isLoading: areHelperThreadsLoading,
+    error: helperThreadsError,
+  } = useCollection<TaskThread>(helperThreadsQuery, { emitPermissionErrors: false });
+
+  const threads = useMemo(() => {
+    const aggregated = new Map<string, TaskThread>();
+    const allThreads = [...(customerThreads ?? []), ...(helperThreads ?? [])];
+
+    allThreads.forEach((thread) => {
+      if (!aggregated.has(thread.id)) {
+        aggregated.set(thread.id, thread);
+      }
+    });
+
+    const toTime = (thread: TaskThread) => {
+      const timestamp = thread.lastMessageAt ?? thread.createdAt;
+      return timestamp ? timestamp.toDate().getTime() : 0;
+    };
+
+    return Array.from(aggregated.values())
+      .sort((a, b) => toTime(b) - toTime(a))
+      .slice(0, 50);
+  }, [customerThreads, helperThreads]);
+
+  const threadsError = customerThreadsError ?? helperThreadsError;
+
+  const isLoading = isUserLoading || areCustomerThreadsLoading || areHelperThreadsLoading;
 
   const description =
     role === 'customer'
@@ -92,6 +131,22 @@ function ThreadItem({
 }) {
   const firestore = useFirestore();
 
+  const activityTimestamp = thread.lastMessageAt ?? thread.createdAt;
+
+  const myLastReadAt = thread.lastReadAt?.[currentUserId];
+  const lastMessageTimestamp = thread.lastMessageAt;
+  const lastMessageSenderId = thread.lastMessageSenderId;
+
+  const lastMessageFromOther = lastMessageSenderId != null
+    ? lastMessageSenderId !== currentUserId
+    : !!lastMessageTimestamp && (!myLastReadAt || myLastReadAt.toMillis() < lastMessageTimestamp.toMillis());
+  const isUnread =
+    lastMessageFromOther &&
+    !!lastMessageTimestamp &&
+    (!myLastReadAt || myLastReadAt.toMillis() < lastMessageTimestamp.toMillis());
+  const unreadCountRaw = thread.unreadCounts?.[currentUserId];
+  const unreadCount = typeof unreadCountRaw === 'number' && unreadCountRaw > 0 ? unreadCountRaw : isUnread ? 1 : 0;
+
   // 🔒 Do NOT trust UI role here (your app can default to customer / allow switching).
   // Infer my side from the thread document itself.
   const mySide: 'customer' | 'helper' | null =
@@ -124,13 +179,24 @@ function ThreadItem({
 
   const isLoading = isUserLoading || isTaskLoading;
 
+  const otherUserIsTyping = otherUserId ? Boolean(thread.typing?.[otherUserId]) : false;
+  const previewText = otherUserIsTyping ? 'Typing...' : thread.lastMessagePreview || 'No messages yet';
+  const previewClasses = cn(
+    'text-xs truncate mt-1',
+    otherUserIsTyping ? 'text-primary font-medium' : unreadCount > 0 ? 'text-foreground font-semibold' : 'text-muted-foreground'
+  );
+
   // ✅ Always use the stored thread id to support legacy and new documents
   const threadLinkId = thread.id;
 
   return (
     <Link
       href={`/dashboard/inbox/${threadLinkId}`}
-      className="flex items-center gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/50"
+      className={cn(
+        'flex items-center gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/50',
+        unreadCount > 0 && 'border-primary bg-primary/5',
+        otherUserIsTyping && 'border-dashed'
+      )}
     >
       {isLoading || !otherUser ? (
         <Skeleton className="h-12 w-12 rounded-full" />
@@ -150,16 +216,19 @@ function ThreadItem({
           {isLoading ? <Skeleton className="h-4 w-48 mt-1" /> : <span>{task?.title}</span>}
         </div>
 
-        <p className="text-xs text-muted-foreground truncate mt-1">
-          {thread.lastMessagePreview || 'No messages yet'}
-        </p>
+        <div className={previewClasses}>
+          {isLoading ? <Skeleton className="h-3 w-40" /> : previewText}
+        </div>
       </div>
 
       <div className="text-right flex-shrink-0">
-        {thread.lastMessageAt && (
+        {activityTimestamp && (
           <p className="text-xs text-muted-foreground">
-            {formatDistanceToNow(thread.lastMessageAt.toDate(), { addSuffix: true })}
+            {formatDistanceToNow(activityTimestamp.toDate(), { addSuffix: true })}
           </p>
+        )}
+        {unreadCount > 0 && (
+          <Badge className="mt-2" variant="default">{unreadCount > 99 ? '99+' : unreadCount}</Badge>
         )}
       </div>
     </Link>

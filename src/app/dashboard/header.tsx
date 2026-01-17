@@ -1,14 +1,15 @@
 'use client';
+import { useMemo } from 'react';
 import Link from 'next/link';
-import { Home, PanelLeft, Settings, Package2, Users2, Briefcase, Handshake, Repeat, PlusCircle, LifeBuoy, MessagesSquare } from 'lucide-react';
+import { Home, PanelLeft, Settings, Users2, Briefcase, Handshake, Repeat, PlusCircle, LifeBuoy, MessagesSquare } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 
 import { useUserRole } from '@/context/user-role-context';
-import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth } from '@/firebase';
+import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth, useCollection } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { doc } from 'firebase/firestore';
-import type { Helper, Customer } from '@/lib/data';
+import { doc, collection, query, where } from 'firebase/firestore';
+import type { Helper, Customer, TaskThread } from '@/lib/data';
 
 import {
   Breadcrumb,
@@ -19,6 +20,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,6 +66,53 @@ export default function AppHeader() {
   }, [firestore, authUser, role]);
   
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<Helper | Customer>(userRef);
+
+  const customerThreadsQuery = useMemoFirebase(() => {
+    if (!firestore || !authUser) return null;
+    return query(collection(firestore, 'task_threads'), where('customerId', '==', authUser.uid));
+  }, [firestore, authUser]);
+
+  const helperThreadsQuery = useMemoFirebase(() => {
+    if (!firestore || !authUser) return null;
+    return query(collection(firestore, 'task_threads'), where('helperId', '==', authUser.uid));
+  }, [firestore, authUser]);
+
+  const { data: customerThreads } = useCollection<TaskThread>(customerThreadsQuery, { emitPermissionErrors: false });
+  const { data: helperThreads } = useCollection<TaskThread>(helperThreadsQuery, { emitPermissionErrors: false });
+
+  const aggregatedThreads = useMemo(() => {
+    const map = new Map<string, TaskThread>();
+    [...(customerThreads ?? []), ...(helperThreads ?? [])].forEach((thread) => {
+      if (!map.has(thread.id)) {
+        map.set(thread.id, thread);
+      }
+    });
+    return Array.from(map.values());
+  }, [customerThreads, helperThreads]);
+
+  const totalUnreadCount = useMemo(() => {
+    const userId = authUser?.uid;
+    if (!userId) return 0;
+    return aggregatedThreads.reduce((sum, thread) => {
+      const rawCount = thread.unreadCounts?.[userId];
+      if (typeof rawCount === 'number' && rawCount > 0) {
+        return sum + rawCount;
+      }
+
+      const lastReadMillis = thread.lastReadAt?.[userId]?.toMillis?.();
+      const lastMessageMillis = thread.lastMessageAt?.toMillis?.();
+      const lastSenderId = thread.lastMessageSenderId;
+      const lastMessageFromOther = lastSenderId != null ? lastSenderId !== userId : true;
+
+      if (lastMessageMillis && lastMessageFromOther && (!lastReadMillis || lastReadMillis < lastMessageMillis)) {
+        return sum + 1;
+      }
+
+      return sum;
+    }, 0);
+  }, [aggregatedThreads, authUser?.uid]);
+
+  const unreadBadgeText = totalUnreadCount > 99 ? '99+' : totalUnreadCount.toString();
 
   const handleLogout = async () => {
     if (!auth) return;
@@ -132,10 +181,13 @@ export default function AppHeader() {
               )}
                <Link
                 href="/dashboard/inbox"
-                className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+                className="flex items-center justify-between gap-4 px-2.5 text-muted-foreground hover:text-foreground"
               >
-                <MessagesSquare className="h-5 w-5" />
-                Inbox
+                <span className="flex items-center gap-4">
+                  <MessagesSquare className="h-5 w-5" />
+                  Inbox
+                </span>
+                {totalUnreadCount > 0 && <Badge variant="secondary">{unreadBadgeText}</Badge>}
               </Link>
               <Link
                 href="/dashboard/profile"
@@ -169,6 +221,19 @@ export default function AppHeader() {
         </BreadcrumbList>
       </Breadcrumb>
       <div className="relative ml-auto flex items-center md:grow-0 gap-4">
+        {authUser && (
+          <Button variant="ghost" size="icon" className="relative" asChild>
+            <Link href="/dashboard/inbox">
+              <MessagesSquare className="h-5 w-5" />
+              <span className="sr-only">Inbox</span>
+              {totalUnreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                  {unreadBadgeText}
+                </span>
+              )}
+            </Link>
+          </Button>
+        )}
         <ClientOnly>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

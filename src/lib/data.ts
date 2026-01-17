@@ -1,5 +1,3 @@
-'use client';
-
 import type { ImagePlaceholder } from '@/lib/placeholder-images';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Timestamp, GeoPoint } from 'firebase/firestore';
@@ -138,7 +136,9 @@ export type TaskThread = {
   createdAt: Timestamp;
   lastMessageAt?: Timestamp;
   lastMessagePreview?: string;
+  lastMessageSenderId?: string;
   lastReadAt?: Record<string, Timestamp>;
+  unreadCounts?: Record<string, number>;
   typing?: Record<string, boolean>;
   locked?: boolean;
 };

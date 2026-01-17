@@ -142,16 +142,22 @@ service cloud.firestore {
     match /task_threads/{threadId} {
 
       function isThreadMember() {
-        return isSignedIn()
-          && resource.data.participantIds is list
-          && resource.data.participantIds.hasAny([request.auth.uid]);
+        return isSignedIn() && (
+          resource.data.customerId == request.auth.uid ||
+          resource.data.helperId == request.auth.uid ||
+          (resource.data.participantIds is list &&
+            resource.data.participantIds.hasAny([request.auth.uid]))
+        );
       }
 
       function isParentThreadMember() {
         let parentThread = get(/databases/$(database)/documents/task_threads/$(threadId));
-        return isSignedIn()
-          && parentThread.data.participantIds is list
-          && parentThread.data.participantIds.hasAny([request.auth.uid]);
+        return isSignedIn() && (
+          parentThread.data.customerId == request.auth.uid ||
+          parentThread.data.helperId == request.auth.uid ||
+          (parentThread.data.participantIds is list &&
+            parentThread.data.participantIds.hasAny([request.auth.uid]))
+        );
       }
 
       // PATCH START: Harden thread creation and fix list permissions

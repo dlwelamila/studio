@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { use, useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronLeft, Star, AlertTriangle, Briefcase, Wrench, CircleX, MessagesSquare } from 'lucide-react';
@@ -53,13 +53,13 @@ import { Progress } from '@/components/ui/progress';
 
 // Define proper props type for Next.js 15
 interface PageProps {
-  params: { id: string };
-  searchParams?: { [key: string]: string | string[] | undefined };
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export default function TaskDetailPage({ params }: PageProps) {
   // Extract the task id from the route params
-  const { id: taskId } = params;
+  const { id: taskId } = use(params);
   const { role } = useUserRole();
   const { user: currentUser, isUserLoading } = useUser();
   const firestore = useFirestore();

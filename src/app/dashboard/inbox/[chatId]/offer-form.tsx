@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
+import { DialogClose } from '@/components/ui/dialog';
 
 
 const offerFormSchema = z.object({
@@ -61,7 +62,11 @@ export function OfferForm({ task }: OfferFormProps) {
         const offersCollection = collection(firestore, 'tasks', task.id, 'offers');
         addDocumentNonBlocking(offersCollection, offerData);
         toast({ title: 'Offer Submitted!', description: 'The customer has been notified of your offer.' });
-        form.reset();
+        form.reset({
+            price: task.budget.min > 0 ? task.budget.min : undefined,
+            etaAt: undefined,
+            message: ''
+        });
     }
 
 
@@ -110,6 +115,9 @@ export function OfferForm({ task }: OfferFormProps) {
                 <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
                     {form.formState.isSubmitting ? 'Submitting...' : 'Submit Formal Offer'}
                 </Button>
+                <DialogClose asChild>
+                    <Button type="button" variant="outline" className="w-full">Done</Button>
+                </DialogClose>
             </form>
         </Form>
     )
