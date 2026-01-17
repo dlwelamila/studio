@@ -6,25 +6,6 @@ This section formalizes the **Participation → Negotiation → Offer → Assign
 
 This specification is **mandatory** for correct system behavior and application stability.
 
----
-
-## A. Root Cause of Current Crash
-
-The application attempts to read a chat document:
-
-`task_chats/s2WUG1lTGwBds7SLQdFu`
-
-The signed-in user (`customer@taskey.app`) is denied by Firestore Security Rules because:
-- The document does not match the required rule conditions, **or**
-- The document does not contain required fields expected by rules (commonly `members`).
-
-Resolution requires **three parallel fixes**:
-
-1. Define the Participation & Chat data model correctly (members, threads, messages).
-2. Update Firestore Security Rules to strictly match the new model.
-3. Update frontend logic so chat documents are never read before membership is known (no boot-blocking reads).
-
----
 
 ## B. Recommended Data Model (Safe & Scalable)
 
