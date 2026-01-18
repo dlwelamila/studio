@@ -28,19 +28,49 @@ import type { Task, Customer } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function MyGigsPage() {
-  const { role } = useUserRole();
+  const { role, isRoleLoading, hasHelperProfile, setRole } = useUserRole();
   const { user: authUser, isUserLoading } = useUser();
   const firestore = useFirestore();
-
   const gigsQuery = useMemoFirebase(() => {
-    if (!authUser || !firestore) return null;
+    if (role !== 'helper' || !authUser || !firestore) return null;
     return query(
       collection(firestore, 'tasks'),
       where('assignedHelperId', '==', authUser.uid)
     );
-  }, [authUser, firestore]);
+  }, [role, authUser, firestore]);
 
   const { data: myGigs, isLoading: areGigsLoading } = useCollection<Task>(gigsQuery);
+
+  if (isRoleLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Loading</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>Please wait while we load your account role.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!role) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Select Your Role</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Choose the helper role to view your assigned gigs.
+          </p>
+          {hasHelperProfile && (
+            <Button onClick={() => setRole('helper')}>Continue as Helper</Button>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (role === 'customer') {
     return (
@@ -49,7 +79,10 @@ export default function MyGigsPage() {
           <CardTitle>Access Denied</CardTitle>
         </CardHeader>
         <CardContent>
-          <p>This page is only available to helpers. Please switch to your helper profile to view your gigs.</p>
+          <p className="mb-4">This page is only available to helpers.</p>
+          {hasHelperProfile && (
+            <Button onClick={() => setRole('helper')}>Switch to helper view</Button>
+          )}
         </CardContent>
       </Card>
     );

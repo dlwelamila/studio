@@ -4,6 +4,7 @@ import './globals.css';
 import { cn } from '@/lib/utils';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import 'leaflet/dist/leaflet.css';
+import { PermissionErrorToast } from '@/components/PermissionErrorToast';
 
 export const metadata: Metadata = {
   title: 'tasKey: On-Demand Assistance',
@@ -26,8 +27,12 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className={cn('font-body antialiased', 'min-h-screen bg-background')}>
+      <body
+        suppressHydrationWarning
+        className={cn('font-body antialiased', 'min-h-screen bg-background')}
+      >
         <FirebaseClientProvider>
+          <PermissionErrorToast />
           {children}
         </FirebaseClientProvider>
         <Toaster />

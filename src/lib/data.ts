@@ -74,11 +74,16 @@ export type Task = {
   arrivedAt?: Timestamp;
   startedAt?: Timestamp;
   completedAt?: Timestamp;
+  durationSeconds?: number;
   disputedAt?: Timestamp;
   allowOffers: boolean;
   participantsCount?: number;
   helperCheckInTime?: Timestamp;
-  customerConfirmationTime?: Timestamp;
+  checkinConfirmedAt?: Timestamp;
+  lateStartStatus?: 'REQUESTED' | 'APPROVED';
+  lateStartRequestedAt?: Timestamp;
+  lateStartApprovedAt?: Timestamp;
+  lateStartSeconds?: number;
   completedItems?: string[];
   evidence?: {
     before?: string[];
@@ -89,6 +94,7 @@ export type Task = {
 export type Offer = {
   id: string;
   taskId: string;
+  customerId?: string;
   helperId: string;
   price: number;
   etaAt: Timestamp;
@@ -132,7 +138,7 @@ export type TaskThread = {
   taskId: string;
   customerId: string;
   helperId: string;
-  participantIds: string[]; // [customerId, helperId]
+  members: string[]; // [customerId, helperId]
   createdAt: Timestamp;
   lastMessageAt?: Timestamp;
   lastMessagePreview?: string;

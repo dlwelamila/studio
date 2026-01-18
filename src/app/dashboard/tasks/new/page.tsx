@@ -70,7 +70,7 @@ export default function NewTaskPage() {
     const firestore = useFirestore();
     const router = useRouter();
     const { toast } = useToast();
-    const { role } = useUserRole();
+    const { role, isRoleLoading, hasCustomerProfile, setRole } = useUserRole();
 
     const form = useForm<TaskFormValues>({
         resolver: zodResolver(taskFormSchema),
@@ -123,6 +123,41 @@ export default function NewTaskPage() {
         }
     }
     
+    if (isRoleLoading) {
+        return (
+            <div className="mx-auto grid max-w-4xl flex-1 auto-rows-max gap-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Loading</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p>Please wait while we confirm your account role.</p>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    if (!role) {
+        return (
+            <div className="mx-auto grid max-w-4xl flex-1 auto-rows-max gap-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Select Your Role</CardTitle>
+                        <CardDescription>Choose the customer role to post a new task.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {hasCustomerProfile ? (
+                            <Button onClick={() => setRole('customer')}>Switch to customer view</Button>
+                        ) : (
+                            <p>You need a customer profile to post tasks.</p>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
     if (role === 'helper') {
         return (
              <div className="mx-auto grid max-w-4xl flex-1 auto-rows-max gap-4">
@@ -131,10 +166,14 @@ export default function NewTaskPage() {
                     <CardTitle>Access Denied</CardTitle>
                     </CardHeader>
                     <CardContent>
-                    <p>This page is only available to customers. Please switch to your customer profile to post a task.</p>
-                    <Button asChild className="mt-4">
-                        <Link href="/dashboard">Go to Dashboard</Link>
-                    </Button>
+                    <p className="mb-4">This page is only available to customers.</p>
+                    {hasCustomerProfile ? (
+                        <Button onClick={() => setRole('customer')}>Switch to customer view</Button>
+                    ) : (
+                        <Button asChild className="mt-4">
+                            <Link href="/onboarding/create-profile?role=customer">Create customer profile</Link>
+                        </Button>
+                    )}
                     </CardContent>
                 </Card>
             </div>

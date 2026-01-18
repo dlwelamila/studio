@@ -47,6 +47,31 @@ service cloud.firestore {
       return currentStatus == 'COMPLETED' && nextStatus == 'IN_DISPUTE';
     }
 
+    function customerCanManageTask(currentStatus, nextStatus) {
+      // Permit owners to accept an offer, advance work, or dispute completion
+      return currentStatus == nextStatus ||
+             (currentStatus == 'OPEN' && (nextStatus == 'ASSIGNED' || nextStatus == 'ACCEPTED')) ||
+             (currentStatus == 'ASSIGNED' && (nextStatus == 'ACTIVE' || nextStatus == 'OPEN')) ||
+             customerCanDispute(currentStatus, nextStatus);
+    }
+
+    function helperCanRecordCheckIn() {
+      return isAssignedHelper(resource.data) &&
+             ownerFieldIsImmutable('customerId') &&
+             ownerFieldIsImmutable('assignedHelperId') &&
+             request.resource.data.diff(resource.data).changedKeys().hasOnly(['helperCheckInTime']) &&
+             request.resource.data.helperCheckInTime is timestamp;
+    }
+
+    function helperCanRequestLateStart() {
+      return isAssignedHelper(resource.data) &&
+             ownerFieldIsImmutable('customerId') &&
+             ownerFieldIsImmutable('assignedHelperId') &&
+             request.resource.data.diff(resource.data).changedKeys().hasOnly(['lateStartStatus', 'lateStartRequestedAt']) &&
+             request.resource.data.lateStartStatus == 'REQUESTED' &&
+             request.resource.data.lateStartRequestedAt is timestamp;
+    }
+
     match /customers/{userId} {
       allow get: if isSignedIn();
       allow list: if isSignedIn();
@@ -70,15 +95,17 @@ service cloud.firestore {
 
       allow update: if isSignedIn() && (
         // Customer can accept an offer or dispute a completed task
-        (isResourceOwner(resource, 'customerId') && (
-          ownerFieldIsImmutable('customerId') ||
-          customerCanDispute(resource.data.status, request.resource.data.status)
-        )) ||
+        (isResourceOwner(resource, 'customerId') &&
+          ownerFieldIsImmutable('customerId') &&
+          customerCanManageTask(resource.data.status, request.resource.data.status)
+        ) ||
         // Helper can update status from ASSIGNED -> ACTIVE -> COMPLETED
         (isAssignedHelper(resource.data) &&
           canUpdateTaskStatus(resource.data.status, request.resource.data.status) &&
           ownerFieldIsImmutable('customerId') &&
-          ownerFieldIsImmutable('assignedHelperId'))
+          ownerFieldIsImmutable('assignedHelperId')) ||
+        helperCanRecordCheckIn() ||
+        helperCanRequestLateStart()
       );
 
       allow delete: if isResourceOwner(resource, 'customerId');
@@ -88,12 +115,32 @@ service cloud.firestore {
         allow get, list: if
           isResourceOwner(get(/databases/$(database)/documents/tasks/$(taskId)), 'customerId')
           || isAdmin()
-          || isCreatingOwnResource('helperId');
+          || isResourceOwner(resource, 'helperId');
 
-        allow create: if isCreatingOwnResource('helperId') && isApprovedHelper();
-        allow update: if isResourceOwner(resource, 'helperId') && ownerFieldIsImmutable('helperId');
+        allow create: if isCreatingOwnResource('helperId')
+          && isApprovedHelper()
+          && request.resource.data.etaAt is timestamp;
+        allow update: if (
+          isResourceOwner(resource, 'helperId')
+            && ownerFieldIsImmutable('helperId')
+            && request.resource.data.etaAt is timestamp
+        ) || (
+          isResourceOwner(get(/databases/$(database)/documents/tasks/$(taskId)), 'customerId')
+            && ownerFieldIsImmutable('helperId')
+            && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status'])
+            && (request.resource.data.status == 'ACCEPTED'
+              || request.resource.data.status == 'REJECTED'
+              || request.resource.data.status == 'WITHDRAWN'
+              || request.resource.data.status == 'SUBMITTED')
+        );
         allow delete: if isResourceOwner(resource, 'helperId');
       }
+    }
+
+    match /offers/{offerId} {
+      allow get, list: if isSignedIn() &&
+        (resource.data.helperId == request.auth.uid || isAdmin());
+      allow create, update, delete: if false;
     }
 
     match /ratings/{ratingId} {
@@ -145,8 +192,8 @@ service cloud.firestore {
         return isSignedIn() && (
           resource.data.customerId == request.auth.uid ||
           resource.data.helperId == request.auth.uid ||
-          (resource.data.participantIds is list &&
-            resource.data.participantIds.hasAny([request.auth.uid]))
+          (resource.data.members is list &&
+            resource.data.members.hasAny([request.auth.uid]))
         );
       }
 
@@ -155,24 +202,24 @@ service cloud.firestore {
         return isSignedIn() && (
           parentThread.data.customerId == request.auth.uid ||
           parentThread.data.helperId == request.auth.uid ||
-          (parentThread.data.participantIds is list &&
-            parentThread.data.participantIds.hasAny([request.auth.uid]))
+          (parentThread.data.members is list &&
+            parentThread.data.members.hasAny([request.auth.uid]))
         );
       }
 
       // PATCH START: Harden thread creation and fix list permissions
       function isCreatingOwnThread() {
-        let pids = request.resource.data.participantIds;
+        let members = request.resource.data.members;
         return isSignedIn()
-          && pids is list
-          && pids.size() == 2
-          && request.auth.uid in pids
-          && pids[0] != pids[1]; // Prevent duplicate UIDs
+          && members is list
+          && members.size() == 2
+          && request.auth.uid in members
+          && members[0] != members[1]; // Prevent duplicate UIDs
       }
       
       // The `get` rule correctly ensures a user can only read threads they are a member of.
       // Firestore's query validation will leverage this `get` rule. When a client performs
-      // a `list` query with `where('participantIds', 'array-contains', request.auth.uid)`,
+      // a `list` query with `where('members', 'array-contains', request.auth.uid)`,
       // Firestore can prove that every document returned will pass the `get` rule.
       // Therefore, a simple `isSignedIn()` check on the `list` operation is sufficient and secure.
       allow list: if isSignedIn();

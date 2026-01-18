@@ -1,17 +1,29 @@
 'use client';
 
-import { use, useState, useMemo } from 'react';
+import { use, useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronLeft, Star, AlertTriangle, Briefcase, Wrench, CircleX, MessagesSquare } from 'lucide-react';
 import { format } from 'date-fns';
-import { serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
+import {
+  serverTimestamp,
+  arrayUnion,
+  arrayRemove,
+  Timestamp,
+  writeBatch,
+  getDocs,
+  deleteField,
+  doc,
+  collection,
+  query,
+  where,
+  type DocumentData,
+} from 'firebase/firestore';
 
 import { useUserRole } from '@/context/user-role-context';
 import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { addDocumentNonBlocking, updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
-import { doc, collection, query, where, type DocumentData } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 
 import { Badge } from '@/components/ui/badge';
@@ -57,38 +69,47 @@ interface PageProps {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
+function formatDurationFromSeconds(totalSeconds: number) {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const seconds = safeSeconds % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
 export default function TaskDetailPage({ params }: PageProps) {
   // Extract the task id from the route params
   const { id: taskId } = use(params);
-  const { role } = useUserRole();
+  const { role, isRoleLoading, hasCustomerProfile, hasHelperProfile, setRole } = useUserRole();
   const { user: currentUser, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [reportMessage, setReportMessage] = useState('');
+  const [isCancellingAssignment, setIsCancellingAssignment] = useState(false);
 
-  const canRead = useMemo(() => !!firestore && !!currentUser, [firestore, currentUser]);
+  const canRead = Boolean(firestore && currentUser);
 
   const taskRef = useMemo(() => {
-    if (!canRead) return null;
-    return doc(firestore!, 'tasks', taskId) as unknown as import('firebase/firestore').DocumentReference<DocumentData>;
+    if (!canRead || !firestore) return null;
+    return doc(firestore, 'tasks', taskId) as unknown as import('firebase/firestore').DocumentReference<DocumentData>;
   }, [canRead, firestore, taskId]);
   const { data: task, isLoading: isTaskLoading, error, mutate: mutateTask } = useDoc<Task>(taskRef);
 
   const customerRef = useMemo(() => {
-    if (!canRead || !task?.customerId) return null;
-    return doc(firestore!, 'customers', task.customerId) as unknown as import('firebase/firestore').DocumentReference<DocumentData>;
+    if (!canRead || !firestore || !task?.customerId) return null;
+    return doc(firestore, 'customers', task.customerId) as unknown as import('firebase/firestore').DocumentReference<DocumentData>;
   }, [canRead, firestore, task?.customerId]);
   const { data: customer, isLoading: isCustomerLoading } = useDoc<Customer>(customerRef);
 
   const assignedHelperRef = useMemo(() => {
-    if (!canRead || !task?.assignedHelperId) return null;
-    return doc(firestore!, 'helpers', task.assignedHelperId) as unknown as import('firebase/firestore').DocumentReference<DocumentData>;
+    if (!canRead || !firestore || !task?.assignedHelperId) return null;
+    return doc(firestore, 'helpers', task.assignedHelperId) as unknown as import('firebase/firestore').DocumentReference<DocumentData>;
   }, [canRead, firestore, task?.assignedHelperId]);
   const { data: assignedHelper } = useDoc<Helper>(assignedHelperRef);
 
   const helperProfileRef = useMemo(() => {
-    if (!canRead || !currentUser) return null;
-    return doc(firestore!, 'helpers', currentUser.uid) as unknown as import('firebase/firestore').DocumentReference<DocumentData>;
+    if (!canRead || !firestore || !currentUser) return null;
+    return doc(firestore, 'helpers', currentUser.uid) as unknown as import('firebase/firestore').DocumentReference<DocumentData>;
   }, [canRead, firestore, currentUser]);
   const { data: currentHelperProfile } = useDoc<Helper>(helperProfileRef);
   const journey = useHelperJourney(currentHelperProfile);
@@ -115,7 +136,7 @@ export default function TaskDetailPage({ params }: PageProps) {
 
   const participantRef = useMemo(() => {
     if (!canRead || !firestore || !deterministicParticipantId) return null;
-    return doc(firestore!, 'task_participants', deterministicParticipantId) as unknown as import('firebase/firestore').DocumentReference<DocumentData>;
+    return doc(firestore, 'task_participants', deterministicParticipantId) as unknown as import('firebase/firestore').DocumentReference<DocumentData>;
   }, [canRead, firestore, deterministicParticipantId]);
 
   const { data: participant } = useDoc<TaskParticipant>(participantRef);
@@ -155,6 +176,8 @@ export default function TaskDetailPage({ params }: PageProps) {
     const deterministicThreadId = `${task.id}_${task.customerId}_${currentUser.uid}`;
     const threadRef = doc(firestore, 'task_threads', deterministicThreadId);
 
+    const helperDisplayName = currentHelperProfile?.fullName?.trim() || 'Helper';
+
     const participantData = {
       id: participantRef.id,
       taskId: task.id,
@@ -162,20 +185,37 @@ export default function TaskDetailPage({ params }: PageProps) {
       helperId: currentUser.uid,
       status: 'ACTIVE',
       createdAt: serverTimestamp(),
+      lastMessageAt: serverTimestamp(),
     };
     setDocumentNonBlocking(participantRef, participantData, {});
+
+    const participationPreview = `${helperDisplayName} is participating in this task.`;
 
     const threadData = {
       id: threadRef.id,
       taskId: task.id,
       customerId: task.customerId,
       helperId: currentUser.uid,
-      participantIds: [task.customerId, currentUser.uid],
+      members: [task.customerId, currentUser.uid],
       createdAt: serverTimestamp(),
-      lastMessagePreview: 'You have joined the conversation.',
+      lastMessagePreview: participationPreview,
       lastMessageAt: serverTimestamp(),
     };
     setDocumentNonBlocking(threadRef, threadData, {});
+
+    const systemMessage = {
+      senderId: currentUser.uid,
+      text: participationPreview,
+      createdAt: serverTimestamp(),
+      type: 'SYSTEM',
+      meta: {
+        category: 'PARTICIPATION',
+        helperId: currentUser.uid,
+        helperName: helperDisplayName,
+      },
+    };
+    const threadMessagesRef = collection(firestore, 'task_threads', threadRef.id, 'messages');
+    addDocumentNonBlocking(threadMessagesRef, systemMessage);
 
     toast({ title: 'You are now participating!', description: 'You can now chat with the customer in your inbox.' });
   };
@@ -197,8 +237,18 @@ export default function TaskDetailPage({ params }: PageProps) {
     if (!taskRef) return;
 
     let updateData: any = { status: newStatus };
-    if (newStatus === 'COMPLETED') updateData.completedAt = serverTimestamp();
-    if (newStatus === 'ACTIVE') updateData.startedAt = serverTimestamp();
+    if (newStatus === 'COMPLETED') {
+      const completionTimestamp = serverTimestamp();
+      updateData.completedAt = completionTimestamp;
+
+      if (task?.startedAt) {
+        const now = Timestamp.now();
+        const startedAtMillis = task.startedAt.toDate().getTime();
+        const durationSeconds = Math.max(0, Math.round((now.toMillis() - startedAtMillis) / 1000));
+        updateData.durationSeconds = durationSeconds;
+      }
+    }
+    if (newStatus === 'ACTIVE' && !task?.startedAt) updateData.startedAt = serverTimestamp();
     if (newStatus === 'IN_DISPUTE') updateData.disputedAt = serverTimestamp();
 
     updateDocumentNonBlocking(taskRef, updateData);
@@ -208,6 +258,69 @@ export default function TaskDetailPage({ params }: PageProps) {
       title: 'Task Status Updated',
       description: `Task marked as ${newStatus.toLowerCase().replace('_', ' ')}.`,
     });
+  };
+
+  const handleCancelAssignment = async () => {
+    if (!firestore || !taskRef || !task) {
+      return;
+    }
+
+    setIsCancellingAssignment(true);
+
+    try {
+      const batch = writeBatch(firestore);
+
+      batch.update(taskRef, {
+        status: 'OPEN',
+        allowOffers: true,
+        assignedHelperId: deleteField(),
+        acceptedOfferId: deleteField(),
+        acceptedOfferPrice: deleteField(),
+        assignedAt: deleteField(),
+        helperCheckInTime: deleteField(),
+        checkinConfirmedAt: deleteField(),
+        arrivedAt: deleteField(),
+        lateStartStatus: deleteField(),
+        lateStartSeconds: deleteField(),
+        lateStartRequestedAt: deleteField(),
+        lateStartApprovedAt: deleteField(),
+      });
+
+      const offersSnapshot = await getDocs(collection(firestore, 'tasks', task.id, 'offers'));
+      offersSnapshot.forEach((offerDoc) => {
+        const offerData = offerDoc.data() as Offer;
+        if (offerData.status !== 'SUBMITTED') {
+          batch.update(offerDoc.ref, { status: 'SUBMITTED' });
+        }
+      });
+
+      const participantsSnapshot = await getDocs(
+        query(collection(firestore, 'task_participants'), where('taskId', '==', task.id))
+      );
+      participantsSnapshot.forEach((participantDoc) => {
+        const participantData = participantDoc.data() as TaskParticipant;
+        if (participantData.status && participantData.status !== 'ACTIVE') {
+          batch.update(participantDoc.ref, { status: 'ACTIVE' });
+        }
+      });
+
+      await batch.commit();
+      mutateTask();
+
+      toast({
+        title: 'Assignment cancelled',
+        description: 'The task has been reopened so helpers can continue submitting offers.',
+      });
+    } catch (err) {
+      console.error('Failed to cancel assignment', err);
+      toast({
+        variant: 'destructive',
+        title: 'Cancellation failed',
+        description: 'Please try again or contact support if the issue continues.',
+      });
+    } finally {
+      setIsCancellingAssignment(false);
+    }
   };
 
   const handleReportSubmit = () => {
@@ -236,8 +349,34 @@ export default function TaskDetailPage({ params }: PageProps) {
     setReportMessage('');
   };
 
-  if (isTaskLoading || isUserLoading) {
+  if (isRoleLoading || isTaskLoading || isUserLoading) {
     return <TaskDetailSkeleton />;
+  }
+
+  if (!role) {
+    return (
+      <div className="mx-auto grid max-w-6xl flex-1 auto-rows-max gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Select Your Role</CardTitle>
+            <CardDescription>Choose how you want to view this task.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {hasCustomerProfile && (
+              <Button onClick={() => setRole('customer')}>View as Customer</Button>
+            )}
+            {hasHelperProfile && (
+              <Button
+                variant={hasCustomerProfile ? 'outline' : 'default'}
+                onClick={() => setRole('helper')}
+              >
+                View as Helper
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (!task || error) {
@@ -275,6 +414,53 @@ export default function TaskDetailPage({ params }: PageProps) {
     );
   };
 
+  const startedLabel = task.startedAt ? format(task.startedAt.toDate(), 'MMM d, yyyy, h:mm a') : null;
+  const completedLabel = task.completedAt ? format(task.completedAt.toDate(), 'MMM d, yyyy, h:mm a') : null;
+  const durationLabel = (() => {
+    if (typeof task.durationSeconds === 'number') {
+      return formatDurationFromSeconds(task.durationSeconds);
+    }
+    if (task.startedAt && task.completedAt) {
+      const diffSeconds = Math.max(
+        0,
+        Math.floor((task.completedAt.toDate().getTime() - task.startedAt.toDate().getTime()) / 1000),
+      );
+      return formatDurationFromSeconds(diffSeconds);
+    }
+    return null;
+  })();
+
+  const timelineEntries = [
+    {
+      label: 'Posted',
+      value: task.createdAt ? format(task.createdAt.toDate(), 'MMM d, yyyy, h:mm a') : '-',
+    },
+    task.assignedAt
+      ? {
+          label: 'Assigned',
+          value: format(task.assignedAt.toDate(), 'MMM d, yyyy, h:mm a'),
+        }
+      : null,
+    startedLabel
+      ? {
+          label: 'Started',
+          value: startedLabel,
+        }
+      : null,
+    completedLabel
+      ? {
+          label: 'Completed',
+          value: completedLabel,
+        }
+      : null,
+    durationLabel
+      ? {
+          label: 'Duration',
+          value: durationLabel,
+        }
+      : null,
+  ].filter(Boolean) as Array<{ label: string; value: string }>;
+
   return (
     <div className="mx-auto grid max-w-6xl flex-1 auto-rows-max gap-4">
       <div className="flex items-center gap-4">
@@ -286,7 +472,7 @@ export default function TaskDetailPage({ params }: PageProps) {
         </Button>
         <div className="flex-1">
           <h1 className="font-headline text-xl font-semibold tracking-tight">
-            {isAssignedHelperView ? 'Gig Details' : 'Task Details'}
+            Task Details
           </h1>
           <p className="text-sm text-muted-foreground">
             Task ID: {task.id}
@@ -300,6 +486,10 @@ export default function TaskDetailPage({ params }: PageProps) {
 
           {task.status === 'ASSIGNED' && taskRef && (
             <ArrivalCheckIn task={task} taskRef={taskRef} mutateTask={mutateTask} />
+          )}
+
+          {task.status === 'ACTIVE' && task.startedAt && (
+            <TaskInProgressPanel startedAt={task.startedAt} completedAt={task.completedAt ?? null} />
           )}
 
           <Card>
@@ -381,23 +571,13 @@ export default function TaskDetailPage({ params }: PageProps) {
 
               <div>
                 <h3 className="font-headline text-base font-semibold mb-4">Task Timeline</h3>
-                <div className="grid gap-4 text-sm sm:grid-cols-3">
-                  <div className="grid gap-1">
-                    <div className="font-medium text-muted-foreground">Posted</div>
-                    <div className="text-foreground">{task.createdAt ? format(task.createdAt.toDate(), 'MMM d, yyyy, h:mm a') : '-'}</div>
-                  </div>
-                  {task.assignedAt && (
-                    <div className="grid gap-1">
-                      <div className="font-medium text-muted-foreground">Assigned</div>
-                      <div className="text-foreground">{format(task.assignedAt.toDate(), 'MMM d, yyyy, h:mm a')}</div>
+                <div className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {timelineEntries.map((entry) => (
+                    <div key={entry.label} className="grid gap-1">
+                      <div className="font-medium text-muted-foreground">{entry.label}</div>
+                      <div className="text-foreground">{entry.value}</div>
                     </div>
-                  )}
-                  {task.completedAt && (
-                    <div className="grid gap-1">
-                      <div className="font-medium text-muted-foreground">Completed</div>
-                      <div className="text-foreground">{format(task.completedAt.toDate(), 'MMM d, yyyy, h:mm a')}</div>
-                    </div>
-                  )}
+                  ))}
                 </div>
               </div>
 
@@ -429,6 +609,48 @@ export default function TaskDetailPage({ params }: PageProps) {
 
           {isCustomerView ? (
             <>
+              {task.status === 'ASSIGNED' && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="font-headline">Undo Assignment</CardTitle>
+                    <CardDescription>
+                      Re-open this task if you accepted the offer by mistake. All helpers will see it again.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full gap-2"
+                          disabled={isCancellingAssignment}
+                        >
+                          <CircleX className="h-4 w-4" />
+                          {isCancellingAssignment ? 'Cancelling…' : 'Cancel Assignment'}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Cancel this assignment?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will remove the selected helper, restore all offers, and place the task back in the open pool.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel disabled={isCancellingAssignment}>Keep Assignment</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={handleCancelAssignment}
+                            disabled={isCancellingAssignment}
+                          >
+                            {isCancellingAssignment ? 'Cancelling…' : 'Cancel Assignment'}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </CardContent>
+                </Card>
+              )}
+
               {task.status === 'COMPLETED' && !hasReviewed && assignedHelper && !areFeedbacksLoading && (
                 <Card>
                   <CardHeader>
@@ -466,12 +688,14 @@ export default function TaskDetailPage({ params }: PageProps) {
                 </Card>
               )}
 
-              {task.allowOffers && (
+              {(
                 <Card>
                   <CardHeader>
                     <CardTitle className="font-headline">Offers ({offers?.length || 0})</CardTitle>
                     <CardDescription>
-                      Review the offers from helpers below. You can view their profile before accepting.
+                      {task.status === 'OPEN'
+                        ? 'Review the offers from helpers below. You can view their profile before accepting.'
+                        : 'Offers are locked now that this task is no longer open, but you can still review what was submitted.'}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="grid gap-4">
@@ -612,6 +836,53 @@ export default function TaskDetailPage({ params }: PageProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+function TaskInProgressPanel({ startedAt, completedAt }: { startedAt: Timestamp; completedAt?: Timestamp | null }) {
+  const startedAtMillis = startedAt.toMillis();
+  const completedAtMillis = completedAt ? completedAt.toMillis() : null;
+  const [elapsedSeconds, setElapsedSeconds] = useState(() => {
+    const endMillis = completedAtMillis ?? Date.now();
+    return Math.max(0, Math.floor((endMillis - startedAtMillis) / 1000));
+  });
+
+  useEffect(() => {
+    if (completedAtMillis) {
+      const finalSeconds = Math.max(0, Math.floor((completedAtMillis - startedAtMillis) / 1000));
+      setElapsedSeconds(finalSeconds);
+      return;
+    }
+
+    setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startedAtMillis) / 1000)));
+
+    const interval = setInterval(() => {
+      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startedAtMillis) / 1000)));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [startedAtMillis, completedAtMillis]);
+
+  const startedLabel = format(new Date(startedAtMillis), 'MMM d, yyyy, h:mm a');
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="font-headline">Task Tracking</CardTitle>
+        <CardDescription>This task is now in progress.</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-sm text-muted-foreground">
+          Started on <span className="text-foreground font-medium">{startedLabel}</span>
+        </div>
+        <div className="text-center">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Time elapsed</p>
+          <p className="font-mono text-2xl font-semibold text-primary">
+            {formatDurationFromSeconds(elapsedSeconds)}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

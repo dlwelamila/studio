@@ -18,8 +18,8 @@ import { formatDistanceToNow, isToday, isWeekend, sub, isAfter } from 'date-fns'
 
 import { useCollection, useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection, query, where, doc, Timestamp } from 'firebase/firestore';
-import type { Task, Helper } from '@/lib/data';
+import { collection, query, where, doc, Timestamp, orderBy, limit } from 'firebase/firestore';
+import type { Task, Helper, Offer } from '@/lib/data';
 import { taskCategories } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { useHelperJourney } from '@/hooks/use-helper-journey';
@@ -82,6 +82,20 @@ const calculateTaskScore = (task: Task, helper: Helper | null): number => {
     return score;
 }
 
+const offerStatusVariant = (status: Offer['status']) => {
+  switch (status) {
+    case 'ACCEPTED':
+      return 'default' as const;
+    case 'SUBMITTED':
+      return 'secondary' as const;
+    case 'REJECTED':
+      return 'destructive' as const;
+    case 'WITHDRAWN':
+    default:
+      return 'outline' as const;
+  }
+};
+
 
 export default function HelperDashboard() {
   const { user: authUser, isUserLoading: isAuthLoading } = useUser();
@@ -102,6 +116,34 @@ export default function HelperDashboard() {
 
   const completedTasksQuery = useMemoFirebase(() => firestore && authUser ? query(collection(firestore, 'tasks'), where('assignedHelperId', '==', authUser.uid), where('status', '==', 'COMPLETED')) : null, [firestore, authUser]);
   const { data: completedTasks, isLoading: areCompletedTasksLoading } = useCollection<Task>(completedTasksQuery);
+
+  const offersQuery = useMemoFirebase(() => {
+    if (!firestore || !authUser) return null;
+    return query(collection(firestore, 'offers'), where('helperId', '==', authUser.uid), orderBy('createdAt', 'desc'));
+  }, [firestore, authUser]);
+  const { data: myOffers, isLoading: areOffersLoading, error: offersError } = useCollection<Offer>(offersQuery);
+
+  const offerStats = useMemo(() => {
+    const base = { total: 0, accepted: 0, submitted: 0, rejected: 0, withdrawn: 0 };
+    if (!myOffers) return base;
+    return myOffers.reduce((acc, offer) => {
+      acc.total += 1;
+      if (offer.status === 'ACCEPTED') acc.accepted += 1;
+      if (offer.status === 'SUBMITTED') acc.submitted += 1;
+      if (offer.status === 'REJECTED') acc.rejected += 1;
+      if (offer.status === 'WITHDRAWN') acc.withdrawn += 1;
+      return acc;
+    }, base);
+  }, [myOffers]);
+
+  const recentOffers = useMemo(() => {
+    if (!myOffers) return [] as Offer[];
+    return [...myOffers].sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() ?? 0;
+      const bTime = b.createdAt?.toMillis?.() ?? 0;
+      return bTime - aTime;
+    }).slice(0, 3);
+  }, [myOffers]);
   
   useEffect(() => {
     if (completedTasks && helper) {
@@ -130,7 +172,7 @@ export default function HelperDashboard() {
     }
   }, [completedTasks, helper]);
 
-  const isLoading = isAuthLoading || isHelperLoading || areOpenTasksLoading || areCompletedTasksLoading;
+  const isLoading = isAuthLoading || isHelperLoading || areOpenTasksLoading || areCompletedTasksLoading || areOffersLoading;
 
   const handleAvailabilityToggle = (isAvailable: boolean) => {
     if (!helperRef) return;
@@ -308,6 +350,69 @@ export default function HelperDashboard() {
                   </div>
                 </>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-headline flex items-center gap-2">
+                <Briefcase className="h-5 w-5" />
+                <span>Offer Activity</span>
+              </CardTitle>
+              <CardDescription>Quick snapshot of your recent offers.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4">
+              {offersError && (
+                <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                  Unable to load offers. Please check your permissions or try again later.
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="rounded-md border bg-card p-3">
+                  <p className="text-muted-foreground">Total Offers</p>
+                  <p className="text-xl font-semibold">{offerStats.total}</p>
+                </div>
+                <div className="rounded-md border bg-card p-3">
+                  <p className="text-muted-foreground">Accepted</p>
+                  <p className="text-xl font-semibold text-green-600">{offerStats.accepted}</p>
+                </div>
+                <div className="rounded-md border bg-card p-3">
+                  <p className="text-muted-foreground">Awaiting Response</p>
+                  <p className="text-xl font-semibold text-primary">{offerStats.submitted}</p>
+                </div>
+                <div className="rounded-md border bg-card p-3">
+                  <p className="text-muted-foreground">Declined / Withdrawn</p>
+                  <p className="text-xl font-semibold text-muted-foreground">{offerStats.rejected + offerStats.withdrawn}</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wide">Most Recent</p>
+                {recentOffers.length === 0 && !areOffersLoading ? (
+                  <p className="text-sm text-muted-foreground">You have not submitted any offers yet. Start by browsing available tasks.</p>
+                ) : (
+                  recentOffers.map((offer) => {
+                    const createdAt = offer.createdAt?.toDate?.();
+                    const createdLabel = createdAt ? formatDistanceToNow(createdAt, { addSuffix: true }) : 'Unknown';
+                    return (
+                      <div key={offer.id} className="flex items-center justify-between gap-3 rounded-md border p-3">
+                        <div>
+                          <p className="text-sm font-medium">TZS {offer.price.toLocaleString()}</p>
+                          <p className="text-xs text-muted-foreground">Submitted {createdLabel}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge className="capitalize" variant={offerStatusVariant(offer.status)}>
+                            {offer.status.toLowerCase()}
+                          </Badge>
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/dashboard/tasks/${offer.taskId}`}>View</Link>
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>

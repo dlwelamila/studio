@@ -43,7 +43,7 @@ type MessageFormValues = z.infer<typeof messageSchema>;
 export default function ChatPage({ params }: { params: Promise<{ chatId: string }> }) {
   const { chatId } = use(params);
   const { user, isUserLoading } = useUser();
-  const { role } = useUserRole(); // still used for UI-only behavior (e.g., offer panel), NOT for data access
+  const { role, isRoleLoading, hasCustomerProfile, hasHelperProfile, setRole } = useUserRole(); // still used for UI-only behavior (e.g., offer panel), NOT for data access
   const firestore = useFirestore();
   const { toast } = useToast();
 
@@ -273,6 +273,9 @@ export default function ChatPage({ params }: { params: Promise<{ chatId: string 
       }
 
       updateDoc(canonicalThreadDocRef, updatePayload).catch(() => {});
+
+      const participantRef = doc(firestore, 'task_participants', `${thread.taskId}_${thread.helperId}`);
+      updateDoc(participantRef, { lastMessageAt: serverTimestamp() }).catch(() => {});
     }
 
     stopTyping();
@@ -282,6 +285,43 @@ export default function ChatPage({ params }: { params: Promise<{ chatId: string 
 
   const isLoading =
     isUserLoading || isThreadLoading || isTaskLoading || areMessagesLoading || isOtherUserLoading;
+
+  if (isRoleLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Loading</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>Please wait while we load your account role.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!role) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Select Your Role</CardTitle>
+          <CardDescription>Choose a role to continue chatting.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {hasCustomerProfile && (
+            <Button onClick={() => setRole('customer')}>Continue as Customer</Button>
+          )}
+          {hasHelperProfile && (
+            <Button
+              variant={hasCustomerProfile ? 'outline' : 'default'}
+              onClick={() => setRole('helper')}
+            >
+              Continue as Helper
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (threadError) {
     return (
@@ -341,10 +381,34 @@ export default function ChatPage({ params }: { params: Promise<{ chatId: string 
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages?.map((message) => {
-                const isMine = message.senderId === user?.uid;
-                const status = getMessageStatus(message);
                 const messageDate = message.createdAt?.toDate?.();
                 const timestampLabel = messageDate ? format(messageDate, 'p') : '';
+
+                if (message.type === 'SYSTEM') {
+                  let systemText = message.text;
+                  if (message.meta?.category === 'PARTICIPATION') {
+                    const metaHelperId = message.meta.helperId as string | undefined;
+                    const metaHelperName = (message.meta.helperName as string | undefined)?.trim();
+                    if (metaHelperId && mySide === 'helper' && user?.uid === metaHelperId) {
+                      systemText = 'You are participating in this task.';
+                    } else if (metaHelperName) {
+                      systemText = `${metaHelperName} is participating in this task.`;
+                    } else {
+                      systemText = 'A helper is participating in this task.';
+                    }
+                  }
+                  return (
+                    <div key={message.id} className="flex justify-center text-xs text-muted-foreground">
+                      <div className="rounded-full bg-muted px-3 py-1 flex items-center gap-2">
+                        <span>{systemText}</span>
+                        {timestampLabel && <span className="opacity-70">{timestampLabel}</span>}
+                      </div>
+                    </div>
+                  );
+                }
+
+                const isMine = message.senderId === user?.uid;
+                const status = getMessageStatus(message);
 
                 let statusIcon = null;
                 if (status === 'sent') {

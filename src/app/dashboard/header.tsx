@@ -1,7 +1,20 @@
 'use client';
-import { useMemo } from 'react';
+
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Home, PanelLeft, Settings, Users2, Briefcase, Handshake, Repeat, PlusCircle, LifeBuoy, MessagesSquare } from 'lucide-react';
+import {
+  Home,
+  PanelLeft,
+  Settings,
+  Users2,
+  Briefcase,
+  Handshake,
+  Repeat,
+  PlusCircle,
+  LifeBuoy,
+  MessagesSquare,
+  ClipboardList,
+} from 'lucide-react';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -34,22 +47,22 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ClientOnly } from '@/components/client-only';
 
 const breadcrumbMap: Record<string, Record<string, string>> = {
-    customer: {
-        '/dashboard': 'My Tasks',
-        '/dashboard/tasks/new': 'New Task',
-        '/dashboard/profile': 'My Profile',
-        '/dashboard/inbox': 'Inbox',
-        '/support': 'Support',
-    },
-    helper: {
-        '/dashboard': 'Browse Tasks',
-        '/dashboard/browse': 'Browse Tasks',
-        '/dashboard/gigs': 'My Gigs',
-        '/dashboard/profile': 'My Profile',
-        '/dashboard/inbox': 'Inbox',
-        '/support': 'Support',
-    }
-}
+  customer: {
+    '/dashboard': 'My Tasks',
+    '/dashboard/tasks/new': 'New Task',
+    '/dashboard/profile': 'My Profile',
+    '/dashboard/inbox': 'Inbox',
+    '/support': 'Support',
+  },
+  helper: {
+    '/dashboard': 'Browse Tasks',
+    '/dashboard/browse': 'Browse Tasks',
+    '/dashboard/gigs': 'My Gigs',
+    '/dashboard/profile': 'My Profile',
+    '/dashboard/inbox': 'Inbox',
+    '/support': 'Support',
+  },
+};
 
 export default function AppHeader() {
   const { role, toggleRole, hasCustomerProfile, hasHelperProfile, isRoleLoading } = useUserRole();
@@ -58,13 +71,14 @@ export default function AppHeader() {
   const auth = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [isSheetOpen, setSheetOpen] = useState(false);
 
   const userRef = useMemoFirebase(() => {
-    if (!firestore || !authUser) return null;
+    if (!firestore || !authUser || !role) return null;
     const collectionName = role === 'customer' ? 'customers' : 'helpers';
     return doc(firestore, collectionName, authUser.uid);
   }, [firestore, authUser, role]);
-  
+
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<Helper | Customer>(userRef);
 
   const customerThreadsQuery = useMemoFirebase(() => {
@@ -93,6 +107,7 @@ export default function AppHeader() {
   const totalUnreadCount = useMemo(() => {
     const userId = authUser?.uid;
     if (!userId) return 0;
+
     return aggregatedThreads.reduce((sum, thread) => {
       const rawCount = thread.unreadCounts?.[userId];
       if (typeof rawCount === 'number' && rawCount > 0) {
@@ -117,35 +132,35 @@ export default function AppHeader() {
   const handleLogout = async () => {
     if (!auth) return;
     await signOut(auth);
-    router.push('/login');
+    router.push('/');
   };
 
   const getBreadcrumbText = () => {
-    const roleRoutes = breadcrumbMap[role] || {};
-    // Find a matching route, including dynamic ones
-    const matchingRoute = Object.keys(roleRoutes).find(route => pathname.startsWith(route) && (pathname.length === route.length || pathname[route.length] === '/'));
+    const roleRoutes = role ? breadcrumbMap[role] || {} : {};
+    const matchingRoute = Object.keys(roleRoutes).find(
+      (route) => pathname.startsWith(route) && (pathname.length === route.length || pathname[route.length] === '/'),
+    );
     if (matchingRoute) {
-        return roleRoutes[matchingRoute];
+      return roleRoutes[matchingRoute];
     }
-    // Handle dynamic task routes
     if (pathname.startsWith('/dashboard/tasks/')) {
-        return 'Task Details';
+      return 'Task Details';
     }
     if (pathname.startsWith('/dashboard/inbox/')) {
-        return 'Chat';
+      return 'Chat';
     }
     return 'Dashboard';
   };
 
   const breadcrumbText = getBreadcrumbText();
   const canSwitchRoles = hasCustomerProfile && hasHelperProfile;
-  
-  const isLoading = isUserLoading || isProfileLoading || isRoleLoading;
+
+  const isLoading = isUserLoading || isProfileLoading || isRoleLoading || !role;
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
       <ClientOnly>
-        <Sheet>
+        <Sheet open={isSheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
             <Button size="icon" variant="outline" className="sm:hidden">
               <PanelLeft className="h-5 w-5" />
@@ -155,8 +170,9 @@ export default function AppHeader() {
           <SheetContent side="left" className="sm:max-w-xs">
             <nav className="grid gap-6 text-lg font-medium">
               <Link
-                href="#"
+                href="/dashboard"
                 className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
+                onClick={() => setSheetOpen(false)}
               >
                 <Handshake className="h-5 w-5 transition-all group-hover:scale-110" />
                 <span className="sr-only">tasKey</span>
@@ -164,24 +180,52 @@ export default function AppHeader() {
               <Link
                 href="/dashboard"
                 className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+                onClick={() => setSheetOpen(false)}
               >
                 <Home className="h-5 w-5" />
                 Dashboard
               </Link>
-               {role === 'customer' ? (
-                  <Link href="/dashboard/tasks/new" className="flex items-center gap-4 px-2.5 text-foreground">
-                      <PlusCircle className="h-5 w-5" />
-                      New Task
-                  </Link>
+              {role === 'customer' ? (
+                <Link
+                  href="/dashboard/tasks/new"
+                  className="flex items-center gap-4 px-2.5 text-foreground"
+                  onClick={() => setSheetOpen(false)}
+                >
+                  <PlusCircle className="h-5 w-5" />
+                  New Task
+                </Link>
               ) : (
-                   <Link href="/dashboard/gigs" className="flex items-center gap-4 px-2.5 text-foreground">
-                      <Briefcase className="h-5 w-5" />
-                      My Gigs
+                <>
+                  <Link
+                    href="/dashboard/browse"
+                    className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+                    onClick={() => setSheetOpen(false)}
+                  >
+                    <Home className="h-5 w-5" />
+                    Browse Tasks
                   </Link>
+                  <Link
+                    href="/dashboard/offers"
+                    className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+                    onClick={() => setSheetOpen(false)}
+                  >
+                    <ClipboardList className="h-5 w-5" />
+                    My Offers
+                  </Link>
+                  <Link
+                    href="/dashboard/gigs"
+                    className="flex items-center gap-4 px-2.5 text-foreground"
+                    onClick={() => setSheetOpen(false)}
+                  >
+                    <Briefcase className="h-5 w-5" />
+                    My Gigs
+                  </Link>
+                </>
               )}
-               <Link
+              <Link
                 href="/dashboard/inbox"
                 className="flex items-center justify-between gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+                onClick={() => setSheetOpen(false)}
               >
                 <span className="flex items-center gap-4">
                   <MessagesSquare className="h-5 w-5" />
@@ -192,6 +236,7 @@ export default function AppHeader() {
               <Link
                 href="/dashboard/profile"
                 className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+                onClick={() => setSheetOpen(false)}
               >
                 <Users2 className="h-5 w-5" />
                 Profile
@@ -199,6 +244,7 @@ export default function AppHeader() {
               <Link
                 href="/support"
                 className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+                onClick={() => setSheetOpen(false)}
               >
                 <LifeBuoy className="h-5 w-5" />
                 Support
@@ -237,29 +283,26 @@ export default function AppHeader() {
         <ClientOnly>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="overflow-hidden rounded-full"
-              >
+              <Button variant="outline" size="icon" className="overflow-hidden rounded-full">
                 {isLoading || !userProfile ? (
-                   <Skeleton className="h-9 w-9 rounded-full" />
+                  <Skeleton className="h-9 w-9 rounded-full" />
                 ) : (
                   <Image
-                      src={userProfile.profilePhotoUrl}
-                      width={36}
-                      height={36}
-                      alt="Avatar"
-                      className="overflow-hidden rounded-full object-cover"
+                    src={userProfile.profilePhotoUrl}
+                    width={36}
+                    height={36}
+                    alt="Avatar"
+                    className="overflow-hidden rounded-full object-cover"
                   />
                 )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>{isLoading ? <Skeleton className="h-4 w-24" /> : userProfile?.fullName || 'My Account'}</DropdownMenuLabel>
+              <DropdownMenuLabel>
+                {isLoading ? <Skeleton className="h-4 w-24" /> : userProfile?.fullName || 'My Account'}
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              
-              { isLoading ? (
+              {isLoading ? (
                 <DropdownMenuItem disabled>
                   <Skeleton className="h-4 w-32" />
                 </DropdownMenuItem>
@@ -274,12 +317,11 @@ export default function AppHeader() {
                   <span>Become a Helper</span>
                 </DropdownMenuItem>
               ) : !hasCustomerProfile ? (
-                 <DropdownMenuItem onSelect={() => router.push('/onboarding/create-profile?role=customer')}>
+                <DropdownMenuItem onSelect={() => router.push('/onboarding/create-profile?role=customer')}>
                   <PlusCircle className="mr-2 h-4 w-4" />
                   <span>Start Hiring</span>
                 </DropdownMenuItem>
               ) : null}
-
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => router.push('/dashboard/profile')}>
                 <Settings className="mr-2 h-4 w-4" />

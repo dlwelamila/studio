@@ -3,10 +3,9 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, type FirestoreError } from 'firebase/firestore';
 
 import { useFirestore, useUser } from '@/firebase';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { Task } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 
@@ -34,6 +33,7 @@ export function OfferForm({ task }: OfferFormProps) {
     const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
+    const canSubmitOffer = task.status === 'OPEN' && task.allowOffers !== false;
 
     const form = useForm<OfferFormValues>({
         resolver: zodResolver(offerFormSchema),
@@ -43,14 +43,24 @@ export function OfferForm({ task }: OfferFormProps) {
         }
     });
 
-    const handleMakeOffer = (data: OfferFormValues) => {
+    const handleMakeOffer = async (data: OfferFormValues) => {
         if (!user || !firestore || !task) {
             toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to make an offer.' });
             return;
         }
 
+        if (!canSubmitOffer) {
+            toast({
+                variant: 'destructive',
+                title: 'Offers closed',
+                description: 'This task is no longer accepting new offers.',
+            });
+            return;
+        }
+
         const offerData = {
             taskId: task.id,
+            customerId: task.customerId,
             helperId: user.uid,
             price: data.price,
             etaAt: data.etaAt,
@@ -60,13 +70,28 @@ export function OfferForm({ task }: OfferFormProps) {
         };
 
         const offersCollection = collection(firestore, 'tasks', task.id, 'offers');
-        addDocumentNonBlocking(offersCollection, offerData);
-        toast({ title: 'Offer Submitted!', description: 'The customer has been notified of your offer.' });
-        form.reset({
-            price: task.budget.min > 0 ? task.budget.min : undefined,
-            etaAt: undefined,
-            message: ''
-        });
+
+        try {
+            await addDoc(offersCollection, offerData);
+            toast({ title: 'Offer Submitted!', description: 'The customer has been notified of your offer.' });
+            form.reset({
+                price: task.budget.min > 0 ? task.budget.min : undefined,
+                etaAt: undefined,
+                message: ''
+            });
+        } catch (error) {
+            console.error('Offer submission failed', error);
+            const firestoreError = error as FirestoreError;
+            const description = firestoreError?.code === 'permission-denied'
+                ? 'You do not have permission to submit offers yet. Please complete your profile or contact support.'
+                : 'We could not send your offer. Please try again or contact support if the issue persists.';
+
+            toast({
+                variant: 'destructive',
+                title: 'Offer not submitted',
+                description,
+            });
+        }
     }
 
 
@@ -112,9 +137,14 @@ export function OfferForm({ task }: OfferFormProps) {
                         </FormItem>
                     )}
                 />
-                <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                <Button type="submit" className="w-full" disabled={form.formState.isSubmitting || !canSubmitOffer}>
                     {form.formState.isSubmitting ? 'Submitting...' : 'Submit Formal Offer'}
                 </Button>
+                {!canSubmitOffer && (
+                    <p className="text-xs text-muted-foreground text-center">
+                        This task is no longer accepting offers.
+                    </p>
+                )}
                 <DialogClose asChild>
                     <Button type="button" variant="outline" className="w-full">Done</Button>
                 </DialogClose>

@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useUserRole } from '@/context/user-role-context';
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
@@ -30,12 +31,12 @@ import { ReliabilityLog } from './reliability-log';
 
 
 export default function ProfilePage() {
-  const { role, isRoleLoading } = useUserRole();
+    const { role, isRoleLoading, hasCustomerProfile, hasHelperProfile, setRole } = useUserRole();
   const { user: authUser, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
 
   const userRef = useMemoFirebase(() => {
-    if (!firestore || !authUser) return null;
+        if (!firestore || !authUser || !role) return null;
     const collectionName = role === 'customer' ? 'customers' : 'helpers';
     return doc(firestore, collectionName, authUser.uid);
   }, [firestore, authUser, role]);
@@ -43,19 +44,56 @@ export default function ProfilePage() {
   const { data: userProfile, isLoading: isProfileLoading, mutate: mutateProfile } = useDoc<Helper | Customer>(userRef);
 
   const feedbacksQuery = useMemoFirebase(() => {
-    if (!firestore || !authUser || role !== 'helper') return null;
+        if (!firestore || !authUser || role !== 'helper') return null;
     return query(collection(firestore, 'feedbacks'), where('helperId', '==', authUser.uid));
   }, [firestore, authUser, role]);
 
   const { data: feedbacks, isLoading: areFeedbacksLoading } = useCollection<Feedback>(feedbacksQuery);
   
-  const helperProfile = role === 'helper' ? (userProfile as Helper) : null;
-  const customerProfile = role === 'customer' ? (userProfile as Customer) : null;
+    const helperProfile = role === 'helper' ? (userProfile as Helper) : null;
+    const customerProfile = role === 'customer' ? (userProfile as Customer) : null;
   
   const journey = useHelperJourney(helperProfile);
-  const isPhoneVerified = role === 'customer' ? customerProfile?.phoneVerified : helperProfile?.phoneVerified;
+    const isPhoneVerified = role === 'customer'
+        ? customerProfile?.phoneVerified
+        : role === 'helper'
+            ? helperProfile?.phoneVerified
+            : undefined;
   
-  const isLoading = isAuthLoading || isRoleLoading || isProfileLoading;
+    if (isRoleLoading) {
+        return <ProfileSkeleton />;
+    }
+
+    if (!role) {
+        return (
+            <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Select Your Profile</CardTitle>
+                        <CardDescription>Pick a role to view your tasKey profile details.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-3">
+                        {hasCustomerProfile && (
+                            <Button onClick={() => setRole('customer')} className="w-full">
+                                View customer profile
+                            </Button>
+                        )}
+                        {hasHelperProfile && (
+                            <Button
+                                variant={hasCustomerProfile ? 'outline' : 'default'}
+                                onClick={() => setRole('helper')}
+                                className="w-full"
+                            >
+                                View helper profile
+                            </Button>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    const isLoading = isAuthLoading || isProfileLoading;
 
   if (isLoading || !userProfile) {
     return <ProfileSkeleton />;

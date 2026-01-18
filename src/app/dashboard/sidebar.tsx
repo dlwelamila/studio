@@ -3,6 +3,7 @@ import Link from 'next/link';
 import {
   Home,
   Briefcase,
+  ClipboardList,
   Users2,
   Package2,
   Settings,
@@ -28,13 +29,18 @@ const CustomerNav = [
 
 const HelperNav = [
   { href: '/dashboard/browse', label: 'Browse Tasks', icon: Home },
+  { href: '/dashboard/offers', label: 'My Offers', icon: ClipboardList },
   { href: '/dashboard/gigs', label: 'My Gigs', icon: Briefcase },
   { href: '/dashboard/inbox', label: 'Inbox', icon: MessagesSquare },
 ];
 
 export function AppSidebar() {
-  const { role } = useUserRole();
+  const { role, isRoleLoading } = useUserRole();
   const pathname = usePathname();
+
+  if (isRoleLoading || !role) {
+    return null;
+  }
 
   const navItems = role === 'customer' ? CustomerNav : HelperNav;
 

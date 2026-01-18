@@ -8,6 +8,7 @@ import { collection, query, where, doc } from 'firebase/firestore';
 import type { TaskThread, Helper, Customer, Task } from '@/lib/data';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MessagesSquare } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,9 +17,59 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
 export default function InboxPage() {
-  const { role } = useUserRole();
+  const { role, isRoleLoading, hasCustomerProfile, hasHelperProfile, setRole } = useUserRole();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+
+  if (isRoleLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Loading</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>Please wait while we load your account role.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!role) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Select Your Role</CardTitle>
+          <CardDescription>Choose how you want to view your tasKey messages.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {hasCustomerProfile && (
+            <Button onClick={() => setRole('customer')}>Customer conversations</Button>
+          )}
+          {hasHelperProfile && (
+            <Button
+              variant={hasCustomerProfile ? 'outline' : 'default'}
+              onClick={() => setRole('helper')}
+            >
+              Helper conversations
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!isUserLoading && !user) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Login Required</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>You must be signed in to view your tasKey conversations.</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const customerThreadsQuery = useMemoFirebase(() => {
     if (!firestore || isUserLoading || !user?.uid) return null;
@@ -102,9 +153,9 @@ export default function InboxPage() {
             </div>
           )}
 
-          {!isLoading && !threadsError && threads && threads.length > 0 ? (
+          {!isLoading && !threadsError && threads && threads.length > 0 && user ? (
             threads.map((thread) => (
-              <ThreadItem key={thread.id} thread={thread} currentUserId={user!.uid} />
+              <ThreadItem key={thread.id} thread={thread} currentUserId={user.uid} />
             ))
           ) : (
             !isLoading &&
